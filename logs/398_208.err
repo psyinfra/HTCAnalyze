@@ -1,0 +1,15 @@
+Error processing line 1 of /home/tkadelka/.local/lib/python3.7/site-packages/autorunrecord-nspkg.pth:
+
+  Traceback (most recent call last):
+    File "/usr/lib/python3.7/site.py", line 174, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "<frozen importlib._bootstrap>", line 580, in module_from_spec
+  AttributeError: 'NoneType' object has no attribute 'loader'
+
+Remainder of file ignored
+[WARNING] realpath of PWD=/data/project/rehab_eNKI/eNKI_data/code is /data/project/rehab_eNKI/eNKI_data/code whenever os.getcwd()=/data/project/rehab_eNKI/eNKI_data. From now on will be returning os.getcwd(). Directory symlinks in the paths will be resolved 
+[INFO] Downloading 'https://trends-coins-ni.s3.amazonaws.com/nidropbox/8100_anonymized/20160331_114216_vT9Kv.zip?response-content-disposition=attachment%3Bfilename%3Dscan_data209.zip&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA2V4PE5I4KOKW2K76%2F20200211%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20200211T005344Z&X-Amz-SignedHeaders=host&X-Amz-Expires=604800&X-Amz-Signature=0196a6466f4792f7afb31923239d51904232b8007e55a4f36bbb746f69810c8e' into '/data/project/rehab_eNKI/eNKI_data/' 
+FileNotInRepositoryError: command '['git', 'commit', '-m', '[DATALAD] Download URLs\n\nURLs:\n  https://trends-coins-ni.s3.amazonaws.com/nidropbox/8100_anonymized/20160331_114216_vT9Kv.zip?response-content-disposition=attachment%3Bfilename%3Dscan_data209.zip&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA2V4PE5I4KOKW2K76%2F20200211%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20200211T005344Z&X-Amz-SignedHeaders=host&X-Amz-Expires=604800&X-Amz-Signature=0196a6466f4792f7afb31923239d51904232b8007e55a4f36bbb746f69810c8e', '--', 'scan_data209.zip']' failed with exitcode 1
+File(s) unknown to git
+[Errno 1] ['git', 'commit', '-m', '[DATALAD] Download URLs\n\nURLs:\n  https://trends-coins-ni.s3.amazonaws.com/nidropbox/8100_anonymized/20160331_114216_vT9Kv.zip?response-content-disposition=attachment%3Bfilename%3Dscan_data209.zip&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA2V4PE5I4KOKW2K76%2F20200211%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20200211T005344Z&X-Amz-SignedHeaders=host&X-Amz-Expires=604800&X-Amz-Signature=0196a6466f4792f7afb31923239d51904232b8007e55a4f36bbb746f69810c8e', '--', 'scan_data209.zip']: File(s) unknown to git: ''

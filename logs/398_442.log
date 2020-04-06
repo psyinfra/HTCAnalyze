@@ -1,0 +1,20 @@
+000 (398.442.000) 02/11 09:45:05 Job submitted from host: <10.0.8.10:9618?addrs=10.0.8.10-9618&noUDP&sock=3696752_f7c3_3>
+...
+001 (398.442.000) 02/11 12:34:26 Job executing on host: <10.0.9.1:9618?addrs=10.0.9.1-9618&noUDP&sock=1544_a251_3>
+...
+006 (398.442.000) 02/11 12:34:34 Image size of job updated: 28632
+	28  -  MemoryUsage of job (MB)
+	28632  -  ResidentSetSize of job (KB)
+...
+007 (398.442.000) 02/11 12:36:27 Shadow exception!
+	Error from slot1_13@cpu1.htc.inm7.de: Job has encountered an out-of-memory event.
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+...
+012 (398.442.000) 02/11 12:36:27 Job was held.
+	Error from slot1_13@cpu1.htc.inm7.de: Job has encountered an out-of-memory event.
+	Code 34 Subcode 0
+...
+009 (398.442.000) 02/25 09:29:26 Job was aborted by the user.
+	via condor_rm (by user tkadelka)
+...

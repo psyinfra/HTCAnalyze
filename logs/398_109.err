@@ -1,0 +1,18 @@
+Error processing line 1 of /home/tkadelka/.local/lib/python3.7/site-packages/autorunrecord-nspkg.pth:
+
+  Traceback (most recent call last):
+    File "/usr/lib/python3.7/site.py", line 174, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "<frozen importlib._bootstrap>", line 580, in module_from_spec
+  AttributeError: 'NoneType' object has no attribute 'loader'
+
+Remainder of file ignored
+[WARNING] realpath of PWD=/data/project/rehab_eNKI/eNKI_data/code is /data/project/rehab_eNKI/eNKI_data/code whenever os.getcwd()=/data/project/rehab_eNKI/eNKI_data. From now on will be returning os.getcwd(). Directory symlinks in the paths will be resolved 
+[INFO] Downloading 'https://trends-coins-ni.s3.amazonaws.com/nidropbox/8100_anonymized/20151107_165009_eG9fB.zip?response-content-disposition=attachment%3Bfilename%3Dscan_data110.zip&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA2V4PE5I4KOKW2K76%2F20200211%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20200211T005342Z&X-Amz-SignedHeaders=host&X-Amz-Expires=604800&X-Amz-Signature=1623e978e393725b0b1cf7f946d8e306cbc061ef5c5ee7679a9beb1f410eb0dc' into '/data/project/rehab_eNKI/eNKI_data/' 
+CommandError: command '['git', 'commit', '-m', '[DATALAD] Download URLs\n\nURLs:\n  https://trends-coins-ni.s3.amazonaws.com/nidropbox/8100_anonymized/20151107_165009_eG9fB.zip?response-content-disposition=attachment%3Bfilename%3Dscan_data110.zip&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA2V4PE5I4KOKW2K76%2F20200211%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20200211T005342Z&X-Amz-SignedHeaders=host&X-Amz-Expires=604800&X-Amz-Signature=1623e978e393725b0b1cf7f946d8e306cbc061ef5c5ee7679a9beb1f410eb0dc', '--', 'scan_data110.zip']' failed with exitcode 128
+Failed to run ['git', 'commit', '-m', '[DATALAD] Download URLs\n\nURLs:\n  https://trends-coins-ni.s3.amazonaws.com/nidropbox/8100_anonymized/20151107_165009_eG9fB.zip?response-content-disposition=attachment%3Bfilename%3Dscan_data110.zip&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA2V4PE5I4KOKW2K76%2F20200211%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20200211T005342Z&X-Amz-SignedHeaders=host&X-Amz-Expires=604800&X-Amz-Signature=1623e978e393725b0b1cf7f946d8e306cbc061ef5c5ee7679a9beb1f410eb0dc', '--', 'scan_data110.zip'] under '/data/project/rehab_eNKI/eNKI_data'. Exit code=128. out= err=(recording state in git...)
+fatal: cannot lock ref 'HEAD': is at a63d858fe23e3e14139d030bc97034a1ea628046 but expected 1d611c5709de7ab60fe740f3740e3a8c71294f3c
+
+(recording state in git...)
+fatal: cannot lock ref 'HEAD': is at a63d858fe23e3e14139d030bc97034a1ea628046 but expected 1d611c5709de7ab60fe740f3740e3a8c71294f3c
