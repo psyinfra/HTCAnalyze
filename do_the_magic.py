@@ -46,9 +46,9 @@ cyan = "\033[0;36m"
 back_to_default = "\033[0;39m"
 
 # global variables with default values for err/log/out files
-log = ".log"
-err = ".err"
-out = ".out"
+std_log = ".log"
+std_err = ".err"
+std_out = ".out"
 
 
 # Todos:
@@ -107,6 +107,7 @@ def manage_params():
 
     """
     global files  # list of files and directories
+    global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_output, show_warnings  # show more information variables
     global ignore_all, ignore_errors, ignore_resources  # ignore information variables
 
@@ -118,17 +119,32 @@ def manage_params():
             files = better_args[0].split()
             better_args = better_args[1:]  # remove them from opts
 
-        opts, args = getopt.getopt(better_args, "h",
-                                   ["help",
+        opts, args = getopt.getopt(better_args, "hl:e:o:",
+                                   ["help", "std-log=", "std-error=", "std-out=",
                                     "show-output", "show-warnings",
                                     "ignore-all", "ignore-errors", "ignore-resources"])
         # print(opts, args)
         for opt, arg in opts:
-            print(opt, arg)
             if opt in ["-h", "--help"]:
                 print(help_me())
                 exit(0)
 
+            # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
+            elif opt in ["-l", "--std-log"]:
+                # to forget the . should not be painful
+                if arg[0] != '.':
+                    arg = "."+arg
+                std_log = arg
+            elif opt in ["-e", "--std-error"]:
+                # to forget the . should not be painful
+                if arg[0] != '.':
+                    arg = "."+arg
+                std_err = arg
+            elif opt in ["-o", "--std-out"]:
+                # to forget the . should not be painful
+                if arg[0] != '.':
+                    arg = "."+arg
+                std_out = arg
             # all variables, to show more specific information
             elif opt.__eq__("--show-output"):
                 show_output = True
@@ -157,7 +173,7 @@ def manage_params():
             back_to_default = ""
 
     except (getopt.GetoptError or UnboundLocalError or NameError) as err:
-        print(red+"{0}: {1}"+back_to_default.format(err.__class__.__name__, err))
+        print((red+"{0}: {1}"+back_to_default).format(err.__class__.__name__, err))
         print(help_me())
         exit(0)
 
@@ -175,10 +191,10 @@ def help_me():
 def read_condor_logs(file):
     """
 
-    reads a given HTCondor .log file and separates the information in two lists,
+    reads a given HTCondor std_log file and separates the information in two lists,
     for further and easier access
 
-    :param file:    a HTCondor .log file
+    :param file:    a HTCondor std_log file
 
     :raises: :class:'FileNotFoundError': if open does not work
 
@@ -188,8 +204,8 @@ def read_condor_logs(file):
                 job_event[1]-> relevant information: job_event_information[1]
     """
 
-    if not file.endswith(".log"):
-        raise NameError("The read_condor_logs method is only for .log files")
+    if not file.endswith(std_log):
+        raise NameError("The read_condor_logs method is only for "+std_log+" files")
 
     log_job_events = list()  # saves the job_events
     job_event_information = list()  # saves the information for each job event, if there are any
@@ -244,8 +260,8 @@ def read_condor_error(file):
     :return: file content
 
     """
-    if not file.endswith(".err"):
-        raise NameError("The read_condor_error method is only for .err files")
+    if not file.endswith(std_err):
+        raise NameError("The read_condor_error method is only for "+std_err+" files")
 
     err_file = open(file)
     return "".join(err_file.readlines())
@@ -264,8 +280,8 @@ def read_condor_output(file):
         :return: file content
 
         """
-    if not file.endswith(".out"):
-        raise NameError("The read_condor_output method is only for .out files")
+    if not file.endswith(std_out):
+        raise NameError("The read_condor_output method is only for "+std_out+" files")
 
     out_file = open(file)
     return "".join(out_file.readlines())
@@ -332,6 +348,9 @@ def smart_output_logs(file):
                 # print(cpu_usage, cpu_request, cpu_allocated)
                 # print(disk_usage, disk_request, disk_allocated)
                 # print(memory_usage, memory_request, memory_allocated)
+
+                # Error handling: change empty value of cpu_usage to NaN
+                if cpu_usage == "":
                     cpu_usage = "NaN"
 
                 # fill the string with important information
@@ -346,7 +365,7 @@ def smart_output_logs(file):
             output_string += job_events[-1][4][1:] + ": " + ((job_information[-1][0]).split(" ")[-1])[:-1]+"\n"
 
     except NameError:
-        print("The smart_output_logs method requires a .log file as parameter")
+        print("The smart_output_logs method requires a "+std_log+" file as parameter")
     except FileNotFoundError as err:
         print(red+str(err)+back_to_default)
     else:
@@ -370,13 +389,13 @@ def smart_output_error(file):
                 output_string += yellow + line + back_to_default + "\n"
 
     except NameError:
-        print("The smart_output_error method requires a .err file as parameter")
+        print("The smart_output_error method requires a "+std_err+" file as parameter")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
-        match = re.match(r".*?([0-9]{3,}_[0-9]+)\.err", relevant[1])
-        print(yellow + "There is no related .err file: {0} in the directory:{1}\n'{2}'\n"
-              " with the prefix: {3}{4}"
-              .format(relevant[1], cyan, os.path.abspath(relevant[0]), match[1], back_to_default))
+        match = re.match(r".*?([0-9]{3,}_[0-9]+)"+std_err, relevant[1])
+        print(yellow + "There is no related {0} file: {1} in the directory:{2}\n'{3}'\n"
+              " with the prefix: {4}{5}"
+              .format(std_err, relevant[1], cyan, os.path.abspath(relevant[0]), match[1], back_to_default))
     except TypeError as err:
         print(red+str(err)+back_to_default)
     finally:
@@ -394,13 +413,13 @@ def smart_output_output(file):
     try:
         output_string = read_condor_output(file)
     except NameError:
-        print("The smart_output_output method requires a .out file as parameter")
+        print("The smart_output_output method requires a "+std_out+" file as parameter")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
-        match = re.match(r".*?([0-9]{3,}_[0-9]+)\.out", relevant[1])
-        print(yellow + "There is no related .out file: {0} in the directory:{1}\n'{2}'\n"
-                       " with the prefix: {3}{4}"
-              .format(relevant[1], cyan, os.path.abspath(relevant[0]), match[1], back_to_default))
+        match = re.match(r".*?([0-9]{3,}_[0-9]+)"+std_out, relevant[1])
+        print(yellow + "There is no related {0} file: {1} in the directory:{2}\n'{3}'\n"
+                       " with the prefix: {4}{5}"
+              .format(std_out, relevant[1], cyan, os.path.abspath(relevant[0]), match[1], back_to_default))
 
     finally:
         return output_string
@@ -419,21 +438,21 @@ def smart_manage_all(job_spec_id):
     :param job_spec_id: file name without endling like job4323_1, job4323_1.<err|out|log> will cut the end off
     :return: a string that combines HTCondor log/err and out files and returns it
     """
-    # error handling, if a file name like 398_0.err was given,
-    if job_spec_id[-4:].__eq__(".log"):
+    # error handling, if a file name like 398_0.log was given,
+    if job_spec_id[-4:].__eq__(std_log):
         job_spec_id = job_spec_id[:-4]
 
     try:
 
-        output_string = smart_output_logs(job_spec_id + ".log")  # normal smart_output of log files
+        output_string = smart_output_logs(job_spec_id + std_log)  # normal smart_output of log files
 
         if ignore_all:  # ignore errors and output ?
             return output_string
 
-        output_string += smart_output_error(job_spec_id + ".err")
+        output_string += smart_output_error(job_spec_id + std_err)
 
         if show_output:  # show output content ?
-            output_string += smart_output_output(job_spec_id + ".out")
+            output_string += smart_output_output(job_spec_id + std_out)
     except Exception as error:
         print(red+str(error)+back_to_default)
         exit(0)
@@ -470,11 +489,11 @@ def read_through_logs_dir(directory):
     list_of_outputs = list()
     # run through all files and separate the files into log/error and output files
     for file in os.listdir(working_path):
-        if file.endswith(".log"):
+        if file.endswith(std_log):
             list_of_logs.append(file)
-        elif file.endswith(".err"):
+        elif file.endswith(std_err):
             list_of_errors.append(file)
-        elif file.endswith(".out"):
+        elif file.endswith(std_out):
             list_of_outputs.append(file)
 
     list_of_logs.sort()
@@ -494,10 +513,10 @@ def summarise_given_logs():
     global files
     output_string = ""
     current_path = os.getcwd()
-    # go through all given logs and check for each if it is a directory or file and if .log was missing or not
+    # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
     for file in files:
-        # for the * operation it should skip .err and .out files
-        if file.endswith(".err") or file.endswith(".out"):
+        # for the * operation it should skip std_err and std_out files
+        if file.endswith(std_err) or file.endswith(std_out):
             continue
 
         # check if file is a directory and run through the whole directory
@@ -507,17 +526,22 @@ def summarise_given_logs():
         elif os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
             output_string += smart_manage_all(file)
 
-        # if that did not work try .log at the end of that file
-        elif not file.endswith(".log"):
-            file = file + ".log"
+        # if that did not work try std_log at the end of that file
+        elif not file.endswith(std_log):
+            new_path = file + std_log
             # is this now a valid file ?
-            if os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
-                output_string += smart_manage_all(file)
-
-        output_string += border_str
+            if os.path.isfile(new_path) or os.path.isfile(current_path + "/" + new_path):
+                output_string += smart_manage_all(new_path)
+            # no file or directory found, even after manipulating the string
+            else:
+                output_string += red+"No such file or directory: "+file+back_to_default
+        # No file found
+        else:
+            output_string += red + "No such file: " + file + back_to_default
+        output_string += border_str  # if empty it still contains a newline
 
     if output_string == "":
-        output_string = "None"
+        output_string = "No"
 
     return output_string
 
