@@ -27,10 +27,8 @@ smart_manage_all(cluster_process_id)
 
 """
 # global parameters, used for dynamical output of information
-filename = ""
+files = list()
 border_str = ""
-output_file = ""
-dir_path = ""
 filter_for_error = ""
 
 # variables for given parameters
@@ -91,30 +89,28 @@ def manage_params():
     Interprets the given command line arguments and changes the global variables in this scrips
 
     """
-    global filename, output_file, dir_path  # all variables, that require an argument
+    global files  # list of files and directories
     global show_output, show_warnings  # show more information variables
-    global ignore_all, ignore_errors, ignore_resources # ignore information variables
+    global ignore_all, ignore_errors, ignore_resources  # ignore information variables
 
     try:
         better_args = ignore_spaces_in_arguments(sys.argv[1:])
 
-        opts, args = getopt.getopt(better_args, "hf:o:d:",
+        # interpret the first arguments after sys.argv[0] as files/directories
+        if not better_args[0].startswith("-"):
+            files = better_args[0].split()
+            better_args = better_args[1:]  # remove them from opts
+
+        opts, args = getopt.getopt(better_args, "h",
                                    ["help",
-                                    "filename=", "output-file=", "dir=",
                                     "show-output", "show-warnings",
                                     "ignore-all", "ignore-errors", "ignore-resources"])
+        # print(opts, args)
         for opt, arg in opts:
+            print(opt, arg)
             if opt in ["-h", "--help"]:
                 print(help_me())
                 exit(0)
-
-            # all variables, that require an argument
-            elif opt in ["-f", "--filename"]:
-                filename = arg
-            elif opt in ["-o", "--output-file"]:
-                output_file = arg
-            elif opt in ["-d", "--dir="]:
-                dir_path = arg
 
             # all variables, to show more specific information
             elif opt.__eq__("--show-output"):
@@ -482,20 +478,18 @@ def read_through_logs_dir(directory):
 def main():
     manage_params()  # check the given variables and check the global parameters
 
+    global files
     # if a directory is given run through the whole directory
     output_string = ""
-    if dir_path.__ne__(""):
-        output_string = read_through_logs_dir(dir_path)
-    else:
-        files = filename.split()  # split by spaces
-        for file in files:
+    current_path = os.getcwd()
+    for file in files:
+        if os.path.isdir(file) or os.path.isdir(current_path+"/"+file):
+            output_string += read_through_logs_dir(file)
+        elif os.path.isfile(file) or os.path.isfile(current_path+"/"+file):
             output_string += smart_manage_all(file)
-            output_string += border_str
-    if output_file.__ne__(""):
-        f = open(output_file, "w")
-        f.write(output_string)
-    else:
-        print(output_string)
+        output_string += border_str
+
+    print(output_string)
 
 
 main()
