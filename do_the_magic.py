@@ -6,7 +6,7 @@ import datetime
 
 """
 
-Version 1.0
+Version 1.1
 Maintainer: Mathis L.
 Date: 02.04.2020
 
@@ -38,11 +38,20 @@ ignore_all = False
 ignore_errors = False
 ignore_resources = False
 
+# escape sequences for colors
+red = "\033[0;31m"
+green = "\033[0;32m"
+yellow = "\033[0;33m"
+cyan = "\033[0;36m"
+back_to_default = "\033[0;39m"
+
+
 # Todos:
 # Todo: did a lot of test, but it needs more
 # Todo: background colors etc. for terminal usage
 # Todo: filter erros better
 # Todo: realise the further specs on: https://jugit.fz-juelich.de/inm7/infrastructure/scripts/-/issues/1
+# Todo: make global variable for err/log/out files, should be given by user if not in default form
 
 
 def ignore_spaces_in_arguments(args):
@@ -131,7 +140,7 @@ def manage_params():
                 exit(0)
 
     except (getopt.GetoptError or UnboundLocalError or NameError) as err:
-        print("\033[0;31m{0}: {1}\033[0;39m".format(err.__class__.__name__, err))
+        print(red+"{0}: {1}"+back_to_default.format(err.__class__.__name__, err))
         print(help_me())
         exit(0)
 
@@ -141,7 +150,7 @@ def help_me():
     """
     :return:    string with instructions and specifications how to use this script
     """
-    output_string = "\033[0;31mUse: \"python3 " + sys.argv[0] + " -h\" for help\033[0;39m"
+    output_string = red+"Use: \"python3 " + sys.argv[0] + " -h\" for help"+back_to_default
     return output_string
 
 
@@ -264,7 +273,7 @@ def smart_output_logs(file):
         job_events, job_information = read_condor_logs(file)
         global border_str
 
-        output_string = "\033[0;32mThe job procedure of : " + file + "\033[0;39m\n"
+        output_string = green+"The job procedure of : " + file + back_to_default + "\n"
         border_str = "-" * len(output_string) + "\n"
         output_string += border_str
 
@@ -306,19 +315,12 @@ def smart_output_logs(file):
                 # print(cpu_usage, cpu_request, cpu_allocated)
                 # print(disk_usage, disk_request, disk_allocated)
                 # print(memory_usage, memory_request, memory_allocated)
-                cpu_empty = False  # naive way of solving the Issue that the cpu value is empty #
-                # Todo: better realisation
-                if cpu_usage.__eq__(""):  # Error handling:
-                    cpu_empty = True
-                    cpu_usage = "0"
+                    cpu_usage = "NaN"
 
                 # fill the string with important information
                 output_string += "Max RAM used:      " + memory_usage + " MB vs. requested: " + memory_request + " MB\n"
                 output_string += "Max Disk used:     " + disk_usage + " KB vs. requested: " + disk_request + " KB\n"
                 output_string += "average CPU usage: " + cpu_usage + " vs. requested: " + cpu_request + "\n"
-
-                if cpu_empty:  # Error handling:
-                    output_string += "\033[0;31mFixed an empty value for CPU usage with the value: 0\033[0;39m\n"
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
@@ -329,8 +331,7 @@ def smart_output_logs(file):
     except NameError:
         print("The smart_output_logs method requires a .log file as parameter")
     except FileNotFoundError as err:
-        print("\033[0;31m"+str(err)+"\033[0;39m")
-        exit(0)
+        print(red+str(err)+back_to_default)
     else:
         return output_string
 
@@ -347,20 +348,20 @@ def smart_output_error(file):
         error_content = read_condor_error(file)
         for line in error_content.split("\n"):
             if "err" in line.lower() and not ignore_errors:
-                output_string += "\033[0;31m" + line + "\033[0;39m\n"
+                output_string += red + line + back_to_default + "\n"
             elif "warn" in line.lower() and show_warnings:
-                output_string += "\033[0;33m" + line + "\033[0;39m\n"
+                output_string += yellow + line + back_to_default + "\n"
 
     except NameError:
         print("The smart_output_error method requires a .err file as parameter")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
         match = re.match(r".*?([0-9]{3,}_[0-9]+)\.err", relevant[1])
-        print("\033[0;33mThere is no related .err file: {0} in the directory:\033[0;36m\n'{1}'\n"
-              " with the prefix: {2}\033[0;39m"
-              .format(relevant[1], os.path.abspath(relevant[0]), match[1]))
-    except TypeError:
-        print("\033[0;31mhi\033[0;39m")
+        print(yellow + "There is no related .err file: {0} in the directory:{1}\n'{2}'\n"
+              " with the prefix: {3}{4}"
+              .format(relevant[1], cyan, os.path.abspath(relevant[0]), match[1], back_to_default))
+    except TypeError as err:
+        print(red+str(err)+back_to_default)
     finally:
         return output_string
 
@@ -380,9 +381,9 @@ def smart_output_output(file):
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
         match = re.match(r".*?([0-9]{3,}_[0-9]+)\.out", relevant[1])
-        print("\033[0;33mThere is no related .out file: {0} in the directory:\033[0;36m\n'{1}'\n"
-              " with the prefix: {2}\033[0;39m"
-              .format(relevant[1], os.path.abspath(relevant[0]), match[1]))
+        print(yellow + "There is no related .out file: {0} in the directory:{1}\n'{2}'\n"
+                       " with the prefix: {3}{4}"
+              .format(relevant[1], cyan, os.path.abspath(relevant[0]), match[1], back_to_default))
 
     finally:
         return output_string
@@ -402,11 +403,8 @@ def smart_manage_all(job_spec_id):
     :return: a string that combines HTCondor log/err and out files and returns it
     """
     # error handling, if a file name like 398_0.err was given,
-    if job_spec_id[-4:] in [".log", ".err", ".out"]:
-        if job_spec_id[-4:].__eq__(".log"):
-            job_spec_id = job_spec_id[:-4]
-        else:
-            raise NameError("please insert only the job_number without .log/.err/.out")
+    if job_spec_id[-4:].__eq__(".log"):
+        job_spec_id = job_spec_id[:-4]
 
     try:
 
@@ -420,7 +418,7 @@ def smart_manage_all(job_spec_id):
         if show_output:  # show output content ?
             output_string += smart_output_output(job_spec_id + ".out")
     except Exception as err:
-        print("\033[0;31m"+str(err)+"\033[0;39m")
+        print(red+str(err)+back_to_default)
         exit(0)
     else:
         return output_string
@@ -475,20 +473,41 @@ def read_through_logs_dir(directory):
     return output_string
 
 
-def main():
-    manage_params()  # check the given variables and check the global parameters
-
+def summarise_given_logs():
     global files
-    # if a directory is given run through the whole directory
     output_string = ""
     current_path = os.getcwd()
+    # go through all given logs and check for each if it is a directory or file and if .log was missing or not
     for file in files:
-        if os.path.isdir(file) or os.path.isdir(current_path+"/"+file):
+        # for the * operation it should skip .err and .out files
+        if file.endswith(".err") or file.endswith(".out"):
+            continue
+
+        # check if file is a directory and run through the whole directory
+        if os.path.isdir(file) or os.path.isdir(current_path + "/" + file):
             output_string += read_through_logs_dir(file)
-        elif os.path.isfile(file) or os.path.isfile(current_path+"/"+file):
+        # else check if file is a valid file
+        elif os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
             output_string += smart_manage_all(file)
+
+        # if that did not work try .log at the end of that file
+        elif not file.endswith(".log"):
+            file = file + ".log"
+            # is this now a valid file ?
+            if os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
+                output_string += smart_manage_all(file)
+
         output_string += border_str
 
+    if output_string == "":
+        output_string = "None"
+
+    return output_string
+
+
+def main():
+    manage_params()  # check the given variables and check the global parameters
+    output_string = summarise_given_logs()  # print out all given files if possible
     print(output_string)
 
 
