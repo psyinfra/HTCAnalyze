@@ -45,15 +45,23 @@ yellow = "\033[0;33m"
 cyan = "\033[0;36m"
 back_to_default = "\033[0;39m"
 
+# global variables with default values for err/log/out files
+log = ".log"
+err = ".err"
+out = ".out"
+
 
 # Todos:
 # Todo: did a lot of test, but it needs more
 # Todo: background colors etc. for terminal usage
-# Todo: filter erros better
+# Todo: filter erros better, less priority
 # Todo: realise the further specs on: https://jugit.fz-juelich.de/inm7/infrastructure/scripts/-/issues/1
 # Todo: make global variable for err/log/out files, should be given by user if not in default form
+# Todo: make the ressources visiable in a grid
+# a redirection in the terminal via > should ignore escape sequences
 
 
+# may not be needed in future but will be used for now
 def ignore_spaces_in_arguments(args):
     """
         I want to make it easier for the user to insert many files at once are spaces between arguments.
@@ -138,6 +146,15 @@ def manage_params():
             else:
                 print(help_me())
                 exit(0)
+
+        # if output gets redirected with >, ignore escape sequences
+        if not sys.stdout.isatty():
+            global red, green, yellow, cyan, back_to_default
+            red = ""
+            green = ""
+            yellow = ""
+            cyan = ""
+            back_to_default = ""
 
     except (getopt.GetoptError or UnboundLocalError or NameError) as err:
         print(red+"{0}: {1}"+back_to_default.format(err.__class__.__name__, err))
@@ -417,8 +434,8 @@ def smart_manage_all(job_spec_id):
 
         if show_output:  # show output content ?
             output_string += smart_output_output(job_spec_id + ".out")
-    except Exception as err:
-        print(red+str(err)+back_to_default)
+    except Exception as error:
+        print(red+str(error)+back_to_default)
         exit(0)
     else:
         return output_string
