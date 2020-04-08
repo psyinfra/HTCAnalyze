@@ -119,7 +119,7 @@ def manage_params():
             files = better_args[0].split()
             better_args = better_args[1:]  # remove them from opts
 
-        opts, args = getopt.getopt(better_args, "hl:e:o:",
+        opts, args = getopt.getopt(better_args, "h",
                                    ["help", "std-log=", "std-error=", "std-out=",
                                     "show-output", "show-warnings",
                                     "ignore-all", "ignore-errors", "ignore-resources"])
@@ -130,17 +130,17 @@ def manage_params():
                 exit(0)
 
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
-            elif opt in ["-l", "--std-log"]:
+            elif opt == "--std-log":
                 # to forget the . should not be painful
                 if arg[0] != '.':
                     arg = "."+arg
                 std_log = arg
-            elif opt in ["-e", "--std-error"]:
+            elif opt == "--std-error":
                 # to forget the . should not be painful
                 if arg[0] != '.':
                     arg = "."+arg
                 std_err = arg
-            elif opt in ["-o", "--std-out"]:
+            elif opt == "--std-out":
                 # to forget the . should not be painful
                 if arg[0] != '.':
                     arg = "."+arg
