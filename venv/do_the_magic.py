@@ -4,6 +4,7 @@ import os
 import getopt
 import datetime
 import pandas as pd
+from tabulate import tabulate
 
 
 
@@ -369,10 +370,11 @@ def smart_output_logs(file):
                 df = pd.DataFrame({
                     "Usage": usage,
                     "Requested": requested,
-                    "Allocated": allocated
+                    # "Allocated": allocated
                 })
                 df = df.set_axis(row_labels, axis='index')
-                output_string += str(df) + "\n"
+                fancy_design = tabulate(df, headers='keys', tablefmt='fancy_grid')
+                output_string += fancy_design + "\n"
 
                 # fill the string with important information
                 # output_string += "Max RAM used:      " + memory_usage + " MB vs. requested: " + memory_request + " MB\n"
