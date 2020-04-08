@@ -3,6 +3,8 @@ import sys
 import os
 import getopt
 import datetime
+from typing import List
+
 import pandas as pd
 from tabulate import tabulate
 
@@ -113,7 +115,7 @@ def manage_params():
     """
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
-    global show_output, show_warnings  # show more information variables
+    global show_output, show_warnings, show_allocated_res  # show more information variables
     global ignore_all, ignore_errors, ignore_resources  # ignore information variables
 
     try:
@@ -315,11 +317,10 @@ def smart_output_logs(file):
 
         output_string = green+"The job procedure of : " + file + back_to_default + "\n"
         border_str = "-" * len(output_string) + "\n"
-        # output_string += border_str
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
-            job_executing = job_events[1][4][1:]
+            # job_executing = job_events[1][4][1:]
             host = job_events[1][5][2:10]  # Todo: what if ip address has more than 8 chars
             port = job_events[1][5][11:15]  # Todo: what if port has not 4 numbers
 
@@ -339,9 +340,10 @@ def smart_output_logs(file):
                         lines.remove(lines[0])
 
                     lines.remove(lines[0])
-                    partitionable_resources = lines
+                    partitionable_resources: List[str] = lines
                     # done, partitionable_resources contain now only information about used resources
-
+                
+                # match all resources 
                 match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{2})?) *([0-9]+) *([0-9]+)", partitionable_resources[0])
                 if match:
                     cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
@@ -368,7 +370,7 @@ def smart_output_logs(file):
                 job_labels = ["Exectuing on Host", "Port", "Runtime"]
                 job_df = pd.DataFrame({"Values": [host, port, runtime]})
                 job_df = job_df.set_axis(job_labels, axis='index')
-                output_string += tabulate(job_df, tablefmt='pretty') +"\n"
+                output_string += tabulate(job_df, tablefmt='pretty') + "\n"
 
                 resource_labels = ["Cpu", "Disk", "Memory"]
                 usage = [cpu_usage, disk_usage, memory_usage]
