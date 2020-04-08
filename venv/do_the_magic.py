@@ -38,6 +38,7 @@ filter_for_error = ""
 # variables for given parameters
 show_output = False
 show_warnings = False
+show_allocated_res = False
 ignore_all = False
 ignore_errors = False
 ignore_resources = False
@@ -125,7 +126,7 @@ def manage_params():
 
         opts, args = getopt.getopt(better_args, "h",
                                    ["help", "std-log=", "std-error=", "std-out=",
-                                    "show-output", "show-warnings",
+                                    "show-output", "show-warnings", "show-allocated-resources",
                                     "ignore-all", "ignore-errors", "ignore-resources"])
         # print(opts, args)
         for opt, arg in opts:
@@ -154,6 +155,8 @@ def manage_params():
                 show_output = True
             elif opt.__eq__("--show-warnings"):
                 show_warnings = True
+            elif opt.__eq__("--show-allocated-resources"):
+                show_allocated_res = True
 
             # all variables to ignore unwanted information
             elif opt.__eq__("--ignore-all"):
@@ -312,18 +315,18 @@ def smart_output_logs(file):
 
         output_string = green+"The job procedure of : " + file + back_to_default + "\n"
         border_str = "-" * len(output_string) + "\n"
-        output_string += border_str
+        # output_string += border_str
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
-            output_string += job_events[1][4][1:] + ": " + job_events[1][5][2:15] + "\n"
+            job_executing = job_events[1][4][1:]
+            host = job_events[1][5][2:10]  # Todo: what if ip address has more than 8 chars
+            port = job_events[1][5][11:15]  # Todo: what if port has not 4 numbers
 
             # calculate the runtime for the job
             submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
             terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-            difference = terminating_date - submitted_date  # calculation of the time difference
-
-            output_string += "Job runtime: " + str(difference) + "\n"  # job runtime
+            runtime = terminating_date - submitted_date  # calculation of the time runtime
 
             if not ignore_resources:  # ignore resources ?
 
@@ -362,24 +365,28 @@ def smart_output_logs(file):
                 if cpu_usage == "":
                     cpu_usage = "NaN"
 
-                row_labels = ["Cpu", "Disk", "Memory"]
+                job_labels = ["Exectuing on Host", "Port", "Runtime"]
+                job_df = pd.DataFrame({"Values": [host, port, runtime]})
+                job_df = job_df.set_axis(job_labels, axis='index')
+                output_string += tabulate(job_df, tablefmt='pretty') +"\n"
+
+                resource_labels = ["Cpu", "Disk", "Memory"]
                 usage = [cpu_usage, disk_usage, memory_usage]
                 requested = [cpu_request, disk_request, memory_request]
                 allocated = [cpu_allocated, disk_allocated, memory_allocated]
 
-                df = pd.DataFrame({
+                res_df = pd.DataFrame({
                     "Usage": usage,
                     "Requested": requested,
                     # "Allocated": allocated
                 })
-                df = df.set_axis(row_labels, axis='index')
-                fancy_design = tabulate(df, headers='keys', tablefmt='fancy_grid')
-                output_string += fancy_design + "\n"
+                # if the user wants allocated resources then show it
+                if show_allocated_res:
+                    res_df.insert(2, "Allocated", allocated)
 
-                # fill the string with important information
-                # output_string += "Max RAM used:      " + memory_usage + " MB vs. requested: " + memory_request + " MB\n"
-                # output_string += "Max Disk used:     " + disk_usage + " KB vs. requested: " + disk_request + " KB\n"
-                # output_string += "average CPU usage: " + cpu_usage + " vs. requested: " + cpu_request + "\n"
+                new_df = res_df.set_axis(resource_labels, axis='index')
+                fancy_design = tabulate(new_df, headers='keys', tablefmt='fancy_grid')
+                output_string += fancy_design + "\n"
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
