@@ -3,6 +3,9 @@ import sys
 import os
 import getopt
 import datetime
+import pandas as pd
+
+
 
 """
 
@@ -338,25 +341,43 @@ def smart_output_logs(file):
                 match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{2})?) *([0-9]+) *([0-9]+)", partitionable_resources[0])
                 if match:
                     cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
+                else:
+                    print(red+"Something went wrong reading the cpu information"+back_to_default)
+                    return
                 match = re.match(r"\t *Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_resources[1])
                 if match:
                     disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
+                else:
+                    print(red + "Something went wrong reading the disk information" + back_to_default)
+                    return
                 match = re.match(r"\t *Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_resources[2])
                 if match:
                     memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
-
-                # print(cpu_usage, cpu_request, cpu_allocated)
-                # print(disk_usage, disk_request, disk_allocated)
-                # print(memory_usage, memory_request, memory_allocated)
+                else:
+                    print(red + "Something went wrong reading the memory information" + back_to_default)
+                    return
 
                 # Error handling: change empty value of cpu_usage to NaN
                 if cpu_usage == "":
                     cpu_usage = "NaN"
 
+                row_labels = ["Cpu", "Disk", "Memory"]
+                usage = [cpu_usage, disk_usage, memory_usage]
+                requested = [cpu_request, disk_request, memory_request]
+                allocated = [cpu_allocated, disk_allocated, memory_allocated]
+
+                df = pd.DataFrame({
+                    "Usage": usage,
+                    "Requested": requested,
+                    "Allocated": allocated
+                })
+                df = df.set_axis(row_labels, axis='index')
+                output_string += str(df) + "\n"
+
                 # fill the string with important information
-                output_string += "Max RAM used:      " + memory_usage + " MB vs. requested: " + memory_request + " MB\n"
-                output_string += "Max Disk used:     " + disk_usage + " KB vs. requested: " + disk_request + " KB\n"
-                output_string += "average CPU usage: " + cpu_usage + " vs. requested: " + cpu_request + "\n"
+                # output_string += "Max RAM used:      " + memory_usage + " MB vs. requested: " + memory_request + " MB\n"
+                # output_string += "Max Disk used:     " + disk_usage + " KB vs. requested: " + disk_request + " KB\n"
+                # output_string += "average CPU usage: " + cpu_usage + " vs. requested: " + cpu_request + "\n"
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
