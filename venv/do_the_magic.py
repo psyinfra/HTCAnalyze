@@ -65,7 +65,6 @@ std_out = ".out"
 # Todo: filter erros better, less priority
 # Todo: realise the further specs on: https://jugit.fz-juelich.de/inm7/infrastructure/scripts/-/issues/1
 # Todo: make global variable for err/log/out files, should be given by user if not in default form
-# Todo: make the ressources visiable in a grid
 # a redirection in the terminal via > should ignore escape sequences
 
 
