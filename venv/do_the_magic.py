@@ -363,10 +363,6 @@ def smart_output_logs(file):
                     print(red + "Something went wrong reading the memory information" + back_to_default)
                     return
 
-                # Error handling: change empty value of cpu_usage to NaN
-                if cpu_usage == "":
-                    cpu_usage = "NaN"
-
                 job_labels = ["Exectuing on Host", "Port", "Runtime"]
                 job_df = pd.DataFrame({"Values": [host, port, runtime]})
                 job_df = job_df.set_axis(job_labels, axis='index')
@@ -376,6 +372,16 @@ def smart_output_logs(file):
                 usage = [cpu_usage, disk_usage, memory_usage]
                 requested = [cpu_request, disk_request, memory_request]
                 allocated = [cpu_allocated, disk_allocated, memory_allocated]
+
+                # Error handling: change empty values to NaN
+                for i in range(3):
+                    if usage[i] == "":
+                        usage[i] = "NaN"
+                    if requested[i] == "":
+                        requested[i] = "NaN"
+                    if allocated[i] == "":
+                        allocated[i] = "NaN"
+
 
                 res_df = pd.DataFrame({
                     "Usage": usage,
