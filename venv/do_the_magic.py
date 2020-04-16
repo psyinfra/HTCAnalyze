@@ -44,6 +44,7 @@ show_allocated_res = False
 ignore_all = False
 ignore_errors = False
 ignore_resources = False
+reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 
 # escape sequences for colors
 red = "\033[0;31m"
@@ -296,6 +297,13 @@ def read_condor_output(file):
     return "".join(out_file.readlines())
 
 
+def filter_for_host(ip):
+    """
+    this function is supposed to filter a given ip for it's representive url like jusell.inm7.de:cpu1
+    :return:
+    """
+
+
 # Todo: gpu usage
 def smart_output_logs(file):
     """
@@ -312,7 +320,7 @@ def smart_output_logs(file):
                     average CPU usage: <cpu_usage> vs.requested: <cpu_request>
     """
     try:
-        job_events, job_information = read_condor_logs(file)
+        job_events, job_raw_information = read_condor_logs(file)
         global border_str
 
         output_string = green+"The job procedure of : " + file + back_to_default + "\n"
@@ -329,10 +337,42 @@ def smart_output_logs(file):
             terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
             runtime = terminating_date - submitted_date  # calculation of the time runtime
 
-            if not ignore_resources:  # ignore resources ?
+            # filter the termination state ...
+            if True:
+                # make a fancy design for the job_information
+                job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
+                job_information = [host, port, runtime]  # holds the related job information
 
-                relevant_str = "\n".join(job_information[-1])  # job information of the last job (Job terminated)
+                # check if termination state is normal
+                termination_state_inf = job_raw_information[-1][0]
+                match_termination_state = re.match(r"\t\(1\) ((?:\w+ )*)", termination_state_inf)
+                if match_termination_state:
+                    job_labels.append("Termination State")
+                    job_information.append(match_termination_state[1])
 
+                    if "Normal termination" in match_termination_state[1]:
+                        match_return_value = re.match(r"\t\(1\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        return_value = match_return_value[1] if match_return_value else "None"
+                        if return_value == "None":
+                            print(red + "Not a valid return state in the HTCondor log file"+back_to_default)
+                        else:
+                            job_labels.append("Return Value")
+                            job_information.append(return_value)
+
+                else:
+                    print(red + "Termination error in HTCondor log file" + back_to_default)
+
+                # now put everything together in a pretty table
+                job_df = pd.DataFrame({"Values": job_information})
+                job_df = job_df.set_axis(job_labels, axis='index')
+                output_string += tabulate(job_df, tablefmt='pretty') + "\n"
+
+            # ignore resources ?
+            if not ignore_resources:
+
+                relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
+
+                # next part removes not useful lines
                 if True:  # just for readability
                     # remove unnecessary lines
                     lines = relevant_str.splitlines()
@@ -363,11 +403,7 @@ def smart_output_logs(file):
                     print(red + "Something went wrong reading the memory information" + back_to_default)
                     return
 
-                job_labels = ["Exectuing on Host", "Port", "Runtime"]
-                job_df = pd.DataFrame({"Values": [host, port, runtime]})
-                job_df = job_df.set_axis(job_labels, axis='index')
-                output_string += tabulate(job_df, tablefmt='pretty') + "\n"
-
+                # list of resources and their labels
                 resource_labels = ["Cpu", "Disk", "Memory"]
                 usage = [cpu_usage, disk_usage, memory_usage]
                 requested = [cpu_request, disk_request, memory_request]
@@ -382,25 +418,26 @@ def smart_output_logs(file):
                     if allocated[i] == "":
                         allocated[i] = "NaN"
 
-
+                # put the data in the DataFrame
                 res_df = pd.DataFrame({
                     "Usage": usage,
                     "Requested": requested,
                     # "Allocated": allocated
                 })
-                # if the user wants allocated resources then show it
+
+                # if the user wants allocated resources then add it to the DataFrame as well
                 if show_allocated_res:
                     res_df.insert(2, "Allocated", allocated)
 
-                new_df = res_df.set_axis(resource_labels, axis='index')
-                fancy_design = tabulate(new_df, headers='keys', tablefmt='fancy_grid')
+                new_df = res_df.set_axis(resource_labels, axis='index')  # make new DataFrame with resource_labels
+                fancy_design = tabulate(new_df, headers='keys', tablefmt='fancy_grid')  # use tabulate to print a fancy output
                 output_string += fancy_design + "\n"
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
 
             # job_event description, which is "Job was aborted by the user" and the user filter
-            output_string += job_events[-1][4][1:] + ": " + ((job_information[-1][0]).split(" ")[-1])[:-1]+"\n"
+            output_string += job_events[-1][4][1:] + ": " + ((job_raw_information[-1][0]).split(" ")[-1])[:-1]+"\n"
 
     except NameError:
         print("The smart_output_logs method requires a "+std_log+" file as parameter")
@@ -576,16 +613,24 @@ def summarise_given_logs():
         # No file found
         else:
             output_string += red + "No such file: " + file + back_to_default
-        output_string += border_str  # if empty it still contains a newline
+
+        # weil bei read_through_logs_dir schon getrennt wird
+        if not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file):
+            output_string += border_str  # if empty it still contains a newline
 
     if output_string == "":
-        output_string = "No"
+        output_string = "None"
 
     return output_string
 
 
 def main():
+    # for manual excecution
+    # global files
+    # files.append("../logs")
+
     manage_params()  # check the given variables and check the global parameters
+
     output_string = summarise_given_logs()  # print out all given files if possible
     print(output_string)
 

@@ -17,7 +17,7 @@
 	0  -  Total Bytes Sent By Job
 	0  -  Total Bytes Received By Job
 	Partitionable Resources :    Usage  Request Allocated 
-	   Cpus                 :        0        1         1 
+	   Cpus                 :        0       1          1
 	   Disk (KB)            :     5000     5000   3770642 
 	   Memory (MB)          :       60     6000      6016 
 ...
