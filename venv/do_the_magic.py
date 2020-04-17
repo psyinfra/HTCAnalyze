@@ -35,7 +35,6 @@ smart_manage_all(cluster_process_id)
 # global parameters, used for dynamical output of information
 files = list()
 border_str = ""
-filter_for_error = ""
 
 # variables for given parameters
 show_output = False
@@ -45,6 +44,7 @@ ignore_all = False
 ignore_errors = False
 ignore_resources = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
+store_in_csv_format = False
 
 # escape sequences for colors
 red = "\033[0;31m"
@@ -58,6 +58,17 @@ std_log = ".log"
 std_err = ".err"
 std_out = ".out"
 
+# global variables for tabulate
+"""
+Documentation: https://github.com/astanin/python-tabulate
+
+Types:
+plain, simple, github, grid, fancy_grid, pipe,
+orgtbl, rst, mediawiki, html, latex, latex_raw,
+latex_booktabs, tsv
+default: simple)
+"""
+tabulate_format = ""
 
 # Todos:
 # Todo: did a lot of test, but it needs more
@@ -117,6 +128,16 @@ def manage_params():
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_output, show_warnings, show_allocated_res  # show more information variables
     global ignore_all, ignore_errors, ignore_resources  # ignore information variables
+    global store_in_csv_format  # store the redirected output in a tabular structure
+
+    # if output gets redirected with > or | or other redirection tools, ignore escape sequences
+    if not sys.stdout.isatty():
+        global red, green, yellow, cyan, back_to_default
+        red = ""
+        green = ""
+        yellow = ""
+        cyan = ""
+        back_to_default = ""
 
     try:
         better_args = ignore_spaces_in_arguments(sys.argv[1:])
@@ -129,7 +150,8 @@ def manage_params():
         opts, args = getopt.getopt(better_args, "h",
                                    ["help", "std-log=", "std-error=", "std-out=",
                                     "show-output", "show-warnings", "show-allocated-resources",
-                                    "ignore-all", "ignore-errors", "ignore-resources"])
+                                    "ignore-all", "ignore-errors", "ignore-resources",
+                                    "csv"])
         # print(opts, args)
         for opt, arg in opts:
             if opt in ["-h", "--help"]:
@@ -168,19 +190,15 @@ def manage_params():
             elif opt.__eq__("--ignore-resources"):
                 ignore_resources = True
 
+            # all tabulate variables
+            elif opt.__eq__("--csv"):
+                store_in_csv_format = True
+
             else:
                 print(help_me())
                 exit(0)
 
-        # if output gets redirected with >, ignore escape sequences
-        if not sys.stdout.isatty():
-            global red, green, yellow, cyan, back_to_default
-            red = ""
-            green = ""
-            yellow = ""
-            cyan = ""
-            back_to_default = ""
-
+    # print error messages
     except (getopt.GetoptError or UnboundLocalError or NameError) as err:
         print((red+"{0}: {1}"+back_to_default).format(err.__class__.__name__, err))
         print(help_me())
@@ -336,12 +354,13 @@ def smart_output_logs(file):
             terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
             runtime = terminating_date - submitted_date  # calculation of the time runtime
 
+
+            # make a fancy design for the job_information
+            job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
+            job_information = [host, port, runtime]  # holds the related job information
+
             # filter the termination state ...
             if True:
-                # make a fancy design for the job_information
-                job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
-                job_information = [host, port, runtime]  # holds the related job information
-
                 # check if termination state is normal
                 termination_state_inf = job_raw_information[-1][0]
                 match_termination_state = re.match(r"\t\(1\) ((?:\w+ )*)", termination_state_inf)
@@ -361,9 +380,14 @@ def smart_output_logs(file):
                 else:
                     print(red + "Termination error in HTCondor log file" + back_to_default)
 
-                # now put everything together in a pretty table
-                job_df = pd.DataFrame({"Values": job_information})
-                job_df = job_df.set_axis(job_labels, axis='index')
+            # now put everything together in a pretty table
+            job_df = pd.DataFrame({"Values": job_information})
+            job_df = job_df.set_axis(job_labels, axis='index')
+
+            # if redirected and store_in_tabular_structure
+            if not sys.stdout.isatty() and store_in_csv_format:
+                output_string += "\nDescription" + job_df.to_csv()  # save as csv remove leading comma
+            else:
                 output_string += tabulate(job_df, tablefmt='pretty') + "\n"
 
             # ignore resources ?
@@ -382,7 +406,8 @@ def smart_output_logs(file):
                     partitionable_resources: List[str] = lines
                     # done, partitionable_resources contain now only information about used resources
                 
-                # match all resources 
+                # match all resources
+                # Todo: match even if values are missing, might get impossible if more than one value is missing
                 match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{2})?) *([0-9]+) *([0-9]+)", partitionable_resources[0])
                 if match:
                     cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
@@ -429,8 +454,13 @@ def smart_output_logs(file):
                     res_df.insert(2, "Allocated", allocated)
 
                 new_df = res_df.set_axis(resource_labels, axis='index')  # make new DataFrame with resource_labels
-                fancy_design = tabulate(new_df, headers='keys', tablefmt='fancy_grid')  # use tabulate to print a fancy output
-                output_string += fancy_design + "\n"
+
+                # if redirected and store_in_tcsv_format
+                if not sys.stdout.isatty() and store_in_csv_format:
+                    output_string += "\nResources" + new_df.to_csv()  # save as csv remove leading comma
+                else:
+                    fancy_design = tabulate(new_df, headers='keys', tablefmt='fancy_grid')  # use tabulate to print a fancy output
+                    output_string += fancy_design + "\n"
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
@@ -523,7 +553,8 @@ def smart_manage_all(job_spec_id):
         if ignore_all:  # ignore errors and output ?
             return output_string
 
-        output_string += smart_output_error(job_spec_id + std_err)
+        if not ignore_errors: #ignore errors ?
+            output_string += smart_output_error(job_spec_id + std_err)
 
         if show_output:  # show output content ?
             output_string += smart_output_output(job_spec_id + std_out)
@@ -578,7 +609,7 @@ def read_through_logs_dir(directory):
         file_path = directory + "/" + job_id
 
         output_string += smart_manage_all(file_path)
-        output_string += border_str
+        output_string += "\n" + border_str + "\n"
 
     return output_string
 
@@ -615,7 +646,7 @@ def summarise_given_logs():
 
         # weil bei read_through_logs_dir schon getrennt wird
         if not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file):
-            output_string += border_str  # if empty it still contains a newline
+            output_string += "\n" + border_str +"\n"  # if empty it still contains a newline
 
     if output_string == "":
         output_string = "None"
