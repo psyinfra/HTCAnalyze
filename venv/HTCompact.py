@@ -1,10 +1,11 @@
+#! usr/bin/python
 import re
 import sys
 import os
 import getopt
 import datetime
-from typing import List
 
+import configparser
 import pandas as pd
 from tabulate import tabulate
 
@@ -84,7 +85,7 @@ def ignore_spaces_in_arguments(args):
     """
         I want to make it easier for the user to insert many files at once are spaces between arguments.
 
-        I want that this is possible: python3 do_the_magic.py -f file1 file2 file3 ... -otheropts
+        I want that this is possible: python3 HTCompact.py -f file1 file2 file3 ... -otheropts
         What sys.argv[1:] looks like : ['-f', 'file1', 'file2', 'file3', '...', '-otheropts']
         What I want to look like : ['-f', 'file1 file2 file3 ...', '-otheropts']
 
@@ -330,11 +331,44 @@ def smart_output_logs(file):
 
     :return:        (output_string)
                     an output string that shows information like:
-                    Job executing on host: <host>
-                    Job runtime: <HH:MM:SS>
-                    Max RAM used: <memory_usage> MB vs.requested: <memory_request> MB
-                    Max Disk used: <disk_usage> KB vs.requested: <disk_request> KB
-                    average CPU usage: <cpu_usage> vs.requested: <cpu_request>
+                    The job procedure of : ../logs/454_199.log
+                    +-------------------+--------------------+
+                    | Executing on Host |      10.0.9.1      |
+                    |       Port        |        9618        |
+                    |      Runtime      |      1:12:20       |
+                    | Termination State | Normal termination |
+                    |   Return Value    |         0          |
+                    +-------------------+--------------------+
+                    ╒════════╤═════════╤═════════════╤═════════════╕
+                    │        │   Usage │   Requested │   Allocated │
+                    ╞════════╪═════════╪═════════════╪═════════════╡
+                    │ Cpu    │     0.3 │           1 │           1 │
+                    ├────────┼─────────┼─────────────┼─────────────┤
+                    │ Disk   │   200   │         200 │     3770656 │
+                    ├────────┼─────────┼─────────────┼─────────────┤
+                    │ Memory │     3   │           1 │         128 │
+                    ╘════════╧═════════╧═════════════╧═════════════╛
+
+                    with the --csv option it looks like:
+
+                    -------------------------------------------
+
+                    The job procedure of : ../logs/454_199.log
+
+                    Description,Values
+                    Executing on Host,10.0.9.1
+                    Port,9618
+                    Runtime,1:12:20
+                    Termination State,Normal termination
+                    Return Value,0
+
+                    Resources,Usage,Requested,Allocated
+                    Cpu,0.30,1,1
+                    Disk,200,200,3770656
+                    Memory,3,1,128
+
+                    -------------------------------------------
+
     """
     try:
         job_events, job_raw_information = read_condor_logs(file)
@@ -654,6 +688,29 @@ def summarise_given_logs():
     return output_string
 
 
+# search for config file ( UNIX BASED )
+# Todo: Test
+def read_config(file="setup.conf"):
+    script_name = sys.argv[0][:-3]  # scriptname without .py
+    config = configparser.ConfigParser()
+
+    global std_log, std_err, std_out
+
+    if os.path.isfile("/etc/"+script_name+".conf"):
+        config.read("/etc/"+script_name+".conf")
+    elif os.path.isdir("~/.config/"+script_name):
+        pass
+    elif os.path.isfile(file):
+        config.read(file)
+    else:
+        print(yellow + "No config file found" +back_to_default)
+        return
+
+    std_log = config['stdfiles']['stdlog']
+    std_err = config['stdfiles']['stderr']
+    std_out = config['stdfiles']['stdout']
+
+
 def main():
     # for manual excecution
     # global files
@@ -661,8 +718,12 @@ def main():
 
     manage_params()  # check the given variables and check the global parameters
 
-    output_string = summarise_given_logs()  # print out all given files if possible
-    print(output_string)
+    read_config()
+
+    print(std_log)
+
+    #output_string = summarise_given_logs()  # print out all given files if possible
+    #print(output_string)
 
 
 main()
