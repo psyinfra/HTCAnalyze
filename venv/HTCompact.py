@@ -514,9 +514,11 @@ def smart_output_logs(file):
             # job_event description, which is "Job was aborted by the user" and the user filter
             output_string += job_events[-1][4][1:] + ": " + ((job_raw_information[-1][0]).split(" ")[-1])[:-1]+"\n"
 
-    except NameError:
+    except NameError as err:
+        logging.debug(err)
         print("The smart_output_logs method requires a "+std_log+" file as parameter")
     except FileNotFoundError as err:
+        logging.debug(err)
         print(red+str(err)+back_to_default)
     else:
         return output_string
@@ -538,7 +540,8 @@ def smart_output_error(file):
             elif "warn" in line.lower() and show_warnings:
                 output_string += yellow + line + back_to_default + "\n"
 
-    except NameError:
+    except NameError as err:
+        logging.debug(err)
         print("The smart_output_error method requires a "+std_err+" file as parameter")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
@@ -547,6 +550,7 @@ def smart_output_error(file):
               " with the prefix: {4}{5}"
               .format(std_err, relevant[1], cyan, os.path.abspath(relevant[0]), match[1], back_to_default))
     except TypeError as err:
+        logging.debug(err)
         print(red+str(err)+back_to_default)
     finally:
         return output_string
@@ -562,7 +566,8 @@ def smart_output_output(file):
     output_string = ""
     try:
         output_string = read_condor_output(file)
-    except NameError:
+    except NameError as err:
+        logging.debug(err)
         print("The smart_output_output method requires a "+std_out+" file as parameter")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
@@ -604,8 +609,9 @@ def smart_manage_all(job_spec_id):
 
         if show_output:  # show output content ?
             output_string += smart_output_output(job_spec_id + std_out)
-    except Exception as error:
-        print(red+str(error)+back_to_default)
+    except Exception as err:
+        logging.debug(err)
+        print(red+str(err)+back_to_default)
         exit(0)
     else:
         return output_string
@@ -668,6 +674,7 @@ def summarise_given_logs():
     current_path = os.getcwd()
     # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
     for file in files:
+
         # for the * operation it should skip std_err and std_out files
         if file.endswith(std_err) or file.endswith(std_out):
             continue
@@ -687,10 +694,12 @@ def summarise_given_logs():
                 output_string += smart_manage_all(new_path)
             # no file or directory found, even after manipulating the string
             else:
-                output_string += red+"No such file or directory: "+file+back_to_default
-        # No file found
+                logging.debug("No such file with that name or prefix: {0}".format(file))
+                output_string += red+"No such file with that name or prefix: {0}".format(file)+back_to_default
+        # The given .log file was not found
         else:
-            output_string += red + "No such file: " + file + back_to_default
+            output_string += red + "No such file: {0}".format(file) + back_to_default
+            logging.error("No such file: {0}".format(file))
 
         # because read_through_dir is already separating and after the last occurring file no border_str no separation is needed
         if not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file) and not file == files[-1]:
@@ -715,18 +724,20 @@ def load_config(file="setup.conf"):
 
     script_name = sys.argv[0][:-3]  # scriptname without .py
     config = configparser.ConfigParser()
-
-    if os.path.isfile("/etc/{0}.conf".format(script_name)):
-        logging.debug("Load config from: /etc/{0}.conf".format(script_name))
-        config.read("/etc/{0}.conf".format(script_name))
-    elif os.path.isdir("~/.config/{0}".format(script_name)):
-        pass  # Todo
-    elif os.path.isfile(file):
-        logging.debug("Load config file from htcondor-summariser-script project: {0}".format(file))
-        config.read(file)
-    else:
-        logging.debug("No config file found")
-        print(yellow + "No config file found" + back_to_default)
+    try:
+        if os.path.isfile("/etc/{0}.conf".format(script_name)):
+            logging.debug("Load config from: /etc/{0}.conf".format(script_name))
+            config.read("/etc/{0}.conf".format(script_name))
+        elif os.path.isdir("~/.config/{0}".format(script_name)):
+            pass  # Todo
+        elif os.path.isfile(file):
+            logging.debug("Load config file from htcondor-summariser-script project: {0}".format(file))
+            config.read(file)
+        else:
+            logging.debug("No config file found")
+            return False
+    except configparser.MissingSectionHeaderError as err:
+        logging.exception(err)
         return False
 
     try:
@@ -747,19 +758,19 @@ def load_config(file="setup.conf"):
                 table_format = config['formats']['table_format']
                 logging.debug("Changed default table_format to: {0}".format(table_format))
 
-        if 'stdfiles' in sections:
+        if 'htc-files' in sections:
             global std_log, std_err, std_out
 
-            if 'stdlog' in config['stdfiles']:
-                std_log = config['stdfiles']['stdlog']
+            if 'stdlog' in config['htc-files']:
+                std_log = config['htc-files']['stdlog']
                 logging.debug("Changed default for HTCondor .log files to: {0}".format(std_log))
 
-            if 'stderr' in config['stdfiles']:
-                std_err = config['stdfiles']['stderr']
+            if 'stderr' in config['htc-files']:
+                std_err = config['htc-files']['stderr']
                 logging.debug("Changed default for HTCondor .err files to: {0}".format(std_err))
 
-            if 'stdout' in config['stdfiles']:
-                std_out = config['stdfiles']['stdout']
+            if 'stdout' in config['htc-files']:
+                std_out = config['htc-files']['stdout']
                 logging.debug("Changed default for HTCondor .out files to: {0}".format(std_out))
 
         # if show variables are set for further output
@@ -818,14 +829,30 @@ def main():
     # global files
     # files.append("../logs")
 
-    logging.debug("------Start of programm-------")
+    logging.debug("-------Start of HTCompact scipt-------")
 
-    load_config()  # load all default parameters from config file, if that failed read from console
+    # extensions = [".cfg", ".conf", ".config", ".ini", ".properties"]
+    found_config = False
 
-    manage_params()  # check the given variables and check the global parameters
+    # check if a valid config file is underneeth the given files
+    if len(sys.argv) > 1:
+        for file in sys.argv[1:]:
+            if load_config(file):
+                found_config = True
+                sys.argv.remove(file)
+                break
+
+    # else try to find the default setup.conf file
+    if not found_config:
+        load_config()
+
+    manage_params()  # manage the given variables and overwrite the config set variables
 
     output_string = summarise_given_logs()  # print out all given files if possible
     print(output_string)
+
+    logging.debug("No Errors occurred")
+    logging.debug("-------End of HTCompact script-------")
 
 
 main()
