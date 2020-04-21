@@ -327,6 +327,7 @@ def read_condor_output(file):
     return "".join(out_file.readlines())
 
 
+# Todo:
 def filter_for_host(ip):
     """
     this function is supposed to filter a given ip for it's representive url like jusell.inm7.de:cpu1
@@ -400,7 +401,6 @@ def smart_output_logs(file):
             terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
             runtime = terminating_date - submitted_date  # calculation of the time runtime
 
-
             # make a fancy design for the job_information
             job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
             job_information = [host, port, runtime]  # holds the related job information
@@ -449,24 +449,24 @@ def smart_output_logs(file):
                         lines.remove(lines[0])
 
                     lines.remove(lines[0])
-                    partitionable_resources = lines
+                    partitionable_res = lines
                     # done, partitionable_resources contain now only information about used resources
                 
                 # match all resources
                 # Todo: match even if values are missing, might get impossible if more than one value is missing
-                match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{2})?) *([0-9]+) *([0-9]+)", partitionable_resources[0])
+                match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{2})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
                 if match:
                     cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
                 else:
                     print(red+"Something went wrong reading the cpu information"+back_to_default)
                     return
-                match = re.match(r"\t *Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_resources[1])
+                match = re.match(r"\t *Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
                 if match:
                     disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
                 else:
                     print(red + "Something went wrong reading the disk information" + back_to_default)
                     return
-                match = re.match(r"\t *Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_resources[2])
+                match = re.match(r"\t *Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[2])
                 if match:
                     memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
                 else:
@@ -604,7 +604,7 @@ def smart_manage_all(job_spec_id):
         if ignore_all:  # ignore errors and output ?
             return output_string
 
-        if not ignore_errors: #ignore errors ?
+        if not ignore_errors:  # ignore errors ?
             output_string += smart_output_error(job_spec_id + std_err)
 
         if show_output:  # show output content ?
@@ -793,7 +793,8 @@ def load_config(file):
                 logging.debug("Changed default show_warnings to: {0}".format(show_warnings))
 
             if 'show_allocated_resources' in config['show-more']:
-                show_allocated_res = True if config['show-more']['show_allocated_resources'].lower() == "true" else False
+                show_allocated_res = True if config['show-more']['show_allocated_resources'].lower() == "true"\
+                                     else False
                 logging.debug("Changed default show_allocated_res to: {0}".format(show_allocated_res))
 
         # what information should to be ignored
@@ -827,15 +828,13 @@ def load_config(file):
 
 def main():
     """
-    This is the main function, which loads first a given config file.
-    After that given parameters in the terminal will be interpreted, so they have a higher priority
+    This is the main function, which searchs first for a given config file.
+    After that, given parameters in the terminal will be interpreted, so they have a higher priority
 
+    Then it will summarise all given log files together and print the output
 
     :return:
     """
-    # for manual excecution
-    # global files
-    # files.append("../logs")
 
     found_config = False
 
@@ -854,7 +853,8 @@ def main():
     manage_params()  # manage the given variables and overwrite the config set variables
 
     output_string = summarise_given_logs()  # print out all given files if possible
-    print(output_string)
+
+    print(output_string)  # write it to the console
 
 
 logging.debug("-------Start of HTCompact scipt-------")
