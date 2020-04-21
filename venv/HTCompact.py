@@ -701,7 +701,8 @@ def summarise_given_logs():
             output_string += red + "No such file: {0}".format(file) + back_to_default
             logging.error("No such file: {0}".format(file))
 
-        # because read_through_dir is already separating and after the last occurring file no border_str no separation is needed
+        # because read_through_dir is already separating and after the last occurring file
+        # no separation is needed
         if not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file) and not file == files[-1]:
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
@@ -713,7 +714,7 @@ def summarise_given_logs():
 
 # search for config file ( UNIX BASED )
 # Todo: Test
-def load_config(file="setup.conf"):
+def load_config(file):
     """
 
     Reads config file and changes global parameter by its configuration
@@ -725,14 +726,16 @@ def load_config(file="setup.conf"):
     script_name = sys.argv[0][:-3]  # scriptname without .py
     config = configparser.ConfigParser()
     try:
-        if os.path.isfile("/etc/{0}.conf".format(script_name)):
-            logging.debug("Load config from: /etc/{0}.conf".format(script_name))
-            config.read("/etc/{0}.conf".format(script_name))
-        elif os.path.isdir("~/.config/{0}".format(script_name)):
-            pass  # Todo
-        elif os.path.isfile(file):
+        if os.path.isfile(file):
             logging.debug("Load config file from htcondor-summariser-script project: {0}".format(file))
             config.read(file)
+        # try to find config file in /etc
+        elif os.path.isfile("/etc/{0}".format(file)):
+            logging.debug("Load config from: /etc/{0}".format(file))
+            config.read("/etc/{0}.conf".format(script_name))
+        # try to find config file in ~/.config/script_name/
+        elif os.path.isfile("~/.config/{0}/{1}".format(script_name, file)):
+            logging.debug("Load config from: ~/.config/{0}/{1}".format(script_name, file))
         else:
             logging.debug("No config file found")
             return False
@@ -745,6 +748,8 @@ def load_config(file="setup.conf"):
         sections = config.sections()
 
         # now try filter the config file for all available parameters
+
+        # all documents like files, etc.
         if 'documents' in sections:
             global files
 
@@ -752,12 +757,14 @@ def load_config(file="setup.conf"):
                 files = config['documents']['files'].split(" ")
                 logging.debug('Changed document files to {0}'.format(files))
 
+        # all formats like the table format
         if 'formats' in sections:
             global table_format
             if 'table_format' in config['formats']:
                 table_format = config['formats']['table_format']
                 logging.debug("Changed default table_format to: {0}".format(table_format))
 
+        # all basic HTCondor file endings like .log, .err, .out
         if 'htc-files' in sections:
             global std_log, std_err, std_out
 
@@ -789,6 +796,7 @@ def load_config(file="setup.conf"):
                 show_allocated_res = True if config['show-more']['show_allocated_resources'].lower() == "true" else False
                 logging.debug("Changed default show_allocated_res to: {0}".format(show_allocated_res))
 
+        # what information should to be ignored
         if 'ignore' in sections:
             global ignore_all, ignore_errors, ignore_resources  # sources to ignore
 
@@ -829,9 +837,6 @@ def main():
     # global files
     # files.append("../logs")
 
-    logging.debug("-------Start of HTCompact scipt-------")
-
-    # extensions = [".cfg", ".conf", ".config", ".ini", ".properties"]
     found_config = False
 
     # check if a valid config file is underneeth the given files
@@ -840,19 +845,18 @@ def main():
             if load_config(file):
                 found_config = True
                 sys.argv.remove(file)
-                break
+                logging.debug("Removed {0} from arguments".format(file))
 
     # else try to find the default setup.conf file
     if not found_config:
-        load_config()
+        load_config("setup.conf")
 
     manage_params()  # manage the given variables and overwrite the config set variables
 
     output_string = summarise_given_logs()  # print out all given files if possible
     print(output_string)
 
-    logging.debug("No Errors occurred")
-    logging.debug("-------End of HTCompact script-------")
 
-
+logging.debug("-------Start of HTCompact scipt-------")
 main()
+logging.debug("-------End of HTCompact script-------")
