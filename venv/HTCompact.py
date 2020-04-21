@@ -44,7 +44,6 @@ border_str = ""
 show_output = False
 show_warnings = False
 show_allocated_res = False
-ignore_all = False
 ignore_errors = False
 ignore_resources = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
@@ -131,7 +130,7 @@ def manage_params():
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_output, show_warnings, show_allocated_res  # show more information variables
-    global ignore_all, ignore_errors, ignore_resources  # ignore information variables
+    global ignore_errors, ignore_resources  # ignore information variables
     global store_in_csv_format  # store the redirected output in a tabular structure
     global table_format  # table_format can be changed
 
@@ -157,7 +156,7 @@ def manage_params():
         opts, args = getopt.getopt(better_args, "h",
                                    ["help", "std-log=", "std-error=", "std-out=",
                                     "show-output", "show-warnings", "show-allocated-resources",
-                                    "ignore-all", "ignore-errors", "ignore-resources",
+                                    "ignore-errors", "ignore-resources",
                                     "csv", "table-format="])
         # print(opts, args)
         for opt, arg in opts:
@@ -190,8 +189,6 @@ def manage_params():
                 show_allocated_res = True
 
             # all variables to ignore unwanted information
-            elif opt.__eq__("--ignore-all"):
-                ignore_all = True
             elif opt.__eq__("--ignore-errors"):
                 ignore_errors = True
             elif opt.__eq__("--ignore-resources"):
@@ -601,9 +598,6 @@ def smart_manage_all(job_spec_id):
 
         output_string = smart_output_logs(job_spec_id + std_log)  # normal smart_output of log files
 
-        if ignore_all:  # ignore errors and output ?
-            return output_string
-
         if not ignore_errors:  # ignore errors ?
             output_string += smart_output_error(job_spec_id + std_err)
 
@@ -799,11 +793,8 @@ def load_config(file):
 
         # what information should to be ignored
         if 'ignore' in sections:
-            global ignore_all, ignore_errors, ignore_resources  # sources to ignore
+            global ignore_errors, ignore_resources  # sources to ignore
 
-            if 'ignore_all' in config['ignore']:
-                ignore_all = True if config['ignore']['ignore_all'].lower() == "true" else False
-                logging.debug("Changed default ignore_all to: {0}".format(ignore_all))
             if 'ignore_errors' in config['ignore']:
                 ignore_errors = True if config['ignore']['ignore_errors'].lower() == "true" else False
                 logging.debug("Changed default ignore_errors to: {0}".format(ignore_errors))
