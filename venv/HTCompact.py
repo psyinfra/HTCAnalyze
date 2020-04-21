@@ -4,16 +4,19 @@ import sys
 import os
 import getopt
 import datetime
+import logging
 
 import configparser
 import pandas as pd
 from tabulate import tabulate
 
-
+# make default changes to logging tool
+logging.basicConfig(filename="stdout.log", level=logging.DEBUG,
+                    format='%(asctime)s: %(levelname)s : %(message)s')
 
 """
 
-Version 1.1
+Version 1.2
 Maintainer: Mathis L.
 Date: 02.04.2020
 
@@ -69,7 +72,7 @@ orgtbl, rst, mediawiki, html, latex, latex_raw,
 latex_booktabs, tsv
 default: simple)
 """
-tabulate_format = ""
+table_format = "pretty"  # ascii by deafult
 
 # Todos:
 # Todo: did a lot of test, but it needs more
@@ -130,6 +133,7 @@ def manage_params():
     global show_output, show_warnings, show_allocated_res  # show more information variables
     global ignore_all, ignore_errors, ignore_resources  # ignore information variables
     global store_in_csv_format  # store the redirected output in a tabular structure
+    global table_format  # table_format can be changed
 
     # if output gets redirected with > or | or other redirection tools, ignore escape sequences
     if not sys.stdout.isatty():
@@ -139,12 +143,14 @@ def manage_params():
         yellow = ""
         cyan = ""
         back_to_default = ""
+        logging.debug("Output is getting redirected, all escape sequences were set to \"\"")
 
     try:
         better_args = ignore_spaces_in_arguments(sys.argv[1:])
 
         # interpret the first arguments after sys.argv[0] as files/directories
-        if not better_args[0].startswith("-"):
+        # if files are set in the config file and no files are given as argument, skip this part
+        if len(better_args) > 0 and not better_args[0].startswith("-"):
             files = better_args[0].split()
             better_args = better_args[1:]  # remove them from opts
 
@@ -152,7 +158,7 @@ def manage_params():
                                    ["help", "std-log=", "std-error=", "std-out=",
                                     "show-output", "show-warnings", "show-allocated-resources",
                                     "ignore-all", "ignore-errors", "ignore-resources",
-                                    "csv"])
+                                    "csv", "table-format="])
         # print(opts, args)
         for opt, arg in opts:
             if opt in ["-h", "--help"]:
@@ -194,13 +200,16 @@ def manage_params():
             # all tabulate variables
             elif opt.__eq__("--csv"):
                 store_in_csv_format = True
+            elif opt.__eq__("--table-format"):
+                table_format = arg
 
             else:
                 print(help_me())
                 exit(0)
 
     # print error messages
-    except (getopt.GetoptError or UnboundLocalError or NameError) as err:
+    except Exception as err:
+        logging.exception(err)  # write a detailed description in the stdout.log file
         print((red+"{0}: {1}"+back_to_default).format(err.__class__.__name__, err))
         print(help_me())
         exit(0)
@@ -216,6 +225,9 @@ def help_me():
 
 
 # reads all information, but returns them in two lists
+# Todo: read specifications from a config files,
+#       cause the script is based on hardcoded interpretation for log files in
+#       the form: string_clusterId_processId.log
 def read_condor_logs(file):
     """
 
@@ -422,7 +434,7 @@ def smart_output_logs(file):
             if not sys.stdout.isatty() and store_in_csv_format:
                 output_string += "\nDescription" + job_df.to_csv()  # save as csv remove leading comma
             else:
-                output_string += tabulate(job_df, tablefmt='pretty') + "\n"
+                output_string += tabulate(job_df, tablefmt=table_format) + "\n"
 
             # ignore resources ?
             if not ignore_resources:
@@ -437,7 +449,7 @@ def smart_output_logs(file):
                         lines.remove(lines[0])
 
                     lines.remove(lines[0])
-                    partitionable_resources: List[str] = lines
+                    partitionable_resources = lines
                     # done, partitionable_resources contain now only information about used resources
                 
                 # match all resources
@@ -493,7 +505,7 @@ def smart_output_logs(file):
                 if not sys.stdout.isatty() and store_in_csv_format:
                     output_string += "\nResources" + new_df.to_csv()  # save as csv remove leading comma
                 else:
-                    fancy_design = tabulate(new_df, headers='keys', tablefmt='fancy_grid')  # use tabulate to print a fancy output
+                    fancy_design = tabulate(new_df, headers='keys', tablefmt=table_format)  # use tabulate to print a fancy output
                     output_string += fancy_design + "\n"
 
         # Todo: more information, maybe why ?
@@ -643,7 +655,9 @@ def read_through_logs_dir(directory):
         file_path = directory + "/" + job_id
 
         output_string += smart_manage_all(file_path)
-        output_string += "\n" + border_str + "\n"
+        # separate logs if file is not the last occurring file in the files list
+        if not file == list_of_logs[-1] or not directory == files[-1]:
+            output_string += "\n" + border_str + "\n"
 
     return output_string
 
@@ -678,9 +692,9 @@ def summarise_given_logs():
         else:
             output_string += red + "No such file: " + file + back_to_default
 
-        # weil bei read_through_logs_dir schon getrennt wird
-        if not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file):
-            output_string += "\n" + border_str +"\n"  # if empty it still contains a newline
+        # because read_through_dir is already separating and after the last occurring file no border_str no separation is needed
+        if not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file) and not file == files[-1]:
+            output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
         output_string = "None"
@@ -690,40 +704,128 @@ def summarise_given_logs():
 
 # search for config file ( UNIX BASED )
 # Todo: Test
-def read_config(file="setup.conf"):
+def load_config(file="setup.conf"):
+    """
+
+    Reads config file and changes global parameter by its configuration
+
+    :param file:
+    :return: False if not found, True if found and
+    """
+
     script_name = sys.argv[0][:-3]  # scriptname without .py
     config = configparser.ConfigParser()
 
-    global std_log, std_err, std_out
-
-    if os.path.isfile("/etc/"+script_name+".conf"):
-        config.read("/etc/"+script_name+".conf")
-    elif os.path.isdir("~/.config/"+script_name):
-        pass
+    if os.path.isfile("/etc/{0}.conf".format(script_name)):
+        logging.debug("Load config from: /etc/{0}.conf".format(script_name))
+        config.read("/etc/{0}.conf".format(script_name))
+    elif os.path.isdir("~/.config/{0}".format(script_name)):
+        pass  # Todo
     elif os.path.isfile(file):
+        logging.debug("Load config file from htcondor-summariser-script project: {0}".format(file))
         config.read(file)
     else:
-        print(yellow + "No config file found" +back_to_default)
-        return
+        logging.debug("No config file found")
+        print(yellow + "No config file found" + back_to_default)
+        return False
 
-    std_log = config['stdfiles']['stdlog']
-    std_err = config['stdfiles']['stderr']
-    std_out = config['stdfiles']['stdout']
+    try:
+        # all sections in the config file
+        sections = config.sections()
+
+        # now try filter the config file for all available parameters
+        if 'documents' in sections:
+            global files
+
+            if 'files' in config['documents']:
+                files = config['documents']['files'].split(" ")
+                logging.debug('Changed document files to {0}'.format(files))
+
+        if 'formats' in sections:
+            global table_format
+            if 'table_format' in config['formats']:
+                table_format = config['formats']['table_format']
+                logging.debug("Changed default table_format to: {0}".format(table_format))
+
+        if 'stdfiles' in sections:
+            global std_log, std_err, std_out
+
+            if 'stdlog' in config['stdfiles']:
+                std_log = config['stdfiles']['stdlog']
+                logging.debug("Changed default for HTCondor .log files to: {0}".format(std_log))
+
+            if 'stderr' in config['stdfiles']:
+                std_err = config['stdfiles']['stderr']
+                logging.debug("Changed default for HTCondor .err files to: {0}".format(std_err))
+
+            if 'stdout' in config['stdfiles']:
+                std_out = config['stdfiles']['stdout']
+                logging.debug("Changed default for HTCondor .out files to: {0}".format(std_out))
+
+        # if show variables are set for further output
+        if 'show-more' in sections:
+            global show_output, show_warnings, show_allocated_res  # sources to show
+
+            if 'show_output' in config['show-more']:
+                show_output = True if config['show-more']['show_output'].lower() == "true" else False
+                logging.debug("Changed default show_output to: {0}".format(show_output))
+
+            if 'show_warnings' in config['show-more']:
+                show_warnings = True if config['show-more']['show_warnings'].lower() == "true" else False
+                logging.debug("Changed default show_warnings to: {0}".format(show_warnings))
+
+            if 'show_allocated_resources' in config['show-more']:
+                show_allocated_res = True if config['show-more']['show_allocated_resources'].lower() == "true" else False
+                logging.debug("Changed default show_allocated_res to: {0}".format(show_allocated_res))
+
+        if 'ignore' in sections:
+            global ignore_all, ignore_errors, ignore_resources  # sources to ignore
+
+            if 'ignore_all' in config['ignore']:
+                ignore_all = True if config['ignore']['ignore_all'].lower() == "true" else False
+                logging.debug("Changed default ignore_all to: {0}".format(ignore_all))
+            if 'ignore_errors' in config['ignore']:
+                ignore_errors = True if config['ignore']['ignore_errors'].lower() == "true" else False
+                logging.debug("Changed default ignore_errors to: {0}".format(ignore_errors))
+            if 'ignore_resources' in config['ignore']:
+                ignore_resources = True if config['ignore']['ignore_resources'].lower() == "true" else False
+                logging.debug("Changed default ignore_resources to: {0}".format(ignore_resources))
+
+        # Todo: thresholds
+        if 'thresholds' in sections:
+            pass
+
+        # Todo: reverse DNS-Lookup etc.
+        if 'features' in sections:
+            global reverse_dns_lookup, store_in_csv_format  # extra parameters
+            pass
+
+        return True
+    except KeyError as err:
+        logging.exception(err)
+        return False
 
 
 def main():
+    """
+    This is the main function, which loads first a given config file.
+    After that given parameters in the terminal will be interpreted, so they have a higher priority
+
+
+    :return:
+    """
     # for manual excecution
     # global files
     # files.append("../logs")
 
+    logging.debug("------Start of programm-------")
+
+    load_config()  # load all default parameters from config file, if that failed read from console
+
     manage_params()  # check the given variables and check the global parameters
 
-    read_config()
-
-    print(std_log)
-
-    #output_string = summarise_given_logs()  # print out all given files if possible
-    #print(output_string)
+    output_string = summarise_given_logs()  # print out all given files if possible
+    print(output_string)
 
 
 main()
