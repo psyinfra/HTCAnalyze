@@ -51,8 +51,7 @@ reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 # to store output in a csv file it's easier to save them into lists
 resources_to_csv = False
 job_to_csv = False
-resource_csv_list = ["Resources,Usage,Requested,Allocated".split(',')]  # set headers driectly
-job_csv_list = list()
+indexing = True
 
 # escape sequences for colors
 red = "\033[0;31m"
@@ -136,7 +135,7 @@ def manage_params():
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_output, show_warnings, show_allocated_res  # show more information variables
     global ignore_errors, ignore_resources  # ignore information variables
-    global resources_to_csv  # store the redirected output in a tabular structure
+    global resources_to_csv, job_to_csv, indexing  # store the redirected output in a tabular structure
     global table_format  # table_format can be changed
 
     # if output gets redirected with > or | or other redirection tools, ignore escape sequences
@@ -162,7 +161,8 @@ def manage_params():
                                    ["help", "std-log=", "std-error=", "std-out=",
                                     "show-output", "show-warnings", "show-allocated-resources",
                                     "ignore-errors", "ignore-resources",
-                                    "res-to-csv", "table-format="])
+                                    "res-to-csv", "job-to-csv", "indexing=",
+                                    "table-format="])
         # print(opts, args)
         for opt, arg in opts:
             if opt in ["-h", "--help"]:
@@ -202,6 +202,10 @@ def manage_params():
             # all tabulate variables
             elif opt.__eq__("--res-to-csv"):
                 resources_to_csv = True
+            elif opt.__eq__("--job-to-csv"):
+                job_to_csv = True
+            elif opt.__eq__("--indexing"):
+                indexing = True if arg.lower() == "true" else False
             elif opt.__eq__("--table-format"):
                 table_format = arg
 
@@ -388,8 +392,11 @@ def smart_output_logs(file):
         job_events, job_raw_information = read_condor_logs(file)
         global border_str
 
-        output_string = green+"The job procedure of : " + file + back_to_default + "\n"
-        border_str = "-" * len(output_string) + "\n"
+        output_string = ""
+
+        if not resources_to_csv and not job_to_csv:
+            output_string += green+"The job procedure of : " + file + back_to_default + "\n"
+            border_str = "-" * len(output_string) + "\n"
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
@@ -431,11 +438,23 @@ def smart_output_logs(file):
             job_df = pd.DataFrame({"Values": job_information})
             job_df = job_df.set_axis(job_labels, axis='index')
 
-            # if redirected and store as csv
-            if not sys.stdout.isatty() and job_to_csv:
-                #global job_csv_list
-                #print(job_csv_list)
-                output_string += "\nDescription" + job_df.to_csv()  # save as csv remove leading comma
+            # if job_to_csv is set
+            if job_to_csv:
+
+                # if recources_to_csv is wanted as well, keep headers
+                if resources_to_csv:
+                    # if indexing add column Description
+                    if indexing:
+                        output_string += "Description" + job_df.to_csv(index=indexing)
+                    # else remove first comma
+                    else:
+                        output_string += job_df.to_csv(index=indexing)
+                # ignore headers if no jobs get printed
+                else:
+                    output_string += job_df.to_csv(header=False, index=indexing)  # save as csv
+            # if only recources_to_csv is set, ignore other output
+            elif resources_to_csv:
+                pass
             else:
                 output_string += tabulate(job_df, tablefmt=table_format) + "\n"
 
@@ -502,24 +521,31 @@ def smart_output_logs(file):
                 if show_allocated_res:
                     res_df.insert(2, "Allocated", allocated)
 
-                new_df = res_df.set_axis(resource_labels, axis='index')  # make new DataFrame with resource_labels
+                res_df = res_df.set_axis(resource_labels, axis='index')  # make new DataFrame with resource_labels
 
-                # if resources_to csv is set, create a list with csv format,
-                # create normal output without tabular structure
-                # if then output is getting redirected,
-                # a valid csv can be created, else the output will just "contain" csv structure
-                # Todo: ask if thats wanted
+                # if resources_to_csv is wanted
                 if resources_to_csv:
-                    global resource_csv_list
-                    res_lines = new_df.to_csv(header=False).split('\n')  # index = False, if wanted
-                    # extends the data from the datafram to a list line by line
-                    for line in res_lines:
-                        if len(line) > 0: # skip newlines
-                            resource_csv_list += [line.split('\t')]
 
-                    output_string += "\nResources" + new_df.to_csv()  # save as csv remove leading comma
+                    # if job_to_csv is wanted as well, keep headers
+                    if job_to_csv:
+                        # if indexing add column Resources
+                        if indexing:
+                            output_string += "Recources"+res_df.to_csv(index=indexing)
+                        # else remove first comma
+                        else:
+                            output_string += res_df.to_csv(index=indexing)
+                    # ignore headers if no jobs get printed
+                    else:
+                        output_string += res_df.to_csv(header=False, index=indexing)
+
+                # if only job_to_csv is set ignore other output
+                elif job_to_csv:
+                    pass  # could maybe be implemented earlier
+
+                # normal output
                 else:
-                    fancy_design = tabulate(new_df, headers='keys', tablefmt=table_format)  # use tabulate to print a fancy output
+                    # use tabulate to print a fancy output
+                    fancy_design = tabulate(res_df, headers='keys', tablefmt=table_format)
                     output_string += fancy_design + "\n"
 
         # Todo: more information, maybe why ?
@@ -529,11 +555,12 @@ def smart_output_logs(file):
             output_string += job_events[-1][4][1:] + ": " + ((job_raw_information[-1][0]).split(" ")[-1])[:-1]+"\n"
 
     except NameError as err:
-        logging.debug(err)
+        logging.exception(err)
         print("The smart_output_logs method requires a "+std_log+" file as parameter")
     except FileNotFoundError as err:
-        logging.debug(err)
+        logging.exception(err)
         print(red+str(err)+back_to_default)
+    # finally
     else:
         return output_string
 
@@ -545,6 +572,12 @@ def smart_output_error(file):
     :return: the content of the given file as a string
     """
 
+    # Todo:
+    # - errors from htcondor are more important (std.err output)
+    # - are there errors ? true or false -> maybe print those in any kind of fromat
+    # - maybe check for file size !!!
+    # - is the file size the same ? what is normal / different errors (feature -> for  -> later)
+
     output_string = ""
     try:
         error_content = read_condor_error(file)
@@ -555,7 +588,7 @@ def smart_output_error(file):
                 output_string += yellow + line + back_to_default + "\n"
 
     except NameError as err:
-        logging.debug(err)
+        logging.exception(err)
         print("The smart_output_error method requires a "+std_err+" file as parameter")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
@@ -564,7 +597,7 @@ def smart_output_error(file):
               " with the prefix: {4}{5}"
               .format(std_err, relevant[1], cyan, os.path.abspath(relevant[0]), match[1], back_to_default))
     except TypeError as err:
-        logging.debug(err)
+        logging.exception(err)
         print(red+str(err)+back_to_default)
     finally:
         return output_string
@@ -581,7 +614,7 @@ def smart_output_output(file):
     try:
         output_string = read_condor_output(file)
     except NameError as err:
-        logging.debug(err)
+        logging.exception(err)
         print("The smart_output_output method requires a "+std_out+" file as parameter")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
@@ -621,7 +654,7 @@ def smart_manage_all(job_spec_id):
         if show_output:  # show output content ?
             output_string += smart_output_output(job_spec_id + std_out)
     except Exception as err:
-        logging.debug(err)
+        logging.exception(err)
         print(red+str(err)+back_to_default)
         exit(0)
     else:
@@ -705,16 +738,19 @@ def summarise_given_logs():
                 output_string += smart_manage_all(new_path)
             # no file or directory found, even after manipulating the string
             else:
-                logging.debug("No such file with that name or prefix: {0}".format(file))
+                logging.error("No such file with that name or prefix: {0}".format(file))
                 output_string += red+"No such file with that name or prefix: {0}".format(file)+back_to_default
         # The given .log file was not found
         else:
             output_string += red + "No such file: {0}".format(file) + back_to_default
             logging.error("No such file: {0}".format(file))
 
+        # don't change output if csv style is wanted
+        if resources_to_csv or job_to_csv:
+            pass
         # because read_through_dir is already separating and after the last occurring file
         # no separation is needed
-        if not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file) and not file == files[-1]:
+        elif not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file) and not file == files[-1]:
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
@@ -736,6 +772,7 @@ def load_config(file):
 
     script_name = sys.argv[0][:-3]  # scriptname without .py
     config = configparser.ConfigParser()
+    # search for the given file, first directly, then in /etc and then in ~/.config/HTCompact/
     try:
         if os.path.isfile(file):
             logging.debug("Load config file from htcondor-summariser-script project: {0}".format(file))
@@ -824,14 +861,24 @@ def load_config(file):
         if 'thresholds' in sections:
             pass
 
+        if 'csv' in sections:
+            global resources_to_csv, job_to_csv, indexing
+            if 'resources_to_csv' in config['csv']:
+                resources_to_csv = True if config['csv']['resources_to_csv'].lower() == "true" else False
+                logging.debug("Changed default resources_to_csv to: {0}".format(resources_to_csv))
+            if 'job_to_csv' in config['csv']:
+                job_to_csv = True if config['csv']['job_to_csv'].lower() == "true" else False
+                logging.debug("Changed default job_to_csv to: {0}".format(job_to_csv))
+            if 'indexing' in config['csv']:
+                indexing = True if config['csv']['indexing'].lower() == "true" else False
+                logging.debug("Changed default indexing to: {0}".format(indexing))
+
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
-            global reverse_dns_lookup, resources_to_csv  # extra parameters
-            if 'resources_to_csv' in config['features']:
-                resources_to_csv = True if config['features']['resources_to_csv'].lower() == "enabled" else False
-                logging.debug("Changed default resources_to_csv to: {0}".format(resources_to_csv))
+            global reverse_dns_lookup  # extra parameters
 
         return True
+
     except KeyError as err:
         logging.exception(err)
         return False
@@ -865,14 +912,18 @@ def main():
 
     output_string = summarise_given_logs()  # print out all given files if possible
 
-    # if output is getting redirected and resources to csv is set, ignore the output and create a valid csv file
-    if not sys.stdout.isatty() and resources_to_csv:
-        logging.debug("Recourse_csv_list is filled with {0}".format(resource_csv_list))
-        for array in resource_csv_list:
-            print(",".join(array))
-    # creates csv output, but not valid is resources_to_csv is set but output is not getting redirected
-    else:
-        print(output_string)  # write it to the console
+    # if for csv-format just one type if given, add the labels as the first line
+    if resources_to_csv and not job_to_csv:
+        temp_str = "Recources," if indexing else ""
+        temp_str += "Usage,Requested"
+        temp_str += ",Allocated" if show_allocated_res else ""
+        output_string = temp_str + "\n" + output_string
+    elif job_to_csv and not resources_to_csv:
+        temp_str = "Description," if indexing else ""
+        temp_str += "Values"
+        output_string = temp_str +"\n"+ output_string
+
+    print(output_string)  # write it to the console
 
 
 logging.debug("-------Start of HTCompact scipt-------")
