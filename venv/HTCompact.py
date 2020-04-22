@@ -47,7 +47,12 @@ show_allocated_res = False
 ignore_errors = False
 ignore_resources = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
-store_in_csv_format = False
+
+# to store output in a csv file it's easier to save them into lists
+resources_to_csv = False
+job_to_csv = False
+resource_csv_list = ["Resources,Usage,Requested,Allocated".split(',')]  # set headers driectly
+job_csv_list = list()
 
 # escape sequences for colors
 red = "\033[0;31m"
@@ -131,7 +136,7 @@ def manage_params():
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_output, show_warnings, show_allocated_res  # show more information variables
     global ignore_errors, ignore_resources  # ignore information variables
-    global store_in_csv_format  # store the redirected output in a tabular structure
+    global resources_to_csv  # store the redirected output in a tabular structure
     global table_format  # table_format can be changed
 
     # if output gets redirected with > or | or other redirection tools, ignore escape sequences
@@ -157,7 +162,7 @@ def manage_params():
                                    ["help", "std-log=", "std-error=", "std-out=",
                                     "show-output", "show-warnings", "show-allocated-resources",
                                     "ignore-errors", "ignore-resources",
-                                    "csv", "table-format="])
+                                    "res-to-csv", "table-format="])
         # print(opts, args)
         for opt, arg in opts:
             if opt in ["-h", "--help"]:
@@ -195,8 +200,8 @@ def manage_params():
                 ignore_resources = True
 
             # all tabulate variables
-            elif opt.__eq__("--csv"):
-                store_in_csv_format = True
+            elif opt.__eq__("--res-to-csv"):
+                resources_to_csv = True
             elif opt.__eq__("--table-format"):
                 table_format = arg
 
@@ -349,15 +354,14 @@ def smart_output_logs(file):
                     | Termination State | Normal termination |
                     |   Return Value    |         0          |
                     +-------------------+--------------------+
-                    ╒════════╤═════════╤═════════════╤═════════════╕
-                    │        │   Usage │   Requested │   Allocated │
-                    ╞════════╪═════════╪═════════════╪═════════════╡
-                    │ Cpu    │     0.3 │           1 │           1 │
-                    ├────────┼─────────┼─────────────┼─────────────┤
-                    │ Disk   │   200   │         200 │     3770656 │
-                    ├────────┼─────────┼─────────────┼─────────────┤
-                    │ Memory │     3   │           1 │         128 │
-                    ╘════════╧═════════╧═════════════╧═════════════╛
+                    +--------+-------+-----------+-----------+
+                    |        | Usage | Requested | Allocated |
+                    +--------+-------+-----------+-----------+
+                    |  Cpu   | 0.30  |     1     |     1     |
+                    |  Disk  |  200  |    200    |  3770656  |
+                    | Memory |   3   |     1     |    128    |
+                    +--------+-------+-----------+-----------+
+
 
                     with the --csv option it looks like:
 
@@ -427,8 +431,10 @@ def smart_output_logs(file):
             job_df = pd.DataFrame({"Values": job_information})
             job_df = job_df.set_axis(job_labels, axis='index')
 
-            # if redirected and store_in_tabular_structure
-            if not sys.stdout.isatty() and store_in_csv_format:
+            # if redirected and store as csv
+            if not sys.stdout.isatty() and job_to_csv:
+                #global job_csv_list
+                #print(job_csv_list)
                 output_string += "\nDescription" + job_df.to_csv()  # save as csv remove leading comma
             else:
                 output_string += tabulate(job_df, tablefmt=table_format) + "\n"
@@ -498,8 +504,19 @@ def smart_output_logs(file):
 
                 new_df = res_df.set_axis(resource_labels, axis='index')  # make new DataFrame with resource_labels
 
-                # if redirected and store_in_tcsv_format
-                if not sys.stdout.isatty() and store_in_csv_format:
+                # if resources_to csv is set, create a list with csv format,
+                # create normal output without tabular structure
+                # if then output is getting redirected,
+                # a valid csv can be created, else the output will just "contain" csv structure
+                # Todo: ask if thats wanted
+                if resources_to_csv:
+                    global resource_csv_list
+                    res_lines = new_df.to_csv(header=False).split('\n')  # index = False, if wanted
+                    # extends the data from the datafram to a list line by line
+                    for line in res_lines:
+                        if len(line) > 0: # skip newlines
+                            resource_csv_list += [line.split('\t')]
+
                     output_string += "\nResources" + new_df.to_csv()  # save as csv remove leading comma
                 else:
                     fancy_design = tabulate(new_df, headers='keys', tablefmt=table_format)  # use tabulate to print a fancy output
@@ -733,8 +750,9 @@ def load_config(file):
         else:
             logging.debug("No config file found")
             return False
-    except configparser.MissingSectionHeaderError as err:
-        logging.exception(err)
+
+    # File has no readable format for the configparser, probably because it's not a config file
+    except configparser.MissingSectionHeaderError:
         return False
 
     try:
@@ -808,8 +826,10 @@ def load_config(file):
 
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
-            global reverse_dns_lookup, store_in_csv_format  # extra parameters
-            pass
+            global reverse_dns_lookup, resources_to_csv  # extra parameters
+            if 'resources_to_csv' in config['features']:
+                resources_to_csv = True if config['features']['resources_to_csv'].lower() == "enabled" else False
+                logging.debug("Changed default resources_to_csv to: {0}".format(resources_to_csv))
 
         return True
     except KeyError as err:
@@ -845,7 +865,14 @@ def main():
 
     output_string = summarise_given_logs()  # print out all given files if possible
 
-    print(output_string)  # write it to the console
+    # if output is getting redirected and resources to csv is set, ignore the output and create a valid csv file
+    if not sys.stdout.isatty() and resources_to_csv:
+        logging.debug("Recourse_csv_list is filled with {0}".format(resource_csv_list))
+        for array in resource_csv_list:
+            print(",".join(array))
+    # creates csv output, but not valid is resources_to_csv is set but output is not getting redirected
+    else:
+        print(output_string)  # write it to the console
 
 
 logging.debug("-------Start of HTCompact scipt-------")
