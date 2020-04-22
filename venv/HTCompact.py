@@ -18,7 +18,7 @@ logging.basicConfig(filename="stdout.log", level=logging.DEBUG,
 
 Version 1.2
 Maintainer: Mathis L.
-Date: 02.04.2020
+Date: 22.04.2020
 
 There are three functions, to simply read and return the content of a file,
 1. read_condor_logs(file): returns two lists that are related by the same index
@@ -51,7 +51,7 @@ reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 # to store output in a csv file it's easier to save them into lists
 resources_to_csv = False
 job_to_csv = False
-indexing = True
+indexing = True # only for csv structure
 
 # escape sequences for colors
 red = "\033[0;31m"
@@ -158,24 +158,28 @@ def manage_params():
             better_args = better_args[1:]  # remove them from opts
 
         opts, args = getopt.getopt(better_args, "h",
-                                   ["help", "std-log=", "std-error=", "std-out=",
-                                    "show-output", "show-warnings", "show-allocated-resources",
+                                   ["help", "std-log=", "std-err=", "std-out=",
+                                    "show-output", "show-warnings", "show-allocated",
                                     "ignore-errors", "ignore-resources",
                                     "res-to-csv", "job-to-csv", "indexing=",
                                     "table-format="])
-        # print(opts, args)
         for opt, arg in opts:
+
+            # catch unusual but not wrong parameters starting with -
+            if arg.startswith("-"):
+                print(yellow+"The argument for {0} is {1}, is that wanted?".format(opt, arg)+back_to_default)
+                logging.warning("The argument for {0} is {1}, is that wanted?".format(opt, arg))
+
             if opt in ["-h", "--help"]:
                 print(help_me())
                 exit(0)
-
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
             elif opt == "--std-log":
                 # to forget the . should not be painful
                 if arg[0] != '.':
                     arg = "."+arg
                 std_log = arg
-            elif opt == "--std-error":
+            elif opt == "--std-err":
                 # to forget the . should not be painful
                 if arg[0] != '.':
                     arg = "."+arg
@@ -190,7 +194,7 @@ def manage_params():
                 show_output = True
             elif opt.__eq__("--show-warnings"):
                 show_warnings = True
-            elif opt.__eq__("--show-allocated-resources"):
+            elif opt.__eq__("--show-allocated"):
                 show_allocated_res = True
 
             # all variables to ignore unwanted information
@@ -207,7 +211,14 @@ def manage_params():
             elif opt.__eq__("--indexing"):
                 indexing = True if arg.lower() == "true" else False
             elif opt.__eq__("--table-format"):
-                table_format = arg
+                types = "plain,simple,github,grid,fancy_grid,pipe," \
+                        "orgtbl,rst,mediawiki,html,latex,latex_raw," \
+                        "latex_booktabs,tsv,pretty"
+                # only valid arguments
+                if arg in types.split(","):
+                    table_format = arg
+                else:
+                    logging.debug("The given table format doesn't exist")
 
             else:
                 print(help_me())
@@ -221,13 +232,78 @@ def manage_params():
         exit(0)
 
 
-# Todo:
 def help_me():
     """
-    :return:    string with instructions and specifications how to use this script
+    Usage: python3 HTCompact.py [ Arguments ]
+
+    Arguments:                  [-h|--help, --std-log=, --std-err=, --std-out=
+                                --show-output, --show-warnings, --show-allocated
+                                --ignore-errors, --ignore-resources
+                                --res-to-csv, --job-to-csv, indexing=
+                                table-format=]
+
+    [-h|--help]                 to show this dialog
+
+    ----------------------------standard HTCondor files:------------------------
+
+    [--std-log=log_file]        describe the format of the HTCondor log files
+                                for example if log files look like: 452_0.log
+                                then set --std-log=.log  | default is .log
+
+    [--std-err=error_file]      describe the format of the HTCondor err files
+                                for example if error files look like: 452_0.err
+                                then set --std-err=.err  | default is .err
+
+    [--std-out=output_file]     describe the format of the HTCondor output files
+                                for example if output files look like: 452_0.out
+                                then set --std-out=.out  | default is .out
+
+    ----------------------------show more information:--------------------------
+
+    [--show-output]             shows job related output if the related output
+                                file is in the same directory as the log file
+
+    [--show-warnings]           shows warnings that occurred inside the HTCondor
+                                error file
+
+    [--show-allocated]          shows allocated resources related to the used
+                                and requested resources
+
+    ----------------------------ignore information:-----------------------------
+
+    [--ignore-errors]           ignores all occurring erros inside the
+                                HTCondor error files
+
+    [--ignore-resources]        ignores all resources, show-allocated will have
+                                no effect, if this argument is given
+
+    ----------------------------csv related settings:---------------------------
+
+    [--res-to-csv]              resources will be structured in csv structure
+                                ignores all job related information
+                                if not --job-to-csv is set
+
+    [--job-to-csv]              job related infromation will be structured in
+                                csv structure, ignores all resource
+                                related information, if not --res-to-csv is set
+
+    [--indexing=(True|False)]   will show/hide the index column
+                                for ex --indexing=True
+
+    ----------------------------output settings:---------------------------
+
+    [--table-format=format]     the table format for the output,
+                                if not res-to-csv or job-to-csv is given
+
+                                valid arguments are:
+                                [plain, simple, github, grid, fancy_grid, pipe,
+                                orgtbl, rst, mediawiki, html, latex, latex_raw,
+                                latex_booktabs, tsv, pretty]
+
+                                default: pretty
+
     """
-    output_string = red+"Use: \"python3 " + sys.argv[0] + " -h\" for help"+back_to_default
-    return output_string
+    return help_me.__doc__
 
 
 # reads all information, but returns them in two lists
