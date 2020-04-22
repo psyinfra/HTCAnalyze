@@ -3,3 +3,5 @@ logs/
 .out
 .err
 .tsv
+.csv
+.txt
