@@ -423,15 +423,23 @@ def filter_for_host(ip):
 
 
 # Todo: test and implement in smart_output_logs
-def log_to_dataFrame(file):
+def log_to_dataframe(file):
     try:
         job_events, job_raw_information = read_condor_logs(file)
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
             # job_executing = job_events[1][4][1:]
-            host = job_events[1][5][2:10]  # Todo: what if ip address has more than 8 chars
-            port = job_events[1][5][11:15]  # Todo: what if port has not 4 numbers
+
+            match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
+            logging.debug(job_events[1][5])
+            if match_host:
+                host = match_host[1]
+                port = match_host[2]  
+                logging.debug("matched host: {0}, matched port: {1}".format(host, port))
+            else:
+                logging.exception("Host and port haven't been matched correctly")
+                print(red + "your log file has faulty values for the host ip make sure it's a valid IPv4" + back_to_default)
 
             # calculate the runtime for the job
             submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
@@ -597,7 +605,7 @@ def smart_output_logs(file):
     """
     try:
 
-        job_df, res_df = log_to_dataFrame(file)
+        job_df, res_df = log_to_dataframe(file)
 
         job_events, job_raw_information = read_condor_logs(file)
         global border_str
@@ -610,53 +618,59 @@ def smart_output_logs(file):
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
-            # if job_to_csv is set
-            if job_to_csv:
+            if job_to_csv and resources_to_csv:
+                new_df = job_df.append(res_df)
+                output_string += "Description"+new_df.to_csv(header=True, index=True)
 
-                # if recources_to_csv is wanted as well, keep headers
-                if resources_to_csv:
-                    # if indexing add column Description
-                    if indexing:
-                        output_string += "Description" + job_df.to_csv(index=indexing)
-                    # else remove first comma
-                    else:
-                        output_string += job_df.to_csv(index=indexing)
-                # ignore headers if no jobs get printed
-                else:
-                    output_string += job_df.to_csv(header=False, index=indexing)  # save as csv
-            # if only recources_to_csv is set, ignore other output
-            elif resources_to_csv:
-                pass
-            else:
-                output_string += tabulate(job_df, tablefmt=table_format) + "\n"
+            # # if job_to_csv is set
+            # elif job_to_csv:
+            #
+            #     # if recources_to_csv is wanted as well, keep headers
+            #     if resources_to_csv:
+            #         # if indexing add column Description
+            #         if indexing:
+            #             output_string += "Description" + job_df.to_csv(index=indexing)
+            #         # else remove first comma
+            #         else:
+            #             output_string += job_df.to_csv(index=indexing)
+            #     # ignore headers if no jobs get printed
+            #     else:
+            #         output_string += job_df.to_csv(header=False, index=indexing)  # save as csv
+            # # if only recources_to_csv is set, ignore other output
+            # elif resources_to_csv:
+            #     pass
+            # else:
+            #     output_string += tabulate(job_df, tablefmt=table_format) + "\n"
+            #
+            # # ignore resources ?
+            # if not ignore_resources:
+            #
+            #     # if resources_to_csv is wanted
+            #     if resources_to_csv:
+            #
+            #         # if job_to_csv is wanted as well, keep headers
+            #         if job_to_csv:
+            #             # if indexing add column Resources
+            #             if indexing:
+            #                 output_string += "Recources"+res_df.to_csv(index=indexing)
+            #             # else remove first comma
+            #             else:
+            #                 output_string += res_df.to_csv(index=indexing)
+            #         # ignore headers if no jobs get printed
+            #         else:
+            #             output_string += res_df.to_csv(header=False, index=indexing)
+            #
+            #     # if only job_to_csv is set ignore other output
+            #     elif job_to_csv:
+            #         pass  # could maybe be implemented earlier
+            #
+            #     # normal output
+            #     else:
+            #         # use tabulate to print a fancy output
+            #         fancy_design = tabulate(res_df, headers='keys', tablefmt=table_format)
+            #         output_string += fancy_design + "\n"
 
-            # ignore resources ?
-            if not ignore_resources:
 
-                # if resources_to_csv is wanted
-                if resources_to_csv:
-
-                    # if job_to_csv is wanted as well, keep headers
-                    if job_to_csv:
-                        # if indexing add column Resources
-                        if indexing:
-                            output_string += "Recources"+res_df.to_csv(index=indexing)
-                        # else remove first comma
-                        else:
-                            output_string += res_df.to_csv(index=indexing)
-                    # ignore headers if no jobs get printed
-                    else:
-                        output_string += res_df.to_csv(header=False, index=indexing)
-
-                # if only job_to_csv is set ignore other output
-                elif job_to_csv:
-                    pass  # could maybe be implemented earlier
-
-                # normal output
-                else:
-                    # use tabulate to print a fancy output
-                    fancy_design = tabulate(res_df, headers='keys', tablefmt=table_format)
-                    output_string += fancy_design + "\n"
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
