@@ -868,15 +868,15 @@ def load_config(file):
     # search for the given file, first directly, then in /etc and then in ~/.config/HTCompact/
     try:
         if os.path.isfile(file):
-            logging.debug("Load config file from htcondor-summariser-script project: {0}".format(file))
+            logging.debug(f"Load config file from htcondor-summariser-script project: {file}")
             config.read(file)
         # try to find config file in /etc
-        elif os.path.isfile("/etc/{0}".format(file)):
-            logging.debug("Load config from: /etc/{0}".format(file))
-            config.read("/etc/{0}.conf".format(script_name))
+        elif os.path.isfile(f"/etc/{file}"):
+            logging.debug(f"Load config from: /etc/{file}")
+            config.read(f"/etc/{file}.conf")
         # try to find config file in ~/.config/script_name/
-        elif os.path.isfile("~/.config/{0}/{1}".format(script_name, file)):
-            logging.debug("Load config from: ~/.config/{0}/{1}".format(script_name, file))
+        elif os.path.isfile(f"~/.config/{script_name}/{file}"):
+            logging.debug(f"Load config from: ~/.config/{script_name}/{file}")
         else:
             logging.debug("No config file found")
             return False
@@ -897,14 +897,14 @@ def load_config(file):
 
             if 'files' in config['documents']:
                 files = config['documents']['files'].split(" ")
-                logging.debug('Changed document files to {0}'.format(files))
+                logging.debug(f"Changed document files to {files}")
 
         # all formats like the table format
         if 'formats' in sections:
             global table_format
             if 'table_format' in config['formats']:
                 table_format = config['formats']['table_format']
-                logging.debug("Changed default table_format to: {0}".format(table_format))
+                logging.debug(f"Changed default table_format to: {table_format}")
 
         # all basic HTCondor file endings like .log, .err, .out
         if 'htc-files' in sections:
@@ -912,15 +912,15 @@ def load_config(file):
 
             if 'stdlog' in config['htc-files']:
                 std_log = config['htc-files']['stdlog']
-                logging.debug("Changed default for HTCondor .log files to: {0}".format(std_log))
+                logging.debug(f"Changed default for HTCondor .log files to: {std_log}")
 
             if 'stderr' in config['htc-files']:
                 std_err = config['htc-files']['stderr']
-                logging.debug("Changed default for HTCondor .err files to: {0}".format(std_err))
+                logging.debug(f"Changed default for HTCondor .err files to: {std_err}")
 
             if 'stdout' in config['htc-files']:
                 std_out = config['htc-files']['stdout']
-                logging.debug("Changed default for HTCondor .out files to: {0}".format(std_out))
+                logging.debug(f"Changed default for HTCondor .out files to: {std_out}")
 
         # if show variables are set for further output
         if 'show-more' in sections:
@@ -928,15 +928,15 @@ def load_config(file):
 
             if 'show_output' in config['show-more']:
                 show_output = config['show-more']['show_output'].lower() in accepted_states
-                logging.debug("Changed default show_output to: {0}".format(show_output))
+                logging.debug(f"Changed default show_output to: {show_output}")
 
             if 'show_warnings' in config['show-more']:
                 show_warnings = config['show-more']['show_warnings'].lower() in accepted_states
-                logging.debug("Changed default show_warnings to: {0}".format(show_warnings))
+                logging.debug(f"Changed default show_warnings to: {show_warnings}")
 
             if 'show_allocated_resources' in config['show-more']:
                 show_allocated_res = config['show-more']['show_allocated_resources'].lower() in accepted_states
-                logging.debug("Changed default show_allocated_res to: {0}".format(show_allocated_res))
+                logging.debug(f"Changed default show_allocated_res to: {show_allocated_res}")
 
         # what information should to be ignored
         if 'ignore' in sections:
@@ -944,10 +944,10 @@ def load_config(file):
 
             if 'ignore_errors' in config['ignore']:
                 ignore_errors = config['ignore']['ignore_errors'].lower() in accepted_states
-                logging.debug("Changed default ignore_errors to: {0}".format(ignore_errors))
+                logging.debug(f"Changed default ignore_errors to: {ignore_errors}")
             if 'ignore_resources' in config['ignore']:
                 ignore_resources = config['ignore']['ignore_resources'].lower() in accepted_states
-                logging.debug("Changed default ignore_resources to: {0}".format(ignore_resources))
+                logging.debug(f"Changed default ignore_resources to: {ignore_resources}")
 
         # Todo: thresholds
         if 'thresholds' in sections:
@@ -957,20 +957,20 @@ def load_config(file):
             global resources_to_csv, job_to_csv, indexing
             if 'resources_to_csv' in config['csv']:
                 resources_to_csv = config['csv']['resources_to_csv'].lower() in accepted_states
-                logging.debug("Changed default resources_to_csv to: {0}".format(resources_to_csv))
+                logging.debug(f"Changed default resources_to_csv to: {resources_to_csv}")
             if 'job_to_csv' in config['csv']:
                 job_to_csv = config['csv']['job_to_csv'].lower() in accepted_states
-                logging.debug("Changed default job_to_csv to: {0}".format(job_to_csv))
+                logging.debug(f"Changed default job_to_csv to: {job_to_csv}")
             if 'indexing' in config['csv']:
                 indexing = config['csv']['indexing'].lower() in accepted_states
-                logging.debug("Changed default indexing to: {0}".format(indexing))
+                logging.debug(f"Changed default indexing to: {indexing}")
 
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
             global resolve_ip_to_hostname, reverse_dns_lookup  # extra parameters
             if 'resolve_ip_to_hostname' in config['features']:
                 resolve_ip_to_hostname = (config['features']['resolve_ip_to_hostname'].lower() in accepted_states)
-                logging.debug("Changed default resolve_ip_to_hostname to: {0}".format(resolve_ip_to_hostname))
+                logging.debug(f"Changed default resolve_ip_to_hostname to: {resolve_ip_to_hostname}")
 
         return True
 
