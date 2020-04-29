@@ -223,17 +223,17 @@ def manage_params():
 
             else:
                 print(help_me())
-                exit(0)
+                sys.exit(0)
     # print error messages
     except Exception as err:
         logging.exception(err)  # write a detailed description in the stdout.log file
         print((red+"{0}: {1}"+back_to_default).format(err.__class__.__name__, err))
         print(help_me())
-        exit(0)
+        sys.exit(1)
 
     if len(files) == 0:
         print(help_me())
-        exit(0)
+        sys.exit(2)
 
 
 def help_me():
@@ -367,7 +367,8 @@ def read_condor_logs(file):
                     job_event_information.append(temp_job_event_list)
                     temp_job_event_list = list()  # clear list
                     continue
-                elif line.startswith("\t"):
+                # else
+                if line.startswith("\t"):
                     temp_job_event_list.append(line)
 
     return log_job_events, job_event_information
@@ -512,7 +513,7 @@ def log_to_dataframe(file):
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
             else:
                 print(red + "Something went wrong reading the memory information" + back_to_default)
-                return
+                return job_df, None
 
             # list of resources and their labels
             resource_labels = ["Cpu", "Disk", "Memory"]
@@ -746,7 +747,7 @@ def smart_manage_all(job_spec_id):
     except Exception as err:
         logging.exception(err)
         print(red+str(err)+back_to_default)
-        exit(0)
+        sys.exit(1)
     else:
         return output_string
 
@@ -926,16 +927,15 @@ def load_config(file):
             global show_output, show_warnings, show_allocated_res  # sources to show
 
             if 'show_output' in config['show-more']:
-                show_output = True if config['show-more']['show_output'].lower() in accepted_states else False
+                show_output = config['show-more']['show_output'].lower() in accepted_states
                 logging.debug("Changed default show_output to: {0}".format(show_output))
 
             if 'show_warnings' in config['show-more']:
-                show_warnings = True if config['show-more']['show_warnings'].lower() in accepted_states else False
+                show_warnings = config['show-more']['show_warnings'].lower() in accepted_states
                 logging.debug("Changed default show_warnings to: {0}".format(show_warnings))
 
             if 'show_allocated_resources' in config['show-more']:
-                show_allocated_res = True if config['show-more']['show_allocated_resources'].lower() in accepted_states\
-                                     else False
+                show_allocated_res = config['show-more']['show_allocated_resources'].lower() in accepted_states
                 logging.debug("Changed default show_allocated_res to: {0}".format(show_allocated_res))
 
         # what information should to be ignored
@@ -943,10 +943,10 @@ def load_config(file):
             global ignore_errors, ignore_resources  # sources to ignore
 
             if 'ignore_errors' in config['ignore']:
-                ignore_errors = True if config['ignore']['ignore_errors'].lower() in accepted_states else False
+                ignore_errors = config['ignore']['ignore_errors'].lower() in accepted_states
                 logging.debug("Changed default ignore_errors to: {0}".format(ignore_errors))
             if 'ignore_resources' in config['ignore']:
-                ignore_resources = True if config['ignore']['ignore_resources'].lower() in accepted_states else False
+                ignore_resources = config['ignore']['ignore_resources'].lower() in accepted_states
                 logging.debug("Changed default ignore_resources to: {0}".format(ignore_resources))
 
         # Todo: thresholds
@@ -956,21 +956,21 @@ def load_config(file):
         if 'csv' in sections:
             global resources_to_csv, job_to_csv, indexing
             if 'resources_to_csv' in config['csv']:
-                resources_to_csv = True if config['csv']['resources_to_csv'].lower() in accepted_states else False
+                resources_to_csv = config['csv']['resources_to_csv'].lower() in accepted_states
                 logging.debug("Changed default resources_to_csv to: {0}".format(resources_to_csv))
             if 'job_to_csv' in config['csv']:
-                job_to_csv = True if config['csv']['job_to_csv'].lower() in accepted_states else False
+                job_to_csv = config['csv']['job_to_csv'].lower() in accepted_states
                 logging.debug("Changed default job_to_csv to: {0}".format(job_to_csv))
             if 'indexing' in config['csv']:
-                indexing = True if config['csv']['indexing'].lower() in accepted_states else False
+                indexing = config['csv']['indexing'].lower() in accepted_states
                 logging.debug("Changed default indexing to: {0}".format(indexing))
 
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
             global resolve_ip_to_hostname, reverse_dns_lookup  # extra parameters
             if 'resolve_ip_to_hostname' in config['features']:
-                resolve_ip_to_hostname = True if config['features']['resolve_ip_to_hostname'].lower() \
-                                                 in accepted_states else False
+                resolve_ip_to_hostname = (config['features']['resolve_ip_to_hostname'].lower() in accepted_states)
+                logging.debug("Changed default resolve_ip_to_hostname to: {0}".format(resolve_ip_to_hostname))
 
         return True
 
