@@ -44,7 +44,7 @@ border_str = ""
 show_output = False
 show_warnings = False
 show_allocated_res = False
-ignore_errors = False
+ignore_errors = True  # Todo: after implementation set default: False
 ignore_resources = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 
@@ -61,9 +61,9 @@ cyan = "\033[0;36m"
 back_to_default = "\033[0;39m"
 
 # global variables with default values for err/log/out files
-std_log = ".log"
-std_err = ".err"
-std_out = ".out"
+std_log = ""
+std_err = ""
+std_out = ""
 
 # global variables for tabulate
 """
@@ -75,7 +75,7 @@ orgtbl, rst, mediawiki, html, latex, latex_raw,
 latex_booktabs, tsv
 default: simple)
 """
-table_format = "pretty"  # ascii by deafult
+table_format = "pretty"  # ascii by default
 
 # Todos:
 # Todo: did a lot of test, but it needs more
@@ -83,6 +83,7 @@ table_format = "pretty"  # ascii by deafult
 # Todo: filter erros better, less priority
 # Todo: realise the further specs on: https://jugit.fz-juelich.de/inm7/infrastructure/scripts/-/issues/1
 # Todo: make global variable for err/log/out files, should be given by user if not in default form
+# Todo: standard sollte nicht .log sein, Skript soll selbst erkannen was log dateien sind und was nicht
 # a redirection in the terminal via > should ignore escape sequences
 
 
@@ -223,11 +224,14 @@ def manage_params():
             else:
                 print(help_me())
                 exit(0)
-
     # print error messages
     except Exception as err:
         logging.exception(err)  # write a detailed description in the stdout.log file
         print((red+"{0}: {1}"+back_to_default).format(err.__class__.__name__, err))
+        print(help_me())
+        exit(0)
+
+    if len(files) == 0:
         print(help_me())
         exit(0)
 
@@ -303,6 +307,7 @@ def help_me():
                                 default: pretty
 
     """
+    # returns this docstring
     return help_me.__doc__
 
 
@@ -417,6 +422,132 @@ def filter_for_host(ip):
     """
 
 
+# Todo: test and implement in smart_output_logs
+def log_to_dataFrame(file):
+    try:
+        job_events, job_raw_information = read_condor_logs(file)
+
+        if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
+
+            # job_executing = job_events[1][4][1:]
+            host = job_events[1][5][2:10]  # Todo: what if ip address has more than 8 chars
+            port = job_events[1][5][11:15]  # Todo: what if port has not 4 numbers
+
+            # calculate the runtime for the job
+            submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
+            terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
+            runtime = terminating_date - submitted_date  # calculation of the time runtime
+
+            # make a fancy design for the job_information
+            job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
+            job_information = [host, port, runtime]  # holds the related job information
+
+            # filter the termination state ...
+            if True:
+                # check if termination state is normal
+                termination_state_inf = job_raw_information[-1][0]
+                match_termination_state = re.match(r"\t\(1\) ((?:\w+ )*)", termination_state_inf)
+                if match_termination_state:
+                    job_labels.append("Termination State")
+                    job_information.append(match_termination_state[1])
+
+                    if "Normal termination" in match_termination_state[1]:
+                        match_return_value = re.match(r"\t\(1\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        return_value = match_return_value[1] if match_return_value else "None"
+                        if return_value == "None":
+                            print(red + "Not a valid return state in the HTCondor log file" + back_to_default)
+                        else:
+                            job_labels.append("Return Value")
+                            job_information.append(return_value)
+
+                else:
+                    print(red + "Termination error in HTCondor log file" + back_to_default)
+
+            # now put everything together in a table
+            job_df = pd.DataFrame({"Values": job_information})
+            job_df = job_df.set_axis(job_labels, axis='index')
+
+            # these where the job information now focus on the used resources
+
+            relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
+
+            # next part removes not useful lines
+            if True:  # just for readability
+                # remove unnecessary lines
+                lines = relevant_str.splitlines()
+                while not lines[0].startswith("\tPartitionable"):
+                    lines.remove(lines[0])
+
+                lines.remove(lines[0])
+                partitionable_res = lines
+                # done, partitionable_resources contain now only information about used resources
+
+            # match all resources
+            # Todo: match even if values are missing, might get impossible if more than one value is missing
+            match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{2})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
+            if match:
+                cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
+            else:
+                print(red + "Something went wrong reading the cpu information" + back_to_default)
+                return
+            match = re.match(r"\t *Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
+            if match:
+                disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
+            else:
+                print(red + "Something went wrong reading the disk information" + back_to_default)
+                return
+            match = re.match(r"\t *Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[2])
+            if match:
+                memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
+            else:
+                print(red + "Something went wrong reading the memory information" + back_to_default)
+                return
+
+            # list of resources and their labels
+            resource_labels = ["Cpu", "Disk", "Memory"]
+            usage = [cpu_usage, disk_usage, memory_usage]
+            requested = [cpu_request, disk_request, memory_request]
+            allocated = [cpu_allocated, disk_allocated, memory_allocated]
+
+            # Error handling: change empty values to NaN in the first column
+            for i in range(3):
+                if usage[i] == "":
+                    usage[i] = "NaN"
+                if requested[i] == "":
+                    requested[i] = "NaN"
+                if allocated[i] == "":
+                    allocated[i] = "NaN"
+
+            # put the data in the DataFrame
+            res_df = pd.DataFrame({
+                "Usage": usage,
+                "Requested": requested,
+                # "Allocated": allocated
+            })
+
+            # if the user wants allocated resources then add it to the DataFrame as well
+            if show_allocated_res:
+                res_df.insert(2, "Allocated", allocated)
+
+            res_df = res_df.set_axis(resource_labels, axis='index')  # make new DataFrame with resource_labels
+
+        # Todo: more information, maybe why ?
+        elif job_events[-1][0].__eq__("009"):  # job aborted
+            # job_event description, which is "Job was aborted by the user" and the user filter
+            logging.debug(job_events[-1][4][1:] + ": " + ((job_raw_information[-1][0]).split(" ")[-1])[:-1])
+            print(job_events[-1][4][1:] + ": " + ((job_raw_information[-1][0]).split(" ")[-1])[:-1] + "\n")
+
+    except NameError as err:
+        logging.exception(err)
+        print("The smart_output_logs method requires a " + std_log + " file as parameter")
+    except FileNotFoundError as err:
+        logging.exception(err)
+        print(red + str(err) + back_to_default)
+    # finally
+    else:
+        return job_df, res_df
+
+
 # Todo: gpu usage
 def smart_output_logs(file):
     """
@@ -465,6 +596,9 @@ def smart_output_logs(file):
 
     """
     try:
+
+        job_df, res_df = log_to_dataFrame(file)
+
         job_events, job_raw_information = read_condor_logs(file)
         global border_str
 
@@ -475,44 +609,6 @@ def smart_output_logs(file):
             border_str = "-" * len(output_string) + "\n"
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
-
-            # job_executing = job_events[1][4][1:]
-            host = job_events[1][5][2:10]  # Todo: what if ip address has more than 8 chars
-            port = job_events[1][5][11:15]  # Todo: what if port has not 4 numbers
-
-            # calculate the runtime for the job
-            submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
-            terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-            runtime = terminating_date - submitted_date  # calculation of the time runtime
-
-            # make a fancy design for the job_information
-            job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
-            job_information = [host, port, runtime]  # holds the related job information
-
-            # filter the termination state ...
-            if True:
-                # check if termination state is normal
-                termination_state_inf = job_raw_information[-1][0]
-                match_termination_state = re.match(r"\t\(1\) ((?:\w+ )*)", termination_state_inf)
-                if match_termination_state:
-                    job_labels.append("Termination State")
-                    job_information.append(match_termination_state[1])
-
-                    if "Normal termination" in match_termination_state[1]:
-                        match_return_value = re.match(r"\t\(1\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
-                        return_value = match_return_value[1] if match_return_value else "None"
-                        if return_value == "None":
-                            print(red + "Not a valid return state in the HTCondor log file"+back_to_default)
-                        else:
-                            job_labels.append("Return Value")
-                            job_information.append(return_value)
-
-                else:
-                    print(red + "Termination error in HTCondor log file" + back_to_default)
-
-            # now put everything together in a pretty table
-            job_df = pd.DataFrame({"Values": job_information})
-            job_df = job_df.set_axis(job_labels, axis='index')
 
             # if job_to_csv is set
             if job_to_csv:
@@ -536,68 +632,6 @@ def smart_output_logs(file):
 
             # ignore resources ?
             if not ignore_resources:
-
-                relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
-
-                # next part removes not useful lines
-                if True:  # just for readability
-                    # remove unnecessary lines
-                    lines = relevant_str.splitlines()
-                    while not lines[0].startswith("\tPartitionable"):
-                        lines.remove(lines[0])
-
-                    lines.remove(lines[0])
-                    partitionable_res = lines
-                    # done, partitionable_resources contain now only information about used resources
-                
-                # match all resources
-                # Todo: match even if values are missing, might get impossible if more than one value is missing
-                match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{2})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
-                if match:
-                    cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
-                else:
-                    print(red+"Something went wrong reading the cpu information"+back_to_default)
-                    return
-                match = re.match(r"\t *Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
-                if match:
-                    disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
-                else:
-                    print(red + "Something went wrong reading the disk information" + back_to_default)
-                    return
-                match = re.match(r"\t *Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[2])
-                if match:
-                    memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
-                else:
-                    print(red + "Something went wrong reading the memory information" + back_to_default)
-                    return
-
-                # list of resources and their labels
-                resource_labels = ["Cpu", "Disk", "Memory"]
-                usage = [cpu_usage, disk_usage, memory_usage]
-                requested = [cpu_request, disk_request, memory_request]
-                allocated = [cpu_allocated, disk_allocated, memory_allocated]
-
-                # Error handling: change empty values to NaN
-                for i in range(3):
-                    if usage[i] == "":
-                        usage[i] = "NaN"
-                    if requested[i] == "":
-                        requested[i] = "NaN"
-                    if allocated[i] == "":
-                        allocated[i] = "NaN"
-
-                # put the data in the DataFrame
-                res_df = pd.DataFrame({
-                    "Usage": usage,
-                    "Requested": requested,
-                    # "Allocated": allocated
-                })
-
-                # if the user wants allocated resources then add it to the DataFrame as well
-                if show_allocated_res:
-                    res_df.insert(2, "Allocated", allocated)
-
-                res_df = res_df.set_axis(resource_labels, axis='index')  # make new DataFrame with resource_labels
 
                 # if resources_to_csv is wanted
                 if resources_to_csv:
@@ -739,6 +773,7 @@ def smart_manage_all(job_spec_id):
 
 # Todo: params should affect output and error files
 # Todo: use the manage_all function
+# Todo: newlines when csv
 def read_through_logs_dir(directory):
     """
     Runs through the given directory and return all logs related content
@@ -788,6 +823,7 @@ def read_through_logs_dir(directory):
     return output_string
 
 
+# Todo: change for no specified type of log error and output files
 def summarise_given_logs():
     global files
     output_string = ""
@@ -837,6 +873,9 @@ def summarise_given_logs():
 
 # search for config file ( UNIX BASED )
 # Todo: Test
+accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
+
+
 def load_config(file):
     """
 
@@ -910,15 +949,15 @@ def load_config(file):
             global show_output, show_warnings, show_allocated_res  # sources to show
 
             if 'show_output' in config['show-more']:
-                show_output = True if config['show-more']['show_output'].lower() == "true" else False
+                show_output = True if config['show-more']['show_output'].lower() in accepted_states else False
                 logging.debug("Changed default show_output to: {0}".format(show_output))
 
             if 'show_warnings' in config['show-more']:
-                show_warnings = True if config['show-more']['show_warnings'].lower() == "true" else False
+                show_warnings = True if config['show-more']['show_warnings'].lower() in accepted_states else False
                 logging.debug("Changed default show_warnings to: {0}".format(show_warnings))
 
             if 'show_allocated_resources' in config['show-more']:
-                show_allocated_res = True if config['show-more']['show_allocated_resources'].lower() == "true"\
+                show_allocated_res = True if config['show-more']['show_allocated_resources'].lower() in accepted_states\
                                      else False
                 logging.debug("Changed default show_allocated_res to: {0}".format(show_allocated_res))
 
@@ -927,10 +966,10 @@ def load_config(file):
             global ignore_errors, ignore_resources  # sources to ignore
 
             if 'ignore_errors' in config['ignore']:
-                ignore_errors = True if config['ignore']['ignore_errors'].lower() == "true" else False
+                ignore_errors = True if config['ignore']['ignore_errors'].lower() in accepted_states else False
                 logging.debug("Changed default ignore_errors to: {0}".format(ignore_errors))
             if 'ignore_resources' in config['ignore']:
-                ignore_resources = True if config['ignore']['ignore_resources'].lower() == "true" else False
+                ignore_resources = True if config['ignore']['ignore_resources'].lower() in accepted_states else False
                 logging.debug("Changed default ignore_resources to: {0}".format(ignore_resources))
 
         # Todo: thresholds
@@ -940,13 +979,13 @@ def load_config(file):
         if 'csv' in sections:
             global resources_to_csv, job_to_csv, indexing
             if 'resources_to_csv' in config['csv']:
-                resources_to_csv = True if config['csv']['resources_to_csv'].lower() == "true" else False
+                resources_to_csv = True if config['csv']['resources_to_csv'].lower() in accepted_states else False
                 logging.debug("Changed default resources_to_csv to: {0}".format(resources_to_csv))
             if 'job_to_csv' in config['csv']:
-                job_to_csv = True if config['csv']['job_to_csv'].lower() == "true" else False
+                job_to_csv = True if config['csv']['job_to_csv'].lower() in accepted_states else False
                 logging.debug("Changed default job_to_csv to: {0}".format(job_to_csv))
             if 'indexing' in config['csv']:
-                indexing = True if config['csv']['indexing'].lower() == "true" else False
+                indexing = True if config['csv']['indexing'].lower() in accepted_states else False
                 logging.debug("Changed default indexing to: {0}".format(indexing))
 
         # Todo: reverse DNS-Lookup etc.
