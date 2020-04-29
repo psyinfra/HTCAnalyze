@@ -435,7 +435,7 @@ def log_to_dataframe(file):
             logging.debug(job_events[1][5])
             if match_host:
                 host = match_host[1]
-                port = match_host[2]  
+                port = match_host[2]
                 logging.debug("matched host: {0}, matched port: {1}".format(host, port))
             else:
                 logging.exception("Host and port haven't been matched correctly")
@@ -622,55 +622,18 @@ def smart_output_logs(file):
                 new_df = job_df.append(res_df)
                 output_string += "Description"+new_df.to_csv(header=True, index=True)
 
-            # # if job_to_csv is set
-            # elif job_to_csv:
-            #
-            #     # if recources_to_csv is wanted as well, keep headers
-            #     if resources_to_csv:
-            #         # if indexing add column Description
-            #         if indexing:
-            #             output_string += "Description" + job_df.to_csv(index=indexing)
-            #         # else remove first comma
-            #         else:
-            #             output_string += job_df.to_csv(index=indexing)
-            #     # ignore headers if no jobs get printed
-            #     else:
-            #         output_string += job_df.to_csv(header=False, index=indexing)  # save as csv
-            # # if only recources_to_csv is set, ignore other output
-            # elif resources_to_csv:
-            #     pass
-            # else:
-            #     output_string += tabulate(job_df, tablefmt=table_format) + "\n"
-            #
-            # # ignore resources ?
-            # if not ignore_resources:
-            #
-            #     # if resources_to_csv is wanted
-            #     if resources_to_csv:
-            #
-            #         # if job_to_csv is wanted as well, keep headers
-            #         if job_to_csv:
-            #             # if indexing add column Resources
-            #             if indexing:
-            #                 output_string += "Recources"+res_df.to_csv(index=indexing)
-            #             # else remove first comma
-            #             else:
-            #                 output_string += res_df.to_csv(index=indexing)
-            #         # ignore headers if no jobs get printed
-            #         else:
-            #             output_string += res_df.to_csv(header=False, index=indexing)
-            #
-            #     # if only job_to_csv is set ignore other output
-            #     elif job_to_csv:
-            #         pass  # could maybe be implemented earlier
-            #
-            #     # normal output
-            #     else:
-            #         # use tabulate to print a fancy output
-            #         fancy_design = tabulate(res_df, headers='keys', tablefmt=table_format)
-            #         output_string += fancy_design + "\n"
+            # if only job_to_csv is set
+            elif job_to_csv:
+                output_string += job_df.to_csv(header=False, index=indexing)  # save as csv
 
-
+            # if only recources_to_csv is set, ignore other output
+            elif resources_to_csv:
+                output_string += res_df.to_csv(header=False, index=indexing)  # save as csv
+            # else if no one is set
+            else:
+                output_string += tabulate(job_df, tablefmt=table_format) + "\n"
+                if not ignore_resources:
+                    output_string += tabulate(res_df, headers='keys',tablefmt=table_format) + "\n"
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
