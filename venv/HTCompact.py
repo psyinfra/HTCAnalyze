@@ -37,6 +37,7 @@ smart_manage_all(cluster_process_id)
 
 """
 # global parameters, used for dynamical output of information
+accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
 files = list()
 border_str = ""
 
@@ -46,6 +47,7 @@ show_warnings = False
 show_allocated_res = False
 ignore_errors = True  # Todo: after implementation set default: False
 ignore_resources = False
+resolve_ip_to_hostname = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 
 # to store output in a csv file it's easier to save them into lists
@@ -66,15 +68,6 @@ std_err = ""
 std_out = ""
 
 # global variables for tabulate
-"""
-Documentation: https://github.com/astanin/python-tabulate
-
-Types:
-plain, simple, github, grid, fancy_grid, pipe,
-orgtbl, rst, mediawiki, html, latex, latex_raw,
-latex_booktabs, tsv
-default: simple)
-"""
 table_format = "pretty"  # ascii by default
 
 # Todos:
@@ -138,6 +131,7 @@ def manage_params():
     global ignore_errors, ignore_resources  # ignore information variables
     global resources_to_csv, job_to_csv, indexing  # store the redirected output in a tabular structure
     global table_format  # table_format can be changed
+    global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
     # if output gets redirected with > or | or other redirection tools, ignore escape sequences
     if not sys.stdout.isatty():
@@ -163,7 +157,8 @@ def manage_params():
                                     "show-output", "show-warnings", "show-allocated",
                                     "ignore-errors", "ignore-resources",
                                     "res-to-csv", "job-to-csv", "indexing=",
-                                    "table-format="])
+                                    "table-format=",
+                                    "resolve-ip"])
         for opt, arg in opts:
 
             # catch unusual but not wrong parameters starting with -
@@ -173,7 +168,7 @@ def manage_params():
 
             if opt in ["-h", "--help"]:
                 print(help_me())
-                exit(0)
+                sys.exit(0)
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
             elif opt == "--std-log":
                 # to forget the . should not be painful
@@ -210,7 +205,9 @@ def manage_params():
             elif opt.__eq__("--job-to-csv"):
                 job_to_csv = True
             elif opt.__eq__("--indexing"):
-                indexing = True if arg.lower() == "true" else False
+                indexing = (arg.lower() in accepted_states)
+                logging.debug("Indexing set to: {0}".format(indexing))
+
             elif opt.__eq__("--table-format"):
                 types = "plain,simple,github,grid,fancy_grid,pipe," \
                         "orgtbl,rst,mediawiki,html,latex,latex_raw," \
@@ -220,6 +217,9 @@ def manage_params():
                     table_format = arg
                 else:
                     logging.debug("The given table format doesn't exist")
+
+            elif opt.__eq__("--resolve-ip"):
+                resolve_ip_to_hostname = True
 
             else:
                 print(help_me())
@@ -417,7 +417,7 @@ def read_condor_output(file):
 # Todo:
 def filter_for_host(ip):
     """
-    this function is supposed to filter a given ip for it's representive url like jusell.inm7.de:cpu1
+    this function is supposed to filter a given ip for it's representive url like juseless.inm7.de:cpu1
     :return:
     """
 
@@ -435,6 +435,9 @@ def log_to_dataframe(file):
             logging.debug(job_events[1][5])
             if match_host:
                 host = match_host[1]
+                # if resolve ip to hostname, change the ip to cpu: last number
+                if resolve_ip_to_hostname:
+                    host = "cpu: "+ host.split('.')[-1]
                 port = match_host[2]
                 logging.debug("matched host: {0}, matched port: {1}".format(host, port))
             else:
@@ -620,7 +623,7 @@ def smart_output_logs(file):
 
             if job_to_csv and resources_to_csv:
                 new_df = job_df.append(res_df)
-                output_string += "Description"+new_df.to_csv(header=True, index=True)
+                output_string += "Description"+new_df.to_csv(header=True, index=True)  # index here always true
 
             # if only job_to_csv is set
             elif job_to_csv:
@@ -850,9 +853,6 @@ def summarise_given_logs():
 
 # search for config file ( UNIX BASED )
 # Todo: Test
-accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
-
-
 def load_config(file):
     """
 
@@ -967,7 +967,10 @@ def load_config(file):
 
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
-            global reverse_dns_lookup  # extra parameters
+            global resolve_ip_to_hostname, reverse_dns_lookup  # extra parameters
+            if 'resolve_ip_to_hostname' in config['features']:
+                resolve_ip_to_hostname = True if config['features']['resolve_ip_to_hostname'].lower() \
+                                                 in accepted_states else False
 
         return True
 
