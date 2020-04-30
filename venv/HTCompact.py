@@ -476,8 +476,10 @@ def log_to_dataframe(file):
                     print(red + "Termination error in HTCondor log file" + back_to_default)
 
             # now put everything together in a table
-            job_df = pd.DataFrame({"Values": job_information})
-            job_df = job_df.set_axis(job_labels, axis='index')
+            job_df = pd.DataFrame({
+                "Description": job_labels,
+                "Values": job_information
+            })
 
             # these where the job information now focus on the used resources
 
@@ -501,13 +503,13 @@ def log_to_dataframe(file):
                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
             else:
                 print(red + "Something went wrong reading the cpu information" + back_to_default)
-                return
+                return job_df, None
             match = re.match(r"\t *Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
             if match:
                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
             else:
                 print(red + "Something went wrong reading the disk information" + back_to_default)
-                return
+                return job_df, None
             match = re.match(r"\t *Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[2])
             if match:
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
@@ -532,6 +534,7 @@ def log_to_dataframe(file):
 
             # put the data in the DataFrame
             res_df = pd.DataFrame({
+                "Rescources": resource_labels,
                 "Usage": usage,
                 "Requested": requested,
                 # "Allocated": allocated
@@ -540,8 +543,6 @@ def log_to_dataframe(file):
             # if the user wants allocated resources then add it to the DataFrame as well
             if show_allocated_res:
                 res_df.insert(2, "Allocated", allocated)
-
-            res_df = res_df.set_axis(resource_labels, axis='index')  # make new DataFrame with resource_labels
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
@@ -561,7 +562,7 @@ def log_to_dataframe(file):
 
 
 # Todo: gpu usage
-def smart_output_logs(file):
+def smart_output_logs(file, header=True, index=False):
     """
     reads a given HTCondor .log file with the read_condor_logs() function
 
@@ -622,22 +623,31 @@ def smart_output_logs(file):
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
+            # Todo: csv style one line
+
             if job_to_csv and resources_to_csv:
                 new_df = job_df.append(res_df)
-                output_string += "Description"+new_df.to_csv(header=True, index=True)  # index here always true
+
+                # Todo: excel option
+                if False:
+                    with pd.ExcelWriter('test.xlsx', engine="xlsxwriter") as writer:
+                        job_df.to_excel(writer, sheet_name="Job Information")
+                        res_df.to_excel(writer, sheet_name="Resources")
+
+                output_string += new_df.to_csv(header=header, index=index)
 
             # if only job_to_csv is set
             elif job_to_csv:
-                output_string += job_df.to_csv(header=False, index=indexing)  # save as csv
+                output_string += job_df.to_csv(header=header, index=index)  # save as csv
 
             # if only recources_to_csv is set, ignore other output
             elif resources_to_csv:
-                output_string += res_df.to_csv(header=False, index=indexing)  # save as csv
+                output_string += res_df.to_csv(header=header, index=index)  # save as csv
             # else if no one is set
             else:
                 output_string += tabulate(job_df, tablefmt=table_format) + "\n"
                 if not ignore_resources:
-                    output_string += tabulate(res_df, headers='keys',tablefmt=table_format) + "\n"
+                    output_string += tabulate(res_df, headers='keys', tablefmt=table_format) + "\n"
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
@@ -813,7 +823,7 @@ def summarise_given_logs():
     for file in files:
 
         # for the * operation it should skip std_err and std_out files
-        if file.endswith(std_err) or file.endswith(std_out):
+        if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
             continue
 
         # check if file is a directory and run through the whole directory
@@ -836,7 +846,7 @@ def summarise_given_logs():
         # The given .log file was not found
         else:
             output_string += red + "No such file: {0}".format(file) + back_to_default
-            logging.error("No such file: {0}".format(file))
+            logging.error(f"No such file: {file}")
 
         # don't change output if csv style is wanted
         if resources_to_csv or job_to_csv:
@@ -1008,15 +1018,15 @@ def main():
     output_string = summarise_given_logs()  # print out all given files if possible
 
     # if for csv-format just one type if given, add the labels as the first line
-    if resources_to_csv and not job_to_csv:
-        temp_str = "Recources," if indexing else ""
-        temp_str += "Usage,Requested"
-        temp_str += ",Allocated" if show_allocated_res else ""
-        output_string = temp_str + "\n" + output_string
-    elif job_to_csv and not resources_to_csv:
-        temp_str = "Description," if indexing else ""
-        temp_str += "Values"
-        output_string = temp_str +"\n"+ output_string
+    # if resources_to_csv and not job_to_csv:
+    #     temp_str = "Recources," if indexing else ""
+    #     temp_str += "Usage,Requested"
+    #     temp_str += ",Allocated" if show_allocated_res else ""
+    #     output_string = temp_str + "\n" + output_string
+    # elif job_to_csv and not resources_to_csv:
+    #     temp_str = "Description," if indexing else ""
+    #     temp_str += "Values"
+    #     output_string = temp_str +"\n"+ output_string
 
     print(output_string)  # write it to the console
 
