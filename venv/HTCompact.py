@@ -974,14 +974,107 @@ def load_config(file):
 
 
 # Todo: summarary mode
-def summariser_given_logs():
+def summarise_given_logs():
+
+    n = len(files)
+    # no given files
+    if n == 0:
+        return "No files to summarise"
+
+    all_logs = [log_to_dataframe(file) for file in files]  # get all log details and save them
+
+    # take the first file and set first values to it, so the script does not have to check for types
+    log_description, log_resources = all_logs[0]  # first log description and resources
+
+    total_runtime = log_description.at[2, 'Values']
+
+    total_cpu_usage = float(log_resources.at[0, 'Usage'])
+    total_disk_usage = int(log_resources.at[1, 'Usage'])
+    total_memory_usage = int(log_resources.at[2, 'Usage'])
+
+    total_cpu_requested = int(log_resources.at[0, 'Requested'])
+    total_disk_requested = int(log_resources.at[1, 'Requested'])
+    total_memory_requested = int(log_resources.at[2, 'Requested'])
+
+    total_cpu_allocated = int(log_resources.at[0, 'Allocated'])
+    total_disk_allocated = int(log_resources.at[1, 'Allocated'])
+    total_memory_allocated = int(log_resources.at[2, 'Allocated'])
 
     output_string = ""
 
-    for file in files:
-        print(file)
+    for i, log in enumerate(all_logs):
+        if i == 0:  # skip the first file, cause thats handled above
+            continue
+
+        log_description, log_resources = log[0], log[1]
+
+        total_runtime += log_description.at[2, 'Values']
+
+        total_cpu_usage += float(log_resources.at[0, 'Usage'])
+        total_disk_usage += int(log_resources.at[1, 'Usage'])
+        total_memory_usage += int(log_resources.at[2, 'Usage'])
+
+        total_cpu_requested += int(log_resources.at[0, 'Requested'])
+        total_disk_requested += int(log_resources.at[1, 'Requested'])
+        total_memory_requested += int(log_resources.at[2, 'Requested'])
+
+        total_cpu_allocated += int(log_resources.at[0, 'Allocated'])
+        total_disk_allocated += int(log_resources.at[1, 'Allocated'])
+        total_memory_allocated += int(log_resources.at[2, 'Allocated'])
+
+    df_total = pd.DataFrame({
+        "Resources": ['Total Cpu', 'Total Disk', 'Total Memory'],
+        "Usage": [str(total_cpu_usage), str(total_disk_usage), str(total_memory_usage)],  # necessary
+        "Requested": [total_cpu_requested, total_disk_requested, total_memory_requested],
+        "Allocated": [total_cpu_allocated, total_disk_allocated, total_memory_allocated]
+    })
+
+    df_average = pd.DataFrame({
+        "Resources": ['Average Cpu', 'Avergae Disk', 'Average Memory'],
+        "Usage": [total_cpu_usage/n, total_disk_usage/n, total_memory_usage/n],  # necessary
+        "Requested": [total_cpu_requested/n, total_disk_requested/n, total_memory_requested/n],
+        "Allocated": [total_cpu_allocated/n, total_disk_allocated/n, total_memory_allocated/n]
+    })
+
+    output_string += "Total used resources:\n"
+    output_string += tabulate(df_total, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
+
+    output_string += "Used resources in average:\n"
+    output_string += tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format) + "\n"
+
+    output_string += f"Total runtime: {total_runtime} \n"
+    average_time = total_runtime/n
+    average_time = datetime.timedelta(days=average_time.days, seconds=average_time.seconds)
+    output_string += f"Runtime in average: {average_time}"  # needs to be tested
+
+    #[print(log_res[1]) for log_res in all_logs]
 
     return output_string
+
+
+def resolve_given_logs():
+    """
+    This method is supposed to take the given log files (by config or command line argument)
+    and tries to determine if these are valid log files, ignoring the std_log specification, if std_log = "".
+
+    It will run through given directories and check every single file, if accessible, for the
+    HTCondor log file standard, valid log files should start with lines like:
+
+    000 (5989.000.000) 03/30 15:48:47 Job submitted from host: <10.0.8.10:9618?addrs=10.0.8.10-9618&noUDP&sock=3775629_0774_3>
+
+    if done, it will change the global files list and store only valid log files.
+    The user will be remind, what files were accepted as "valid".
+
+    The user will also be informed if a given file was not found.
+
+    Todo: In addition there should be an option --force, that makes the script stop, if the file was not found or marked as valid
+    Todo: write this method
+
+
+
+    """
+    global files
+
 
 
 
@@ -1012,7 +1105,7 @@ def main():
     manage_params()  # manage the given variables and overwrite the config set variables
 
     if summarise:
-        output_string = summariser_given_logs()
+        output_string = summarise_given_logs()
     else:
         output_string = output_given_logs()  # print out all given files if possible
 
