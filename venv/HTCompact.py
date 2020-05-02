@@ -1,4 +1,4 @@
-#! usr/bin/python
+#! /usr/bin/env python
 import re
 import sys
 import os
@@ -46,13 +46,14 @@ show_output = False
 show_warnings = False
 show_allocated_res = False
 ignore_errors = True  # Todo: after implementation set default: False
+ignore_job_information = False
 ignore_resources = False
+
+# Features:
 resolve_ip_to_hostname = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
-
-# to store output in a csv file it's easier to save them into lists
-resources_to_csv = False
-job_to_csv = False
+summarise = False
+to_csv = False
 indexing = True # only for csv structure
 
 # escape sequences for colors
@@ -63,9 +64,10 @@ cyan = "\033[0;36m"
 back_to_default = "\033[0;39m"
 
 # global variables with default values for err/log/out files
-std_log = ""
-std_err = ""
-std_out = ""
+# Todo: implement a way that the script detects if a file is a log file etc.
+std_log = ".log"
+std_err = ".err"
+std_out = ".out"
 
 # global variables for tabulate
 table_format = "pretty"  # ascii by default
@@ -75,7 +77,6 @@ table_format = "pretty"  # ascii by default
 # Todo: background colors etc. for terminal usage
 # Todo: filter erros better, less priority
 # Todo: realise the further specs on: https://jugit.fz-juelich.de/inm7/infrastructure/scripts/-/issues/1
-# Todo: make global variable for err/log/out files, should be given by user if not in default form
 # Todo: standard sollte nicht .log sein, Skript soll selbst erkannen was log dateien sind und was nicht
 # a redirection in the terminal via > should ignore escape sequences
 
@@ -128,8 +129,8 @@ def manage_params():
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_output, show_warnings, show_allocated_res  # show more information variables
-    global ignore_errors, ignore_resources  # ignore information variables
-    global resources_to_csv, job_to_csv, indexing  # store the redirected output in a tabular structure
+    global ignore_errors, ignore_resources, ignore_job_information  # ignore information variables
+    global to_csv, summarise, indexing  # features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
@@ -152,11 +153,11 @@ def manage_params():
             files = better_args[0].split()
             better_args = better_args[1:]  # remove them from opts
 
-        opts, args = getopt.getopt(better_args, "h",
+        opts, args = getopt.getopt(better_args, "hs",
                                    ["help", "std-log=", "std-err=", "std-out=",
-                                    "show-output", "show-warnings", "show-allocated",
-                                    "ignore-errors", "ignore-resources",
-                                    "res-to-csv", "job-to-csv", "indexing=",
+                                    "show-output", "show-warnings", "show-allocated-resources",
+                                    "ignore-errors", "ignore-resources", "ignore-job-information",
+                                    "to-csv", "indexing=", "summarise",
                                     "table-format=",
                                     "resolve-ip"])
         for opt, arg in opts:
@@ -169,6 +170,9 @@ def manage_params():
             if opt in ["-h", "--help"]:
                 print(help_me())
                 sys.exit(0)
+            elif opt in ["-s", "--summarise"]:
+                summarise = True
+                logging.debug("Summariser mode turned on")
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
             elif opt == "--std-log":
                 # to forget the . should not be painful
@@ -190,7 +194,7 @@ def manage_params():
                 show_output = True
             elif opt.__eq__("--show-warnings"):
                 show_warnings = True
-            elif opt.__eq__("--show-allocated"):
+            elif opt.__eq__("--show-allocated-resources"):
                 show_allocated_res = True
 
             # all variables to ignore unwanted information
@@ -198,12 +202,12 @@ def manage_params():
                 ignore_errors = True
             elif opt.__eq__("--ignore-resources"):
                 ignore_resources = True
+            elif opt.__eq__("--ignore-job-information"):
+                ignore_job_information = True
 
             # all tabulate variables
-            elif opt.__eq__("--res-to-csv"):
-                resources_to_csv = True
-            elif opt.__eq__("--job-to-csv"):
-                job_to_csv = True
+            elif opt.__eq__("--to-csv"):
+                to_csv = True
             elif opt.__eq__("--indexing"):
                 indexing = (arg.lower() in accepted_states)
                 logging.debug("Indexing set to: {0}".format(indexing))
@@ -433,7 +437,6 @@ def log_to_dataframe(file):
             # job_executing = job_events[1][4][1:]
 
             match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
-            logging.debug(job_events[1][5])
             if match_host:
                 host = match_host[1]
                 # if resolve ip to hostname, change the ip to cpu: last number
@@ -542,7 +545,7 @@ def log_to_dataframe(file):
 
             # if the user wants allocated resources then add it to the DataFrame as well
             if show_allocated_res:
-                res_df.insert(2, "Allocated", allocated)
+                res_df.insert(3, "Allocated", allocated)
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
@@ -617,37 +620,20 @@ def smart_output_logs(file, header=True, index=False):
 
         output_string = ""
 
-        if not resources_to_csv and not job_to_csv:
+        if not to_csv:
             output_string += green+"The job procedure of : " + file + back_to_default + "\n"
             border_str = "-" * len(output_string) + "\n"
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
             # Todo: csv style one line
-
-            if job_to_csv and resources_to_csv:
-                new_df = job_df.append(res_df)
-
-                # Todo: excel option
-                if False:
-                    with pd.ExcelWriter('test.xlsx', engine="xlsxwriter") as writer:
-                        job_df.to_excel(writer, sheet_name="Job Information")
-                        res_df.to_excel(writer, sheet_name="Resources")
-
-                output_string += new_df.to_csv(header=header, index=index)
-
-            # if only job_to_csv is set
-            elif job_to_csv:
-                output_string += job_df.to_csv(header=header, index=index)  # save as csv
-
-            # if only recources_to_csv is set, ignore other output
-            elif resources_to_csv:
-                output_string += res_df.to_csv(header=header, index=index)  # save as csv
-            # else if no one is set
+            if to_csv:
+                pass
             else:
-                output_string += tabulate(job_df, tablefmt=table_format) + "\n"
+                if not ignore_job_information:
+                    output_string += tabulate(job_df, tablefmt=table_format, showindex=False) + "\n"
                 if not ignore_resources:
-                    output_string += tabulate(res_df, headers='keys', tablefmt=table_format) + "\n"
+                    output_string += tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False) + "\n"
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
@@ -774,7 +760,6 @@ def read_through_logs_dir(directory):
 
     :return: an output string, that returns all outputs
     """
-    # Todo:
     path = os.getcwd()  # current working directory , should be condor job summariser script
     logs_path = path + "/" + directory
 
@@ -815,12 +800,11 @@ def read_through_logs_dir(directory):
 
 
 # Todo: change for no specified type of log error and output files
-def summarise_given_logs():
-    global files
+def output_given_logs():
     output_string = ""
     current_path = os.getcwd()
     # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
-    for file in files:
+    for i, file in enumerate(files):
 
         # for the * operation it should skip std_err and std_out files
         if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
@@ -849,11 +833,11 @@ def summarise_given_logs():
             logging.error(f"No such file: {file}")
 
         # don't change output if csv style is wanted
-        if resources_to_csv or job_to_csv:
+        if to_csv:
             pass
         # because read_through_dir is already separating and after the last occurring file
         # no separation is needed
-        elif not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file) and not file == files[-1]:
+        elif not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file) and not i == len(files)-1:
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
@@ -950,7 +934,7 @@ def load_config(file):
 
         # what information should to be ignored
         if 'ignore' in sections:
-            global ignore_errors, ignore_resources  # sources to ignore
+            global ignore_errors, ignore_resources, ignore_job_information  # sources to ignore
 
             if 'ignore_errors' in config['ignore']:
                 ignore_errors = config['ignore']['ignore_errors'].lower() in accepted_states
@@ -958,19 +942,19 @@ def load_config(file):
             if 'ignore_resources' in config['ignore']:
                 ignore_resources = config['ignore']['ignore_resources'].lower() in accepted_states
                 logging.debug(f"Changed default ignore_resources to: {ignore_resources}")
+            if 'ignore_job_information' in config['ignore']:
+                ignore_job_information = config['ignore']['ignore_job_information'].lower() in accepted_states
+                logging.debug(f"Changed default ignore_job_information to: {ignore_job_information}")
 
         # Todo: thresholds
         if 'thresholds' in sections:
             pass
 
         if 'csv' in sections:
-            global resources_to_csv, job_to_csv, indexing
-            if 'resources_to_csv' in config['csv']:
-                resources_to_csv = config['csv']['resources_to_csv'].lower() in accepted_states
-                logging.debug(f"Changed default resources_to_csv to: {resources_to_csv}")
-            if 'job_to_csv' in config['csv']:
-                job_to_csv = config['csv']['job_to_csv'].lower() in accepted_states
-                logging.debug(f"Changed default job_to_csv to: {job_to_csv}")
+            global to_csv, indexing
+            if 'to_csv' in config['csv']:
+                to_csv = config['csv']['to_csv'].lower() in accepted_states
+                logging.debug(f"Changed default to_csv to: {to_csv}")
             if 'indexing' in config['csv']:
                 indexing = config['csv']['indexing'].lower() in accepted_states
                 logging.debug(f"Changed default indexing to: {indexing}")
@@ -987,6 +971,18 @@ def load_config(file):
     except KeyError as err:
         logging.exception(err)
         return False
+
+
+# Todo: summarary mode
+def summariser_given_logs():
+
+    output_string = ""
+
+    for file in files:
+        print(file)
+
+    return output_string
+
 
 
 def main():
@@ -1015,18 +1011,10 @@ def main():
 
     manage_params()  # manage the given variables and overwrite the config set variables
 
-    output_string = summarise_given_logs()  # print out all given files if possible
-
-    # if for csv-format just one type if given, add the labels as the first line
-    # if resources_to_csv and not job_to_csv:
-    #     temp_str = "Recources," if indexing else ""
-    #     temp_str += "Usage,Requested"
-    #     temp_str += ",Allocated" if show_allocated_res else ""
-    #     output_string = temp_str + "\n" + output_string
-    # elif job_to_csv and not resources_to_csv:
-    #     temp_str = "Description," if indexing else ""
-    #     temp_str += "Values"
-    #     output_string = temp_str +"\n"+ output_string
+    if summarise:
+        output_string = summariser_given_logs()
+    else:
+        output_string = output_given_logs()  # print out all given files if possible
 
     print(output_string)  # write it to the console
 
