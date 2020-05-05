@@ -837,6 +837,7 @@ def output_given_logs():
             logging.error(f"No such file: {file}")
 
         # don't change output if csv style is wanted
+        # Todo:
         if to_csv:
             pass
         # because read_through_dir is already separating and after the last occurring file
@@ -1008,6 +1009,7 @@ def summarise_given_logs():
     output_string = ""
 
     percent_mark = 10  # calculate the percentage of the running summarisation
+    start_status = 50  # value that decides, when it's worth showing a status of the progress
 
     for i, log in enumerate(all_logs):
         if i == 0:  # skip the first file, cause thats handled above
@@ -1029,7 +1031,7 @@ def summarise_given_logs():
         total_memory_allocated += int(log_resources.at[2, 'Allocated'])
 
         status = round(((i+1)/n)*100)
-        if int(status)/percent_mark >= 0 and n > 50:
+        if int(status/percent_mark) > 0 and n > start_status:
             percent_mark += 10
             print(f"Status: {status}% of all files summarised")
 
@@ -1061,7 +1063,7 @@ def summarise_given_logs():
     return output_string
 
 
-def validate_given_logs(files):
+def validate_given_logs(file_list):
     """
     This method is supposed to take the given log files (by config or command line argument)
     and tries to determine if these are valid log files, ignoring the std_log specification, if std_log = "".
@@ -1077,14 +1079,15 @@ def validate_given_logs(files):
     The user will also be informed if a given file was not found.
 
     Todo: In addition there should be an option --force, that makes the script stop, if the file was not found or marked as valid
-    Todo: write this method
 
-
+    Todo: user should be able to get the option to decide, when the same files appear more than once
+    -> my guess: yes or no question, if nothing is given in under 10 seconds, it should go with no
+    -> this should prevent, that the script is stucked, if the user is for example running it over night
 
     """
     valid_files = list()
 
-    for arg in files:
+    for arg in file_list:
 
         path = os.getcwd()  # current working directory , should be condor job summariser script
         logs_path = path + "/" + arg  # absolute path
@@ -1173,7 +1176,7 @@ def main():
     manage_params()  # manage the given variables and overwrite the config set variables
 
     global files
-    files = validate_given_logs(files)
+    files = validate_given_logs(files)  # validate the files
 
     if summarise:
         output_string = summarise_given_logs()
