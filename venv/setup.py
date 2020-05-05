@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-#
 
 # Todo: test
 
 from setuptools import setup, find_packages
 
 setup(name='HTCompact',
-      version='1.0.3',
+      version='0.0.1',
       description='HTCondor summariser script',
       author='Mathis Loevenich',
       url="https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script.git",
