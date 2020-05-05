@@ -1046,13 +1046,10 @@ def summarise_given_logs():
     average_time = total_runtime/n
     average_time = datetime.timedelta(days=average_time.days, seconds=average_time.seconds)
     output_string += f"Runtime in average: {average_time}"  # needs to be tested
-
-    #[print(log_res[1]) for log_res in all_logs]
-
     return output_string
 
 
-def resolve_given_logs():
+def validate_given_logs(files):
     """
     This method is supposed to take the given log files (by config or command line argument)
     and tries to determine if these are valid log files, ignoring the std_log specification, if std_log = "".
@@ -1073,9 +1070,58 @@ def resolve_given_logs():
 
 
     """
-    global files
+    valid_files = list()
 
+    for arg in files:
 
+        path = os.getcwd()  # current working directory , should be condor job summariser script
+        logs_path = path + "/" + arg
+
+        working_dir_path = ""
+        working_file_path = ""
+
+        if os.path.isdir(arg):
+            working_dir_path = arg
+        elif os.path.isdir(logs_path):
+            working_dir_path = logs_path
+        elif os.path.isfile(arg):
+            working_file_path = arg
+        elif os.path.isfile(logs_path):
+            working_file_path = logs_path
+
+        if working_dir_path.__ne__(""):
+            # run through all files and separate the files into log/error and output files
+            for file in os.listdir(working_dir_path):
+                # if it's not a sub folder
+                file_path = working_dir_path+"/"+file
+
+                if os.path.isfile(file_path):
+                    with open(file_path, "r") as read_file:
+                        # Todo: better specification with re
+                        if os.path.getsize(file_path) == 0:  # file is empty
+                            continue
+
+                        if read_file.readlines()[0].startswith("000 ("):
+                            logging.debug("File is a valid HTCondor log file")
+                            valid_files.append(file)
+                else:
+                    logging.debug("Subfolder found, what to do")
+                    print(yellow+f"Found a subfolder: {working_dir_path}/{file}, it will be ignored")
+
+        elif working_file_path.__ne__(""):
+            print(working_file_path)
+            with open(working_file_path, "r") as read_file:
+
+                if os.path.getsize(file_path) == 0:  # file is empty
+                    print(red+"How dare you, you gave me an empty file :("+back_to_default)
+
+                elif read_file.readlines()[0].startswith("000 ("):
+                    logging.debug("File is a valid HTCondor log file")
+                    valid_files.append(working_file_path)
+                else:
+                    logging.debug(f"The given file {read_file} is not a valid HTCondor log file")
+
+    return valid_files
 
 
 def main():
@@ -1103,6 +1149,10 @@ def main():
         load_config("setup.conf")
 
     manage_params()  # manage the given variables and overwrite the config set variables
+
+    print(files)
+    valid_files = validate_given_logs(files)
+    print(valid_files)
 
     if summarise:
         output_string = summarise_given_logs()
