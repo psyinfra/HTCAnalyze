@@ -12,7 +12,7 @@ from tabulate import tabulate
 
 # make default changes to logging tool
 logging.basicConfig(filename="stdout.log", level=logging.DEBUG,
-                    format='%(asctime)s: %(levelname)s : %(message)s')
+                    format='%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s')
 
 """
 
@@ -427,6 +427,10 @@ def filter_for_host(ip):
     """
 
 
+def raiseValueError(message):
+    raise ValueError(message)
+
+
 # Todo: test and implement in smart_output_logs
 def log_to_dataframe(file):
     try:
@@ -501,24 +505,21 @@ def log_to_dataframe(file):
 
             # match all resources
             # Todo: match even if values are missing, might get impossible if more than one value is missing
-            match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{2})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
+            match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
             if match:
                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
             else:
-                print(red + "Something went wrong reading the cpu information" + back_to_default)
-                return job_df, None
+                raiseValueError("Something went wrong reading the cpu information")
             match = re.match(r"\t *Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
             if match:
                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
             else:
-                print(red + "Something went wrong reading the disk information" + back_to_default)
-                return job_df, None
+                raise raiseValueError("Something went wrong reading the disk information")
             match = re.match(r"\t *Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[2])
             if match:
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
             else:
-                print(red + "Something went wrong reading the memory information" + back_to_default)
-                return job_df, None
+                raiseValueError("Something went wrong reading the memory information")
 
             # list of resources and their labels
             resource_labels = ["Cpu", "Disk", "Memory"]
@@ -557,6 +558,9 @@ def log_to_dataframe(file):
         logging.exception(err)
         print("The smart_output_logs method requires a " + std_log + " file as parameter")
     except FileNotFoundError as err:
+        logging.exception(err)
+        print(red + str(err) + back_to_default)
+    except ValueError as err:
         logging.exception(err)
         print(red + str(err) + back_to_default)
     # finally
@@ -841,7 +845,7 @@ def output_given_logs():
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
-        output_string = "None"
+        print(yellow+"Nothing to be found, please use python3 HTCompact.py --help for help"+back_to_default)
 
     return output_string
 
@@ -973,7 +977,7 @@ def load_config(file):
         return False
 
 
-# Todo: summarary mode
+# Todo: test with many files
 def summarise_given_logs():
 
     n = len(files)
@@ -981,6 +985,7 @@ def summarise_given_logs():
     if n == 0:
         return "No files to summarise"
 
+    logging.debug(f"Summarise Function will see fiels as: {files}")
     all_logs = [log_to_dataframe(file) for file in files]  # get all log details and save them
 
     # take the first file and set first values to it, so the script does not have to check for types
@@ -988,7 +993,7 @@ def summarise_given_logs():
 
     total_runtime = log_description.at[2, 'Values']
 
-    total_cpu_usage = float(log_resources.at[0, 'Usage'])
+    total_cpu_usage = float(log_resources.at[0, 'Usage']) if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
     total_disk_usage = int(log_resources.at[1, 'Usage'])
     total_memory_usage = int(log_resources.at[2, 'Usage'])
 
@@ -1002,15 +1007,16 @@ def summarise_given_logs():
 
     output_string = ""
 
+    percent_mark = 10  # calculate the percentage of the running summarisation
+
     for i, log in enumerate(all_logs):
         if i == 0:  # skip the first file, cause thats handled above
             continue
 
         log_description, log_resources = log[0], log[1]
-
         total_runtime += log_description.at[2, 'Values']
 
-        total_cpu_usage += float(log_resources.at[0, 'Usage'])
+        total_cpu_usage += float(log_resources.at[0, 'Usage']) if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
         total_disk_usage += int(log_resources.at[1, 'Usage'])
         total_memory_usage += int(log_resources.at[2, 'Usage'])
 
@@ -1022,6 +1028,12 @@ def summarise_given_logs():
         total_disk_allocated += int(log_resources.at[1, 'Allocated'])
         total_memory_allocated += int(log_resources.at[2, 'Allocated'])
 
+        status = round(((i+1)/n)*100)
+        if int(status)/percent_mark >= 0 and n > 50:
+            percent_mark += 10
+            print(f"Status: {status}% of all files summarised")
+
+    # Finished process, now the results
     df_total = pd.DataFrame({
         "Resources": ['Total Cpu', 'Total Disk', 'Total Memory'],
         "Usage": [str(total_cpu_usage), str(total_disk_usage), str(total_memory_usage)],  # necessary
@@ -1075,7 +1087,7 @@ def validate_given_logs(files):
     for arg in files:
 
         path = os.getcwd()  # current working directory , should be condor job summariser script
-        logs_path = path + "/" + arg
+        logs_path = path + "/" + arg  # absolute path
 
         working_dir_path = ""
         working_file_path = ""
@@ -1084,11 +1096,18 @@ def validate_given_logs(files):
             working_dir_path = arg
         elif os.path.isdir(logs_path):
             working_dir_path = logs_path
+
         elif os.path.isfile(arg):
             working_file_path = arg
         elif os.path.isfile(logs_path):
             working_file_path = logs_path
+        # check if only the id was given and resolve it with the std_log specification
+        elif os.path.isfile(arg+std_log):
+            working_file_path = arg+std_log
+        elif os.path.isfile(logs_path+std_log):
+            working_file_path = logs_path+std_log
 
+        # if path is a directory
         if working_dir_path.__ne__(""):
             # run through all files and separate the files into log/error and output files
             for file in os.listdir(working_dir_path):
@@ -1102,24 +1121,27 @@ def validate_given_logs(files):
                             continue
 
                         if read_file.readlines()[0].startswith("000 ("):
-                            logging.debug("File is a valid HTCondor log file")
-                            valid_files.append(file)
+                            logging.debug(f"{read_file.name} is a valid HTCondor log file")
+                            valid_files.append(file_path)
                 else:
                     logging.debug("Subfolder found, what to do")
                     print(yellow+f"Found a subfolder: {working_dir_path}/{file}, it will be ignored")
 
+        # else if path "might" be a valid HTCondor file
         elif working_file_path.__ne__(""):
-            print(working_file_path)
             with open(working_file_path, "r") as read_file:
 
-                if os.path.getsize(file_path) == 0:  # file is empty
+                if os.path.getsize(working_file_path) == 0:  # file is empty
                     print(red+"How dare you, you gave me an empty file :("+back_to_default)
 
                 elif read_file.readlines()[0].startswith("000 ("):
-                    logging.debug("File is a valid HTCondor log file")
+                    logging.debug(f"{read_file.name} is a valid HTCondor log file")
                     valid_files.append(working_file_path)
                 else:
                     logging.debug(f"The given file {read_file} is not a valid HTCondor log file")
+        else:
+            logging.error(f"The given file: {arg} does not exist")
+            print(red+f"The given file: {arg} does not exist"+back_to_default)
 
     return valid_files
 
@@ -1150,9 +1172,8 @@ def main():
 
     manage_params()  # manage the given variables and overwrite the config set variables
 
-    print(files)
-    valid_files = validate_given_logs(files)
-    print(valid_files)
+    global files
+    files = validate_given_logs(files)
 
     if summarise:
         output_string = summarise_given_logs()
