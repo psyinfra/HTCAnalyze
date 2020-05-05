@@ -1,4 +1,4 @@
-#Script to summarise HTCondor log files
+# Script to summarise HTCondor log files
 
 general use : **python3 HTCompact.py \[files] \[directories] \[config_file] \[args]**
 
@@ -17,7 +17,7 @@ lets consider we have a directory /logs with this structure:
         
         ...
 
-####possible configurations:
+#### possible configurations:
 ```
 python3 HtCompact.py -h (show a detailed description to all functionalities)
 
@@ -68,13 +68,13 @@ The job procedure of : ../logs/job_5991_0.log
 
 
 
-####Contribution:
+#### Contribution:
 please do
 
 
 
 
-####Used frameworks and packages:
+#### Used frameworks and packages:
 - xlsxwriter
 - tabulate
 - pandas (especially pandas.DataFrame)
