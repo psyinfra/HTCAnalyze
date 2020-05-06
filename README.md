@@ -1,6 +1,37 @@
 # Script to summarise HTCondor log files
 
-general use : **python3 HTCompact.py \[files] \[directories] \[config_file] \[args]**
+### Installation:
+    
+- first of all I would recommend a [virtual environment](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/), so that all the packages will only sit inside this scope:
+```
+    python3 -m venv env 
+```
+Now you should see a directory called *env* inside your current directory,
+- now you need to activate the virtual environment
+```
+source env/bin/activate
+```
+- now cd into that *env* directory: 
+```
+cd env
+```
+- to install all necesarry packages run:
+```
+pip install --user git+https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script.git
+```
+- now clone the project:
+```
+git clone https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script.git
+```
+- The script sits here:
+```
+htcondor-summariser-script/script/HTCompact.py  (This will be improved)
+```
+<br>
+<br> 
+ 
+#### general use :
+**python3 HTCompact.py \[files] \[directories] \[config_file] \[args]**
 
 lets consider we have a directory /logs with this structure:
 
