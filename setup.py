@@ -9,7 +9,7 @@ with open("README.md", "r") as readme:
 
 
 setup(name='HTCompact',
-      version='0.0.5',
+      version='0.0.1',
       description='HTCondor summariser script',
       long_description=long_description,
       author='Mathis Loevenich',
