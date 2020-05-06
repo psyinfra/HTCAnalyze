@@ -445,9 +445,8 @@ def log_to_dataframe(file):
                 host = match_host[1]
                 # if resolve ip to hostname, change the ip to cpu: last number
                 if resolve_ip_to_hostname:
-                    host = "cpu: "+ host.split('.')[-1]
+                    host = "cpu: " + host.split('.')[-1]
                 port = match_host[2]
-                logging.debug("matched host: {0}, matched port: {1}".format(host, port))
             else:
                 logging.exception("Host and port haven't been matched correctly")
                 print(red + "your log file has faulty values for the host ip make sure it's a valid IPv4" + back_to_default)
@@ -465,22 +464,53 @@ def log_to_dataframe(file):
             if True:
                 # check if termination state is normal
                 termination_state_inf = job_raw_information[-1][0]
-                match_termination_state = re.match(r"\t\(1\) ((?:\w+ )*)", termination_state_inf)
+                match_termination_state = re.match(r"\t\([0-9]+\) ((?:\w+ )*)", termination_state_inf)
                 if match_termination_state:
                     job_labels.append("Termination State")
-                    job_information.append(match_termination_state[1])
 
                     if "Normal termination" in match_termination_state[1]:
-                        match_return_value = re.match(r"\t\(1\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        job_information.append(match_termination_state[1])
+
+                        match_return_value = re.match(r"\t\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
-                            print(red + "Not a valid return state in the HTCondor log file" + back_to_default)
+                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
+                            print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
+                        else:
+                            job_labels.append("Return Value")
+                            job_information.append(return_value)
+                    elif "Abnormal termination" in match_termination_state[1]:
+                        job_information.append(red+match_termination_state[1]+back_to_default)
+
+
+                        match_return_value = re.match(r"\t\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        return_value = match_return_value[1] if match_return_value else "None"
+                        if return_value == "None":
+                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
+                            print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
                         else:
                             job_labels.append("Return Value")
                             job_information.append(return_value)
 
+                        termination_desc = list()
+                        # append the reason for the Abnormal Termination
+                        for desc in job_raw_information[-1][1:]:
+                            if desc.startswith("\t(0) "):
+                                termination_desc.append(desc[5:])
+                            else:
+                                break
+
+                        if not len(termination_desc) == 0:
+                            job_labels.append("Description")
+                            job_information.append("\n".join(termination_desc))
+                        else:
+                            logging.debug(f"No termination description for {file} found")
+
+                    else:
+                        logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
+
                 else:
-                    print(red + "Termination error in HTCondor log file" + back_to_default)
+                    print(red + f"Termination error in HTCondor log file: {file}" + back_to_default)
 
             # now put everything together in a table
             job_df = pd.DataFrame({
@@ -877,7 +907,7 @@ def load_config(file):
         elif os.path.isfile(f"~/.config/{script_name}/{file}"):
             logging.debug(f"Load config from: ~/.config/{script_name}/{file}")
         else:
-            logging.debug("No config file found")
+            logging.debug("{file} could not be found or is not a valid config file")
             return False
 
     # File has no readable format for the configparser, probably because it's not a config file
@@ -1124,11 +1154,12 @@ def validate_given_logs(file_list):
                             continue
 
                         if read_file.readlines()[0].startswith("000 ("):
-                            logging.debug(f"{read_file.name} is a valid HTCondor log file")
+                            # logging.debug(f"{read_file.name} is a valid HTCondor log file")
                             valid_files.append(file_path)
+
                 else:
-                    logging.debug("Subfolder found, what to do")
-                    print(yellow+f"Found a subfolder: {working_dir_path}/{file}, it will be ignored")
+                    logging.debug(f"Found a subfolder: {working_dir_path}/{file}, it will be ignored")
+                    print(yellow+f"Found a subfolder: {working_dir_path}/{file}, it will be ignored"+back_to_default)
 
         # else if path "might" be a valid HTCondor file
         elif working_file_path.__ne__(""):
@@ -1158,32 +1189,34 @@ def main():
 
     :return:
     """
+    try:
+        found_config = False
 
-    found_config = False
+        # check if a valid config file is underneeth the given files
+        if len(sys.argv) > 1:
+            for file in sys.argv[1:]:
+                if load_config(file):
+                    found_config = True
+                    sys.argv.remove(file)
+                    logging.debug("Removed {0} from arguments".format(file))
 
-    # check if a valid config file is underneeth the given files
-    if len(sys.argv) > 1:
-        for file in sys.argv[1:]:
-            if load_config(file):
-                found_config = True
-                sys.argv.remove(file)
-                logging.debug("Removed {0} from arguments".format(file))
+        # else try to find the default setup.conf file
+        if not found_config:
+            load_config("setup.conf")
 
-    # else try to find the default setup.conf file
-    if not found_config:
-        load_config("setup.conf")
+        manage_params()  # manage the given variables and overwrite the config set variables
 
-    manage_params()  # manage the given variables and overwrite the config set variables
+        global files
+        files = validate_given_logs(files)  # validate the files
 
-    global files
-    files = validate_given_logs(files)  # validate the files
+        if summarise:
+            output_string = summarise_given_logs()
+        else:
+            output_string = output_given_logs()  # print out all given files if possible
 
-    if summarise:
-        output_string = summarise_given_logs()
-    else:
-        output_string = output_given_logs()  # print out all given files if possible
-
-    print(output_string)  # write it to the console
+        print(output_string)  # write it to the console
+    except KeyboardInterrupt:
+        print("Script was interrupted")
 
 
 logging.debug("-------Start of HTCompact scipt-------")
