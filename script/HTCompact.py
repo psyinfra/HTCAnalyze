@@ -65,7 +65,7 @@ back_to_default = "\033[0;39m"
 
 # global variables with default values for err/log/out files
 # Todo: implement a way that the script detects if a file is a log file etc.
-std_log = ".log"
+std_log = ""
 std_err = ".err"
 std_out = ".out"
 
@@ -335,9 +335,6 @@ def read_condor_logs(file):
                 job_event[1]-> relevant information: job_event_information[1]
     """
 
-    if not file.endswith(std_log):
-        raise NameError("The read_condor_logs method is only for "+std_log+" files")
-
     log_job_events = list()  # saves the job_events
     job_event_information = list()  # saves the information for each job event, if there are any
     temp_job_event_list = list()  # just a temporary list, gets inserted into job_event_information
@@ -378,55 +375,6 @@ def read_condor_logs(file):
     return log_job_events, job_event_information
 
 
-# Todo: maybe less information
-# just read .err files content and return it as a string
-def read_condor_error(file):
-    """
-    Reads a HTCondor .err file and returns its content
-
-    :param file: a HTCondor .err file
-
-    :raises: :class:'NameError': The param file was no .err file
-             :class:'FileNotFoundError': if open does not work
-
-    :return: file content
-
-    """
-    if not file.endswith(std_err):
-        raise NameError("The read_condor_error method is only for "+std_err+" files")
-
-    err_file = open(file)
-    return "".join(err_file.readlines())
-
-
-# just read .out files content and return it as a string
-def read_condor_output(file):
-    """
-        Reads a HTCondor .out file and returns its content
-
-        :param file: a HTCondor .out file
-
-        :raises: :class:'NameError': The param file was no .out file
-                 :class:'FileNotFoundError': if open does not work
-
-        :return: file content
-
-        """
-    if not file.endswith(std_out):
-        raise NameError("The read_condor_output method is only for "+std_out+" files")
-
-    out_file = open(file)
-    return "".join(out_file.readlines())
-
-
-# Todo:
-def filter_for_host(ip):
-    """
-    this function is supposed to filter a given ip for it's representive url like juseless.inm7.de:cpu1
-    :return:
-    """
-
-
 def raiseValueError(message):
     raise ValueError(message)
 
@@ -436,9 +384,13 @@ def log_to_dataframe(file):
     try:
         job_events, job_raw_information = read_condor_logs(file)
 
+        submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
+
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
-            # job_executing = job_events[1][4][1:]
+            # calculate the runtime for the job
+            terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
+            runtime = terminating_date - submitted_date  # calculation of the time runtime
 
             match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
             if match_host:
@@ -449,12 +401,8 @@ def log_to_dataframe(file):
                 port = match_host[2]
             else:
                 logging.exception("Host and port haven't been matched correctly")
-                print(red + "your log file has faulty values for the host ip make sure it's a valid IPv4" + back_to_default)
-
-            # calculate the runtime for the job
-            submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
-            terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-            runtime = terminating_date - submitted_date  # calculation of the time runtime
+                print(
+                    red + "your log file has faulty values for the host ip make sure it's a valid IPv4" + back_to_default)
 
             # make a fancy design for the job_information
             job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
@@ -580,17 +528,26 @@ def log_to_dataframe(file):
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
-            # job_event description, which is "Job was aborted by the user" and the user filter
-            logging.debug(job_events[-1][4][1:] + ": " + ((job_raw_information[-1][0]).split(" ")[-1])[:-1])
-            print(job_events[-1][4][1:] + ": " + ((job_raw_information[-1][0]).split(" ")[-1])[:-1] + "\n")
+
+            # calculate the runtime for the job
+            if job_events[-1].__ne__(job_events[0]):
+                terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
+                runtime = terminating_date - submitted_date  # calculation of the time runtime
+            else:
+                runtime = datetime.timedelta(0)
+
+            user = ((job_raw_information[-1][0]).split(" ")[-1])[:-1]
+            job_df = pd.DataFrame({
+                "Description": ['Aborted by:', 'Runtime'],
+                "Values": [user, runtime]
+            })
+            res_df = None
+            logging.debug(f"{file}: Job arboted by {user}")
 
     except NameError as err:
         logging.exception(err)
         print("The smart_output_logs method requires a " + std_log + " file as parameter")
-    except FileNotFoundError as err:
-        logging.exception(err)
-        print(red + str(err) + back_to_default)
-    except ValueError as err:
+    except FileNotFoundError or ValueError or IndexError as err:
         logging.exception(err)
         print(red + str(err) + back_to_default)
     # finally
@@ -604,6 +561,8 @@ def smart_output_logs(file, header=True, index=False):
     reads a given HTCondor .log file with the read_condor_logs() function
 
     :param file:    a HTCondor .log file
+    :param header:  Shows the header of the columns
+    :param index:   Shows the index of the rows
 
     :return:        (output_string)
                     an output string that shows information like:
@@ -624,7 +583,7 @@ def smart_output_logs(file, header=True, index=False):
                     +--------+-------+-----------+-----------+
 
 
-                    with the --csv option it looks like:
+                    with the --to-csv option it looks like:
 
                     -------------------------------------------
 
@@ -649,31 +608,20 @@ def smart_output_logs(file, header=True, index=False):
 
         job_df, res_df = log_to_dataframe(file)
 
-        job_events, job_raw_information = read_condor_logs(file)
-        global border_str
-
         output_string = ""
 
-        if not to_csv:
-            output_string += green+"The job procedure of : " + file + back_to_default + "\n"
+        # Todo: csv style one line
+        if to_csv:
+            pass
+        else:
+            global border_str
+            output_string += green + "The job procedure of : " + file + back_to_default + "\n"
             border_str = "-" * len(output_string) + "\n"
 
-        if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
-
-            # Todo: csv style one line
-            if to_csv:
-                pass
-            else:
-                if not ignore_job_information:
-                    output_string += tabulate(job_df, tablefmt=table_format, showindex=False) + "\n"
-                if not ignore_resources:
-                    output_string += tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False) + "\n"
-
-        # Todo: more information, maybe why ?
-        elif job_events[-1][0].__eq__("009"):  # job aborted
-
-            # job_event description, which is "Job was aborted by the user" and the user filter
-            output_string += job_events[-1][4][1:] + ": " + ((job_raw_information[-1][0]).split(" ")[-1])[:-1]+"\n"
+            if not ignore_job_information:
+                output_string += tabulate(job_df, tablefmt=table_format, showindex=False) + "\n"
+            if not ignore_resources:
+                output_string += tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False) + "\n"
 
     except NameError as err:
         logging.exception(err)
@@ -684,6 +632,55 @@ def smart_output_logs(file, header=True, index=False):
     # finally
     else:
         return output_string
+
+
+# Todo: maybe less information
+# just read .err files content and return it as a string
+def read_condor_error(file):
+    """
+    Reads a HTCondor .err file and returns its content
+
+    :param file: a HTCondor .err file
+
+    :raises: :class:'NameError': The param file was no .err file
+             :class:'FileNotFoundError': if open does not work
+
+    :return: file content
+
+    """
+    if not file.endswith(std_err):
+        raise NameError("The read_condor_error method is only for "+std_err+" files")
+
+    err_file = open(file)
+    return "".join(err_file.readlines())
+
+
+# just read .out files content and return it as a string
+def read_condor_output(file):
+    """
+        Reads a HTCondor .out file and returns its content
+
+        :param file: a HTCondor .out file
+
+        :raises: :class:'NameError': The param file was no .out file
+                 :class:'FileNotFoundError': if open does not work
+
+        :return: file content
+
+        """
+    if not file.endswith(std_out):
+        raise NameError("The read_condor_output method is only for "+std_out+" files")
+
+    out_file = open(file)
+    return "".join(out_file.readlines())
+
+
+# Todo:
+def filter_for_host(ip):
+    """
+    this function is supposed to filter a given ip for it's representive url like juseless.inm7.de:cpu1
+    :return:
+    """
 
 
 def smart_output_error(file):
@@ -748,7 +745,7 @@ def smart_output_output(file):
         return output_string
 
 
-def smart_manage_all(job_spec_id):
+def smart_manage_all(file):
     """
     Combine all informations, that the user wants for a given job_spec_id like 398_31.
     -the first layer represents the HTCondor .log file
@@ -761,11 +758,11 @@ def smart_manage_all(job_spec_id):
     :param job_spec_id: file name without endling like job4323_1, job4323_1.<err|out|log> will cut the end off
     :return: a string that combines HTCondor log/err and out files and returns it
     """
-    # error handling, if a file name like 398_0.log was given,
-    if job_spec_id[-4:].__eq__(std_log):
-        job_spec_id = job_spec_id[:-4]
-
     try:
+        if std_log.__ne__(""):
+            job_spec_id = file[:-len(std_log)]
+        else:
+            job_spec_id = file
 
         output_string = smart_output_logs(job_spec_id + std_log)  # normal smart_output of log files
 
@@ -907,7 +904,7 @@ def load_config(file):
         elif os.path.isfile(f"~/.config/{script_name}/{file}"):
             logging.debug(f"Load config from: ~/.config/{script_name}/{file}")
         else:
-            logging.debug("{file} could not be found or is not a valid config file")
+            logging.debug(f"Config file:{file} could not be found or is not a valid config file")
             return False
 
     # File has no readable format for the configparser, probably because it's not a config file
@@ -1016,80 +1013,105 @@ def summarise_given_logs():
     if n == 0:
         return "No files to summarise"
 
-    logging.debug(f"Summarise Function will see fiels as: {files}")
-    all_logs = [log_to_dataframe(file) for file in files]  # get all log details and save them
-
-    # take the first file and set first values to it, so the script does not have to check for types
-    log_description, log_resources = all_logs[0]  # first log description and resources
-
-    total_runtime = log_description.at[2, 'Values']
-
-    total_cpu_usage = float(log_resources.at[0, 'Usage']) if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
-    total_disk_usage = int(log_resources.at[1, 'Usage'])
-    total_memory_usage = int(log_resources.at[2, 'Usage'])
-
-    total_cpu_requested = int(log_resources.at[0, 'Requested'])
-    total_disk_requested = int(log_resources.at[1, 'Requested'])
-    total_memory_requested = int(log_resources.at[2, 'Requested'])
-
-    total_cpu_allocated = int(log_resources.at[0, 'Allocated'])
-    total_disk_allocated = int(log_resources.at[1, 'Allocated'])
-    total_memory_allocated = int(log_resources.at[2, 'Allocated'])
-
+    # allocated all diffrent datatypes, easier to handle
     output_string = ""
+
+    total_runtime = datetime.timedelta()
+    used_cpus = dict()
+
+    total_cpu_usage = float(0)
+    total_disk_usage = int(0)
+    total_memory_usage = int(0)
+
+    total_cpu_requested = int(0)
+    total_disk_requested = int(0)
+    total_memory_requested = int(0)
+
+    total_cpu_allocated = int(0)
+    total_disk_allocated = int(0)
+    total_memory_allocated = int(0)
 
     percent_mark = 10  # calculate the percentage of the running summarisation
     start_status = 50  # value that decides, when it's worth showing a status of the progress
 
-    for i, log in enumerate(all_logs):
-        if i == 0:  # skip the first file, cause thats handled above
+    for i, file in enumerate(files):
+
+        try:
+            log = log_to_dataframe(file)
+
+            log_description, log_resources = log[0], log[1]
+
+            # if the Job was aborted, it still might have a runtime
+            if log_description.at[0, 'Description'].__eq__("Aborted by:"):
+                print(f"The job described in {file} was aborted")
+                total_runtime += log_description.at[1, 'Values']
+                continue
+
+            total_runtime += log_description.at[2, 'Values']
+            cpu = log_description.at[0, 'Values']
+            if cpu in used_cpus:
+                used_cpus[cpu] += 1
+            else:
+                used_cpus[cpu] = 1
+
+            total_cpu_usage += float(log_resources.at[0, 'Usage']) if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
+            total_disk_usage += int(log_resources.at[1, 'Usage'])
+            total_memory_usage += int(log_resources.at[2, 'Usage'])
+
+            total_cpu_requested += int(log_resources.at[0, 'Requested'])
+            total_disk_requested += int(log_resources.at[1, 'Requested'])
+            total_memory_requested += int(log_resources.at[2, 'Requested'])
+
+            if show_allocated_res:
+                total_cpu_allocated += int(log_resources.at[0, 'Allocated'])
+                total_disk_allocated += int(log_resources.at[1, 'Allocated'])
+                total_memory_allocated += int(log_resources.at[2, 'Allocated'])
+
+            status = round(((i+1)/n)*100)
+            if int(status/percent_mark) > 0 and n > start_status:
+                percent_mark += 10
+                print(f"Status: {status}% of all files summarised")
+
+        # Error ocurres when Job was aborted
+        except ValueError or KeyError as err:
+            logging.exception(err)
+            print(f"Summarisation error with {file}")
             continue
-
-        log_description, log_resources = log[0], log[1]
-        total_runtime += log_description.at[2, 'Values']
-
-        total_cpu_usage += float(log_resources.at[0, 'Usage']) if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
-        total_disk_usage += int(log_resources.at[1, 'Usage'])
-        total_memory_usage += int(log_resources.at[2, 'Usage'])
-
-        total_cpu_requested += int(log_resources.at[0, 'Requested'])
-        total_disk_requested += int(log_resources.at[1, 'Requested'])
-        total_memory_requested += int(log_resources.at[2, 'Requested'])
-
-        total_cpu_allocated += int(log_resources.at[0, 'Allocated'])
-        total_disk_allocated += int(log_resources.at[1, 'Allocated'])
-        total_memory_allocated += int(log_resources.at[2, 'Allocated'])
-
-        status = round(((i+1)/n)*100)
-        if int(status/percent_mark) > 0 and n > start_status:
-            percent_mark += 10
-            print(f"Status: {status}% of all files summarised")
 
     # Finished process, now the results
     df_total = pd.DataFrame({
         "Resources": ['Total Cpu', 'Total Disk', 'Total Memory'],
         "Usage": [str(total_cpu_usage), str(total_disk_usage), str(total_memory_usage)],  # necessary
-        "Requested": [total_cpu_requested, total_disk_requested, total_memory_requested],
-        "Allocated": [total_cpu_allocated, total_disk_allocated, total_memory_allocated]
+        "Requested": [total_cpu_requested, total_disk_requested, total_memory_requested]
+
     })
 
     df_average = pd.DataFrame({
         "Resources": ['Average Cpu', 'Avergae Disk', 'Average Memory'],
         "Usage": [total_cpu_usage/n, total_disk_usage/n, total_memory_usage/n],  # necessary
-        "Requested": [total_cpu_requested/n, total_disk_requested/n, total_memory_requested/n],
-        "Allocated": [total_cpu_allocated/n, total_disk_allocated/n, total_memory_allocated/n]
+        "Requested": [total_cpu_requested/n, total_disk_requested/n, total_memory_requested/n]
+
     })
 
+    if show_allocated_res:
+        df_total.insert(3, "Allocated", [total_cpu_allocated, total_disk_allocated, total_memory_allocated])
+        df_average.insert(3, "Allocated", [total_cpu_allocated/n, total_disk_allocated/n, total_memory_allocated/n])
+
+    output_string += "-"*50 + "\n"
     output_string += "Total used resources:\n"
     output_string += tabulate(df_total, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
 
     output_string += "Used resources in average:\n"
-    output_string += tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format) + "\n"
+    output_string += tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
 
+    output_string += f"Total files: {n} valid HTCondor files\n"
     output_string += f"Total runtime: {total_runtime} \n"
     average_time = total_runtime/n
     average_time = datetime.timedelta(days=average_time.days, seconds=average_time.seconds)
-    output_string += f"Runtime in average: {average_time}"  # needs to be tested
+    output_string += f"Runtime in average: {average_time} \n"  # needs to be tested
+    df_cpu = pd.DataFrame(used_cpus.items())
+    output_string += tabulate(df_cpu, showindex=False, headers=['Cpus', 'Executed Jobs'], tablefmt=table_format) +"\n"
+    output_string += "-"*50
     return output_string
 
 
@@ -1153,8 +1175,8 @@ def validate_given_logs(file_list):
                         if os.path.getsize(file_path) == 0:  # file is empty
                             continue
 
-                        if read_file.readlines()[0].startswith("000 ("):
-                            # logging.debug(f"{read_file.name} is a valid HTCondor log file")
+                        if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
+                            logging.debug(f"{read_file.name} is a valid HTCondor log file")
                             valid_files.append(file_path)
 
                 else:
@@ -1168,11 +1190,11 @@ def validate_given_logs(file_list):
                 if os.path.getsize(working_file_path) == 0:  # file is empty
                     print(red+"How dare you, you gave me an empty file :("+back_to_default)
 
-                elif read_file.readlines()[0].startswith("000 ("):
+                elif re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
                     logging.debug(f"{read_file.name} is a valid HTCondor log file")
                     valid_files.append(working_file_path)
                 else:
-                    logging.debug(f"The given file {read_file} is not a valid HTCondor log file")
+                    logging.debug(f"The given file {read_file.name} is not a valid HTCondor log file")
         else:
             logging.error(f"The given file: {arg} does not exist")
             print(red+f"The given file: {arg} does not exist"+back_to_default)
