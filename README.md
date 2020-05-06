@@ -4,7 +4,7 @@
     
 - first of all I would recommend a [virtual environment](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/), so that all the packages will only sit inside this scope:
 ```
-    python3 -m venv env 
+python3 -m venv env 
 ```
 Now you should see a directory called *env* inside your current directory,
 - now you need to activate the virtual environment
@@ -28,9 +28,10 @@ git clone https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-s
 htcondor-summariser-script/script/HTCompact.py  (This will be improved)
 ```
 <br>
-<br> 
  
-#### general use :
+### get started:
+- *python3 HTCompact.py --help* for detailed description
+- general use :
 **python3 HTCompact.py \[files] \[directories] \[config_file] \[args]**
 
 lets consider we have a directory /logs with this structure:
