@@ -9,13 +9,14 @@ with open("README.md", "r") as readme:
 
 
 setup(name='HTCompact',
-      version='0.0.2',
+      version='0.0.3',
       description='HTCondor summariser script',
       long_description=long_description,
       author='Mathis Loevenich',
       author_email='m.loevenich@fz-juelich.de',
       packages=find_packages(),
       license='LICENSE.txt',
+      python_requires='>=3.7',
       install_requires=[
             "datetime",
             "configparser",
@@ -25,8 +26,10 @@ setup(name='HTCompact',
       dependency_links=[
             'https://github.com/astanin/python-tabulate.git'
       ],
-      python_requires='>=3.7',
       scripts=[
-            'script'
+            'script/HTCompact'
+      ],
+      data_files=[
+            'script/setup.conf'
       ],
       )
