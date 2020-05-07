@@ -1,5 +1,10 @@
 # Script to summarise HTCondor log files
 
+### Reuirements:
+- python3
+- pip
+- git
+
 ### Installation:
     
 - first of all I would recommend a [virtual environment](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/), so that all the packages will only sit inside this scope:
@@ -19,20 +24,18 @@ cd env
 ```
 pip install --user git+https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script.git
 ```
-- now clone the project:
-```
-git clone https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script.git
-```
 - The script sits here:
 ```
-htcondor-summariser-script/script/HTCompact.py  (This will be improved)
+/bin/HTCompact
 ```
+also a basic setup.conf file will be installed, which is able to manage all command line arguments \
+check: [link to config]() for more information
 <br>
  
 ### get started:
-- *python3 HTCompact.py --help* for detailed description
+- *HTCompact --help* for detailed description
 - general use :
-**python3 HTCompact.py \[files] \[directories] \[config_file] \[args]**
+**HTCompact \[files] \[directories] \[config_file] \[args]**
 
 lets consider we have a directory /logs with this structure:
 
@@ -51,17 +54,17 @@ lets consider we have a directory /logs with this structure:
 
 #### possible configurations:
 ```
-python3 HtCompact.py -h (show a detailed description to all functionalities)
+HtCompact -h (show a detailed description to all functionalities)
 
-python3 HTCompact.py path_to_logs/job_5991_0.log
+HTCompact path_to_logs/job_5991_0.log
 
-python3 HTCompact.py path_to_logs/job_5991_0 path_to_logs/job_5992_23.log
+HTCompact path_to_logs/job_5991_0 path_to_logs/job_5992_23.log
 
-python3 HTCompact.py path_to_logs (run through all files inside the logs directory)
+HTCompact path_to_logs (run through all files inside the logs directory)
 
-python3 HTCompact.py path_to_logs/job_5991_* -s  (summarise all files starting with: job_5991_)
+HTCompact path_to_logs/job_5991_* -s  (summarise all files starting with: job_5991_)
 
-python3 HTCompact.py path_to_logs/395_2.log --table-format=pretty 
+HTCompact path_to_logs/395_2.log --table-format=pretty 
 ```
 
  lets consider we also have a config file (see: [link to config]()) \
@@ -69,9 +72,11 @@ python3 HTCompact.py path_to_logs/395_2.log --table-format=pretty
  
  possible configurations could be reduced to something like: 
 ```
-python3 HTCompact.py setup.conf
+HTCompact ( will search for setup.conf)
 or
-python3 HTCompact.py [files/directories] setup.conf (ignores files/directories set inside the config file)
+HTCompact setup.conf 
+or
+HTCompact [files/directories] setup.conf (ignores files/directories set inside the config file)
 ```
 
 where all arguments, files and directories can be set inside that config file \
@@ -107,7 +112,6 @@ please do
 
 
 #### Used frameworks and packages:
-- xlsxwriter
 - tabulate
 - pandas (especially pandas.DataFrame)
 - regular expresssions (Package re)
