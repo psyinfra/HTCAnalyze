@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 import re
 import sys
 import os
@@ -86,7 +86,7 @@ def ignore_spaces_in_arguments(args):
     """
         I want to make it easier for the user to insert many files at once are spaces between arguments.
 
-        I want that this is possible: python3 htcompact -f file1 file2 file3 ... -otheropts
+        I want that this is possible: python3 HTCompact -f file1 file2 file3 ... -otheropts
         What sys.argv[1:] looks like : ['-f', 'file1', 'file2', 'file3', '...', '-otheropts']
         What I want to look like : ['-f', 'file1 file2 file3 ...', '-otheropts']
 
@@ -242,7 +242,7 @@ def manage_params():
 
 def help_me():
     """
-    Usage: python3 htcompact [ Arguments ]
+    Usage: python3 HTCompact [ Arguments ]
 
     Arguments:                  [-h|--help, --std-log=, --std-err=, --std-out=
                                 --show-output, --show-warnings, --show-allocated
@@ -794,10 +794,10 @@ def read_through_logs_dir(directory):
     path = os.getcwd()  # current working directory , should be condor job summariser script
     logs_path = path + "/" + directory
 
-    if os.path.isdir(logs_path):
-        working_path = logs_path
-    elif os.path.isdir(directory):
+    if os.path.isdir(directory):
         working_path = directory
+    elif os.path.isdir(logs_path):
+        working_path = logs_path
     else:
         raise NameError("The given directory is either no directory or the path was wrong")
 
@@ -873,7 +873,7 @@ def output_given_logs():
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
-        print(yellow+"Nothing to be found, please use python3 htcompact --help for help"+back_to_default)
+        print(yellow+"Nothing to be found, please use python3 HTCompact --help for help"+back_to_default)
 
     return output_string
 
