@@ -86,7 +86,7 @@ def ignore_spaces_in_arguments(args):
     """
         I want to make it easier for the user to insert many files at once are spaces between arguments.
 
-        I want that this is possible: python3 HTCompact -f file1 file2 file3 ... -otheropts
+        I want that this is possible: HTCompact -f file1 file2 file3 ... -otheropts
         What sys.argv[1:] looks like : ['-f', 'file1', 'file2', 'file3', '...', '-otheropts']
         What I want to look like : ['-f', 'file1 file2 file3 ...', '-otheropts']
 
@@ -158,8 +158,7 @@ def manage_params():
                                     "show-output", "show-warnings", "show-allocated-resources",
                                     "ignore-errors", "ignore-resources", "ignore-job-information",
                                     "to-csv", "indexing=", "summarise",
-                                    "table-format=",
-                                    "resolve-ip"])
+                                    "resolve-ip", "table-format="])
         for opt, arg in opts:
 
             # catch unusual but not wrong parameters starting with -
@@ -242,12 +241,14 @@ def manage_params():
 
 def help_me():
     """
-    Usage: python3 HTCompact [ Arguments ]
+    Usage: HTCompact (log_files|config_file) [ Arguments ]
 
-    Arguments:                  [-h|--help, --std-log=, --std-err=, --std-out=
+    Arguments:                  [-h|--help, -s|--summarise
+                                --std-log=, --std-err=, --std-out=
                                 --show-output, --show-warnings, --show-allocated
                                 --ignore-errors, --ignore-resources
-                                --res-to-csv, --job-to-csv, indexing=
+                                --to-csv, indexing=,
+                                --resolve-ip
                                 table-format=]
 
     [-h|--help]                 to show this dialog
@@ -287,18 +288,21 @@ def help_me():
 
     ----------------------------csv related settings:---------------------------
 
-    [--res-to-csv]              resources will be structured in csv structure
-                                ignores all job related information
-                                if not --job-to-csv is set
+    [--to-csv]                  Has to be implemented
 
-    [--job-to-csv]              job related infromation will be structured in
-                                csv structure, ignores all resource
-                                related information, if not --res-to-csv is set
+    [--indexing=(True|False)]   no effect yet
 
-    [--indexing=(True|False)]   will show/hide the index column
-                                for ex --indexing=True
+    ----------------------------features:---------------------------------------
 
-    ----------------------------output settings:---------------------------
+    [-s|--summarise]            Takes all given logs and summarises resources,
+                                runtime and other informations in total and
+                                average
+
+    [--resolve-ip]              if set ips like: 10.0.9.4:9618, will be reduced
+                                to cpu 4, which only applies to our cluster in
+                                the FZJ
+
+    ----------------------------output settings:--------------------------------
 
     [--table-format=format]     the table format for the output,
                                 if not res-to-csv or job-to-csv is given
@@ -309,6 +313,23 @@ def help_me():
                                 latex_booktabs, tsv, pretty]
 
                                 default: pretty
+
+    ----------------------------config setup:----------------------------------
+
+    furthermore all these variables|settings can be set inside a config file
+    See the #Todo: link to config explanation
+
+    A basic config file setup.conf will be installed with this script.
+    The script is also checking for other config files in other places:
+
+    \033[0;32m"/etc" and "~/.config/HTCompact/"\033[0;39m
+
+    with different priorities from 1 (high) to 4 (low):
+    Priority[1] find config_file directly
+    Priority[2] search for config_file in /etc
+    Priority[3] search for config_file in ~/.config/HTCompact
+    Priority[4] take the "setup.conf" from the Project
+
 
     """
     # returns this docstring
@@ -873,13 +894,14 @@ def output_given_logs():
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
-        print(yellow+"Nothing to be found, please use python3 HTCompact --help for help"+back_to_default)
+        print(yellow+"Nothing to be found, please use HTCompact --help for help"+back_to_default)
 
     return output_string
 
 
 # search for config file ( UNIX BASED )
 # Todo: Test
+#       Change some varibales
 def load_config(file):
     """
 
@@ -889,7 +911,9 @@ def load_config(file):
     :return: False if not found, True if found and
     """
 
-    script_name = sys.argv[0][:-3]  # scriptname without .py
+    script_name = sys.argv[0]
+    if script_name.endswith(".py"):
+        script_name = sys.argv[0][:-3]  # scriptname without .py
     config = configparser.ConfigParser()
     # search for the given file, first directly, then in /etc and then in ~/.config/HTCompact/
     try:
@@ -993,10 +1017,13 @@ def load_config(file):
 
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
-            global resolve_ip_to_hostname, reverse_dns_lookup  # extra parameters
+            global resolve_ip_to_hostname, reverse_dns_lookup, summarise  # extra parameters
             if 'resolve_ip_to_hostname' in config['features']:
-                resolve_ip_to_hostname = (config['features']['resolve_ip_to_hostname'].lower() in accepted_states)
+                resolve_ip_to_hostname = config['features']['resolve_ip_to_hostname'].lower() in accepted_states
                 logging.debug(f"Changed default resolve_ip_to_hostname to: {resolve_ip_to_hostname}")
+            if 'summarise' in config['features']:
+                summarise = config['features']['summarise'].lower() in accepted_states
+                logging.debug(f"Changed default summarise to: {summarise}")
 
         return True
 
