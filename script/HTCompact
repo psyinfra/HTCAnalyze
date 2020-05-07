@@ -10,32 +10,27 @@ import configparser
 import pandas as pd
 from tabulate import tabulate
 
+
+"""
+
+This script is basically reading information from HTCondor log files and storing them into
+pandas DataFrames. By that its actually pretty simple to analyse the data.
+
+The script makes the information compact and easy to under stand, that's the reason for the name HTCompact
+
+Single logs can be read quite easily, but also it's possible to summarise a wholöe directory with logs 
+to see for ex. the avarage runtime and usage of all the logs
+
+"""
+
+# Todo: logging should be declared in setup and command line arguments
 # make default changes to logging tool
-logging.basicConfig(filename="stdout.log", level=logging.DEBUG,
-                    format='%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s')
+log_disabled = True
+logging.getLogger().disabled = log_disabled  # no more logging
+if not log_disabled:
+    logging.basicConfig(filename="stdout.log", level=logging.DEBUG,
+                        format='%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s')
 
-"""
-
-Version 1.2
-Maintainer: Mathis L.
-Date: 22.04.2020
-
-There are three functions, to simply read and return the content of a file,
-1. read_condor_logs(file): returns two lists that are related by the same index
-2. read_condor_error(file): returns a string with the content
-3. read_condor_output(file): returns a string with the content
-
-The next three functions return an output string in a "smart" way by parameters and specifications,
-especially the log files will be scanned for important information,
-1. smart_output_logs(file): returns important information inside a HTCondor log file
-2. smart_output_error(file): returns any kind of errors
-3. smart_output_output(file): returns just the output content, Todo: further specs
-
-The next function puts all three together, also by interpreting the given parameters
-smart_manage_all(cluster_process_id)
-
-
-"""
 # global parameters, used for dynamical output of information
 accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
 files = list()
