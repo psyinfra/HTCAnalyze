@@ -16,7 +16,7 @@ from tabulate import tabulate
 This script is basically reading information from HTCondor log files and storing them into
 pandas DataFrames. By that its actually pretty simple to analyse the data.
 
-The script makes the information compact and easy to under stand, that's the reason for the name HTCompact
+The script makes the information compact and easy to under stand, that's the reason for the name htc_summariser
 
 Single logs can be read quite easily, but also it's possible to summarise a wholöe directory with logs 
 to see for ex. the avarage runtime and usage of all the logs
@@ -243,7 +243,7 @@ def manage_params():
 
 def help_me():
     """
-    Usage: HTCompact (log_files|config_file) [ Arguments ]
+    Usage: htc_summariser (log_files|config_file) [ Arguments ]
 
     Arguments:                  [-h|--help, -s|--summarise
                                 --std-log=, --std-err=, --std-out=
@@ -324,12 +324,12 @@ def help_me():
     A basic config file htcompact_setup.conf will be installed with this script.
     The script is also checking for other config files in other places:
 
-    \033[0;32m"/etc" and "~/.config/HTCompact/"\033[0;39m
+    \033[0;32m"/etc" and "~/.config/htc_summariser/"\033[0;39m
 
     with different priorities from 1 (high) to 4 (low):
     Priority[1] find config_file directly
     Priority[2] search for config_file in /etc
-    Priority[3] search for config_file in ~/.config/HTCompact
+    Priority[3] search for config_file in ~/.config/htc_summariser
     Priority[4] take the "htcompact_setup.conf" from the Project
 
 
@@ -579,7 +579,7 @@ def log_to_dataframe(file):
 
 
 # Todo: gpu usage
-def smart_output_logs(file, header=True, index=False):
+def smart_output_logs(file):
     """
     reads a given HTCondor .log file with the read_condor_logs() function
 
@@ -896,7 +896,7 @@ def output_given_logs():
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
-        print(yellow+"Nothing found to analyse, please use HTCompact --help for help"+back_to_default)
+        print(yellow+"Nothing found to analyse, please use htc_summariser --help for help"+back_to_default)
 
     return output_string
 
@@ -917,10 +917,10 @@ def load_config(file):
     if script_name.endswith(".py"):
         script_name = sys.argv[0][:-3]  # scriptname without .py
     config = configparser.ConfigParser()
-    # search for the given file, first directly, then in /etc and then in ~/.config/HTCompact/
+    # search for the given file, first directly, then in /etc and then in ~/.config/htc_summariser/
     try:
         if os.path.isfile(file):
-            logging.debug(f"Load config file from htcondor-summariser-script project: {file}")
+            logging.debug(f"Load config from given file: {file}")
             config.read(file)
         # try to find config file in /etc
         elif os.path.isfile(f"/etc/{file}"):
@@ -1109,22 +1109,34 @@ def summarise_given_logs():
 
     # Finished process, now the results
     df_total = pd.DataFrame({
-        "Resources": ['Total Cpu', 'Total Disk', 'Total Memory'],
-        "Usage": [str(total_cpu_usage), str(total_disk_usage), str(total_memory_usage)],  # necessary
-        "Requested": [total_cpu_requested, total_disk_requested, total_memory_requested]
+        "Resources": ['Total Cpu', 'Total Disk (KB)', 'Total Memory (MB)'],
+        "Usage": [str(round(total_cpu_usage, 2)),
+                  str(total_disk_usage),
+                  str(total_memory_usage)],  # necessary
+        "Requested": [total_cpu_requested,
+                      total_disk_requested,
+                      total_memory_requested]
 
     })
 
     df_average = pd.DataFrame({
-        "Resources": ['Average Cpu', 'Avergae Disk', 'Average Memory'],
-        "Usage": [total_cpu_usage/n, total_disk_usage/n, total_memory_usage/n],  # necessary
-        "Requested": [total_cpu_requested/n, total_disk_requested/n, total_memory_requested/n]
+        "Resources": ['Average Cpu', 'Avergae Disk (KB)', 'Average Memory (MB)'],
+        "Usage": [round(total_cpu_usage/n, 2),
+                  round(total_disk_usage/n, 2),
+                  round(total_memory_usage/n, 2)],  # necessary
+        "Requested": [round(total_cpu_requested/n, 2),
+                      round(total_disk_requested/n, 2),
+                      round(total_memory_requested/n, 2)]
 
     })
 
     if show_allocated_res:
-        df_total.insert(3, "Allocated", [total_cpu_allocated, total_disk_allocated, total_memory_allocated])
-        df_average.insert(3, "Allocated", [total_cpu_allocated/n, total_disk_allocated/n, total_memory_allocated/n])
+        df_total.insert(3, "Allocated", [total_cpu_allocated,
+                                         total_disk_allocated,
+                                         total_memory_allocated])
+        df_average.insert(3, "Allocated", [round(total_cpu_allocated/n, 2),
+                                           round(total_disk_allocated/n, 2),
+                                           round(total_memory_allocated/n, 2)])
 
     output_string += "-"*50 + "\n"
     output_string += "Total used resources:\n"
@@ -1144,6 +1156,7 @@ def summarise_given_logs():
     return output_string
 
 
+# Todo: how many valid files and how many not valid and what type etc JUST EVERYTHING
 def validate_given_logs(file_list):
     """
     This method is supposed to take the given log files (by config or command line argument)
@@ -1208,7 +1221,7 @@ def validate_given_logs(file_list):
                             continue
 
                         if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
-                            logging.debug(f"{read_file.name} is a valid HTCondor log file")
+                            #logging.debug(f"{read_file.name} is a valid HTCondor log file")
                             valid_files.append(file_path)
 
                 else:
@@ -1273,6 +1286,6 @@ def main():
         print("Script was interrupted")
 
 
-logging.debug("-------Start of HTCompact scipt-------")
+logging.debug("-------Start of htc_summariser scipt-------")
 main()
-logging.debug("-------End of HTCompact script-------")
+logging.debug("-------End of htc_summariser script-------")
