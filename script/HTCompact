@@ -25,7 +25,7 @@ to see for ex. the avarage runtime and usage of all the logs
 
 # Todo: logging should be declared in setup and command line arguments
 # make default changes to logging tool
-log_disabled = True
+log_disabled = False
 logging.getLogger().disabled = log_disabled  # no more logging
 if not log_disabled:
     logging.basicConfig(filename="stdout.log", level=logging.DEBUG,
@@ -77,45 +77,52 @@ table_format = "pretty"  # ascii by default
 
 
 # may not be needed in future but will be used for now
-def ignore_spaces_in_arguments(args):
+def remove_files_from_args(args, short_opts, long_opts):
     """
-        I want to make it easier for the user to insert many files at once are spaces between arguments.
+        I want to make it easier for the user to insert many files at once.
+        The script should detect option arguments and files
 
-        I want that this is possible: HTCompact -f file1 file2 file3 ... -otheropts
-        What sys.argv[1:] looks like : ['-f', 'file1', 'file2', 'file3', '...', '-otheropts']
-        What I want to look like : ['-f', 'file1 file2 file3 ...', '-otheropts']
+        It will filter the given files and remove them from the argument list
 
         !!!Exactly that is this method doing!!! (because getopt has no such function)
 
     :param args: is supposed to be a list, in any case it should be the sys.argv[1:] list
-    :return: list, that ignores spaces in the arguments
+    :param short_opts: the short getopt options
+    :param long_opts: the long getopt options
+    :return: list of getopt arguments
     """
-    new_list = list()
-    temp_string = ""
+    new_args = args.copy()
+    generate_files = list()
     index = 0
-    print(args)
+    # run through the command line arguments, skip the getopt argument and interprete everything else as a file
     while True:
-        if index < len(args):
-            if args[index].startswith("-"):
-                new_list.append(args[index])
-
-            else:
-                if index < len(args) - 1 and args[index + 1].startswith("-"):
-                    temp_string += args[index]
-                    new_list.append(temp_string)
-                    temp_string = ""
-                else:
-                    temp_string += args[index] + " "
-
-            index += 1
-        else:
-            # if the last arg is no opt, the build up string must be considered, only if not empty
-            if temp_string.__ne__(""):
-                new_list.append(temp_string[:-1])
+        if index >= len(args):
             break
 
-    print(new_list)
-    return new_list
+        arg = args[index]
+
+        if arg.startswith("-"):  # for short_args
+            arg = arg[1:]
+            if arg.startswith("-"):  # for long_args
+                arg = arg[1:]
+
+            # skip the argument if getopt arguments are setable
+            if arg+":" in short_opts:
+                index += 1
+            elif arg+"=" in long_opts:
+                index += 1
+        else:
+            generate_files.append(arg)
+            new_args.remove(arg)
+
+        index += 1
+
+    # change files
+    global files
+    files = generate_files
+
+    # return valid arguments
+    return new_args
 
 
 def manage_params():
@@ -141,21 +148,18 @@ def manage_params():
         back_to_default = ""
         logging.debug("Output is getting redirected, all escape sequences were set to \"\"")
 
+    option_shorts = "hs"
+    option_longs = ["help", "std-log=", "std-err=", "std-out=",
+                    "show-output", "show-warnings", "show-allocated-resources",
+                    "ignore-errors", "ignore-resources", "ignore-job-information",
+                    "to-csv", "indexing=", "summarise",
+                    "resolve-ip", "table-format="]
+
+    better_args = remove_files_from_args(sys.argv[1:], option_shorts, option_longs)
+
     try:
-        better_args = ignore_spaces_in_arguments(sys.argv[1:])
+        opts, args = getopt.getopt(better_args, option_shorts, option_longs)
 
-        # interpret the first arguments after sys.argv[0] as files/directories
-        # if files are set in the config file and no files are given as argument, skip this part
-        if len(better_args) > 0 and not better_args[0].startswith("-"):
-            files = better_args[0].split()
-            better_args = better_args[1:]  # remove them from opts
-
-        opts, args = getopt.getopt(better_args, "hs",
-                                   ["help", "std-log=", "std-err=", "std-out=",
-                                    "show-output", "show-warnings", "show-allocated-resources",
-                                    "ignore-errors", "ignore-resources", "ignore-job-information",
-                                    "to-csv", "indexing=", "summarise",
-                                    "resolve-ip", "table-format="])
         for opt, arg in opts:
 
             # catch unusual but not wrong parameters starting with -
