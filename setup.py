@@ -30,6 +30,6 @@ setup(name='HTCompact',
             'script/HTCompact'
       ],
       data_files=[
-            'script/setup.conf'
+            'script/htcompact_setup.conf'
       ],
       )

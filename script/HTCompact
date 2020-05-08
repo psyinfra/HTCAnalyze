@@ -93,6 +93,7 @@ def ignore_spaces_in_arguments(args):
     new_list = list()
     temp_string = ""
     index = 0
+    print(args)
     while True:
         if index < len(args):
             if args[index].startswith("-"):
@@ -113,6 +114,7 @@ def ignore_spaces_in_arguments(args):
                 new_list.append(temp_string[:-1])
             break
 
+    print(new_list)
     return new_list
 
 
@@ -314,7 +316,7 @@ def help_me():
     furthermore all these variables|settings can be set inside a config file
     See the #Todo: link to config explanation
 
-    A basic config file setup.conf will be installed with this script.
+    A basic config file htcompact_setup.conf will be installed with this script.
     The script is also checking for other config files in other places:
 
     \033[0;32m"/etc" and "~/.config/HTCompact/"\033[0;39m
@@ -323,7 +325,7 @@ def help_me():
     Priority[1] find config_file directly
     Priority[2] search for config_file in /etc
     Priority[3] search for config_file in ~/.config/HTCompact
-    Priority[4] take the "setup.conf" from the Project
+    Priority[4] take the "htcompact_setup.conf" from the Project
 
 
     """
@@ -413,7 +415,7 @@ def log_to_dataframe(file):
                 host = match_host[1]
                 # if resolve ip to hostname, change the ip to cpu: last number
                 if resolve_ip_to_hostname:
-                    host = "cpu: " + host.split('.')[-1]
+                    host = "cpu node: " + host.split('.')[-1]
                 port = match_host[2]
             else:
                 logging.exception("Host and port haven't been matched correctly")
@@ -889,7 +891,7 @@ def output_given_logs():
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
-        print(yellow+"Nothing to be found, please use HTCompact --help for help"+back_to_default)
+        print(yellow+"Nothing found to analyse, please use HTCompact --help for help"+back_to_default)
 
     return output_string
 
@@ -1039,7 +1041,7 @@ def summarise_given_logs():
     output_string = ""
 
     total_runtime = datetime.timedelta()
-    used_cpus = dict()
+    cpu_nodes = dict()
 
     total_cpu_usage = float(0)
     total_disk_usage = int(0)
@@ -1071,10 +1073,10 @@ def summarise_given_logs():
 
             total_runtime += log_description.at[2, 'Values']
             cpu = log_description.at[0, 'Values']
-            if cpu in used_cpus:
-                used_cpus[cpu] += 1
+            if cpu in cpu_nodes:
+                cpu_nodes[cpu] += 1
             else:
-                used_cpus[cpu] = 1
+                cpu_nodes[cpu] = 1
 
             total_cpu_usage += float(log_resources.at[0, 'Usage']) if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
             total_disk_usage += int(log_resources.at[1, 'Usage'])
@@ -1131,8 +1133,8 @@ def summarise_given_logs():
     average_time = total_runtime/n
     average_time = datetime.timedelta(days=average_time.days, seconds=average_time.seconds)
     output_string += f"Runtime in average: {average_time} \n"  # needs to be tested
-    df_cpu = pd.DataFrame(used_cpus.items())
-    output_string += tabulate(df_cpu, showindex=False, headers=['Cpus', 'Executed Jobs'], tablefmt=table_format) +"\n"
+    df_cpu = pd.DataFrame(cpu_nodes.items())
+    output_string += tabulate(df_cpu, showindex=False, headers=['Cpu nodes', 'Executed jobs'], tablefmt=table_format) +"\n"
     output_string += "-"*50
     return output_string
 
@@ -1188,6 +1190,9 @@ def validate_given_logs(file_list):
         if working_dir_path.__ne__(""):
             # run through all files and separate the files into log/error and output files
             for file in os.listdir(working_dir_path):
+                # ignore hidden files
+                if file.startswith("."):
+                    continue
                 # if it's not a sub folder
                 file_path = working_dir_path+"/"+file
 
@@ -1244,9 +1249,9 @@ def main():
                     sys.argv.remove(file)
                     logging.debug("Removed {0} from arguments".format(file))
 
-        # else try to find the default setup.conf file
+        # else try to find the default htcompact_setup.conf file
         if not found_config:
-            load_config("setup.conf")
+            load_config("htcompact_setup.conf")
 
         manage_params()  # manage the given variables and overwrite the config set variables
 
