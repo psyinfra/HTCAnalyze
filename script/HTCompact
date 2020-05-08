@@ -117,9 +117,10 @@ def remove_files_from_args(args, short_opts, long_opts):
 
         index += 1
 
-    # change files
-    global files
-    files = generate_files
+    # change files, if found
+    if len(generate_files) > 0:
+        global files
+        files = generate_files
 
     # return valid arguments
     return new_args
