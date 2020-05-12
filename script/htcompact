@@ -131,6 +131,7 @@ def remove_files_from_args(args, short_opts, long_opts):
     return new_args
 
 
+#Todo: thresholds by command line
 def manage_params():
     """
     Interprets the given command line arguments and changes the global variables in this scrips
@@ -406,7 +407,6 @@ def raiseValueError(message):
     raise ValueError(message)
 
 
-# Todo: test and implement in smart_output_logs
 # Todo: store job event numbers ( see job_descriptions.txt)
 # Todo: Read HTCondor Errors that occurred
 def log_to_dataframe(file):
@@ -441,14 +441,13 @@ def log_to_dataframe(file):
             if True:
                 # check if termination state is normal
                 termination_state_inf = job_raw_information[-1][0]
-                match_termination_state = re.match(r"\t\([0-9]+\) ((?:\w+ )*)", termination_state_inf)
+                match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", termination_state_inf)
                 if match_termination_state:
                     job_labels.append("Termination State")
 
                     if "Normal termination" in match_termination_state[1]:
                         job_information.append(match_termination_state[1])
-
-                        match_return_value = re.match(r"\t\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
                             logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
@@ -459,7 +458,7 @@ def log_to_dataframe(file):
                     elif "Abnormal termination" in match_termination_state[1]:
                         job_information.append(red+match_termination_state[1]+back_to_default)
 
-                        match_return_value = re.match(r"\t\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
                             logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
@@ -471,7 +470,7 @@ def log_to_dataframe(file):
                         termination_desc = list()
                         # append the reason for the Abnormal Termination
                         for desc in job_raw_information[-1][1:]:
-                            if desc.startswith("\t(0) "):
+                            if re.match(r"[\t ]+\(0\)",desc):
                                 termination_desc.append(desc[5:])
                             else:
                                 break
@@ -511,28 +510,47 @@ def log_to_dataframe(file):
                 # done, partitionable_resources contain now only information about used resources
 
             # match all resources
-            # Todo: match even if values are missing, might get impossible if more than one value is missing
+            # ****************************************************************************************************
             match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
             if match:
                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
             else:
                 raiseValueError("Something went wrong reading the cpu information")
+
             match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
             if match:
                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
             else:
                 raise raiseValueError("Something went wrong reading the disk information")
-            match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[2])
+
+            # check if the log has gpu information in between
+            gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
+            gpu_found = False  # easier to check to add information in the DataFrame
+            match = re.match(r"[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) \"(.*)\"",
+                             partitionable_res[gpu_match_index])
+            if match:
+                gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
+                gpu_match_index += 1
+                gpu_found = True
+
+            match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[gpu_match_index])
             if match:
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
             else:
                 raiseValueError("Something went wrong reading the memory information")
+            # ****************************************************************************************************
 
             # list of resources and their labels
             resource_labels = ["Cpu", "Disk", "Memory"]
             usage = [cpu_usage, disk_usage, memory_usage]
             requested = [cpu_request, disk_request, memory_request]
             allocated = [cpu_allocated, disk_allocated, memory_allocated]
+
+            if gpu_found:
+                resource_labels.append("Gpus")
+                usage.append(gpu_usage)
+                requested.append(gpu_request)
+                allocated.append(gpu_allocated)
 
             # Error handling: change empty values to NaN in the first column
             for i in range(3):
@@ -552,8 +570,12 @@ def log_to_dataframe(file):
             })
 
             # if the user wants allocated resources then add it to the DataFrame as well
+            temp_index = 3
             if show_allocated_res:
-                res_df.insert(3, "Allocated", allocated)
+                res_df.insert(temp_index, "Allocated", allocated)
+                temp_index += 1
+            if gpu_found:
+                res_df.insert(temp_index, "Assigned", ["", "", gpu_name, ""])
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
