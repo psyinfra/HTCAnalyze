@@ -8,6 +8,7 @@ import logging
 
 import configparser
 import pandas as pd
+import numpy as np
 from tabulate import tabulate
 
 
@@ -57,6 +58,11 @@ green = "\033[0;32m"
 yellow = "\033[0;33m"
 cyan = "\033[0;36m"
 back_to_default = "\033[0;39m"
+
+# thresholds for bad/good/low usage of resources
+low_usage = 0.75
+good_usage = 0.9
+bad_usage = 1.2
 
 # global variables with default values for err/log/out files
 # Todo: implement a way that the script detects if a file is a log file etc.
@@ -381,7 +387,6 @@ def read_condor_logs(file):
                 time = match_log[4]  # filter the time
                 job_event_name = match_log[5]  # filter the job event name
                 job_relevant_inf = match_log[6]  # filter the job relevant information
-
                 log_job_events.append([job_event_number, clusterid_procid_inf,
                                        date, time, job_event_name, job_relevant_inf])
                 # print(job_event_number, clusterid_procid_inf, date, time, job_event_name, job_relevant_inf)
@@ -392,9 +397,9 @@ def read_condor_logs(file):
                     temp_job_event_list = list()  # clear list
                     continue
                 # else
-                if line.startswith("\t"):
+                #if re.match("[\t ]+", line):
+                else:
                     temp_job_event_list.append(line)
-
     return log_job_events, job_event_information
 
 
@@ -455,7 +460,6 @@ def log_to_dataframe(file):
                     elif "Abnormal termination" in match_termination_state[1]:
                         job_information.append(red+match_termination_state[1]+back_to_default)
 
-
                         match_return_value = re.match(r"\t\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
@@ -499,7 +503,8 @@ def log_to_dataframe(file):
             if True:  # just for readability
                 # remove unnecessary lines
                 lines = relevant_str.splitlines()
-                while not lines[0].startswith("\tPartitionable"):
+                #while not lines[0].startswith("\tPartitionable"):
+                while not re.match("[\t ]+Partitionable",lines[0]):
                     lines.remove(lines[0])
 
                 lines.remove(lines[0])
@@ -508,17 +513,17 @@ def log_to_dataframe(file):
 
             # match all resources
             # Todo: match even if values are missing, might get impossible if more than one value is missing
-            match = re.match(r"\t *Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
+            match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
             if match:
                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
             else:
                 raiseValueError("Something went wrong reading the cpu information")
-            match = re.match(r"\t *Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
+            match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
             if match:
                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
             else:
                 raise raiseValueError("Something went wrong reading the disk information")
-            match = re.match(r"\t *Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[2])
+            match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[2])
             if match:
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
             else:
@@ -533,11 +538,11 @@ def log_to_dataframe(file):
             # Error handling: change empty values to NaN in the first column
             for i in range(3):
                 if usage[i] == "":
-                    usage[i] = "NaN"
+                    usage[i] = np.nan
                 if requested[i] == "":
-                    requested[i] = "NaN"
+                    requested[i] = np.nan
                 if allocated[i] == "":
-                    allocated[i] = "NaN"
+                    allocated[i] = np.nan
 
             # put the data in the DataFrame
             res_df = pd.DataFrame({
@@ -577,6 +582,7 @@ def log_to_dataframe(file):
         print(red + str(err) + back_to_default)
     # finally
     else:
+        # Todo:
         return job_df, res_df
 
 
@@ -607,27 +613,6 @@ def smart_output_logs(file):
                     | Memory |   3   |     1     |    128    |
                     +--------+-------+-----------+-----------+
 
-
-                    with the --to-csv option it looks like:
-
-                    -------------------------------------------
-
-                    The job procedure of : ../logs/454_199.log
-
-                    Description,Values
-                    Executing on Host,10.0.9.1
-                    Port,9618
-                    Runtime,1:12:20
-                    Termination State,Normal termination
-                    Return Value,0
-
-                    Resources,Usage,Requested,Allocated
-                    Cpu,0.30,1,1
-                    Disk,200,200,3770656
-                    Memory,3,1,128
-
-                    -------------------------------------------
-
     """
     try:
 
@@ -643,6 +628,21 @@ def smart_output_logs(file):
             output_string += green + "The job procedure of : " + file + back_to_default + "\n"
             border_str = "-" * len(output_string) + "\n"
 
+            if not isinstance(res_df, type(None)):  # make sure res_df is not None
+                # Todo: implement thresholds
+
+                # reuested vs used disk RAM
+                if float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) > bad_usage:
+                    res_df.iloc[1, 1] = red+res_df.iloc[1, 1]+back_to_default  # changed color to red
+                elif float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) < low_usage:
+                    res_df.iloc[1, 1] = yellow+res_df.iloc[1, 1]+back_to_default  # changed color to yellow
+
+                # requested vs used Memory
+                if float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) > bad_usage:
+                    res_df.iloc[2, 1] = red+res_df.iloc[2, 1]+back_to_default  # changed color to red
+                elif float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) < low_usage:
+                    res_df.iloc[2, 1] = yellow+res_df.iloc[2, 1]+back_to_default  # changed color to yellow
+
             if not ignore_job_information:
                 output_string += tabulate(job_df, tablefmt=table_format, showindex=False) + "\n"
             if not ignore_resources:
@@ -651,7 +651,7 @@ def smart_output_logs(file):
     except NameError as err:
         logging.exception(err)
         print("The smart_output_logs method requires a "+std_log+" file as parameter")
-    except FileNotFoundError as err:
+    except Exception as err:
         logging.exception(err)
         print(red+str(err)+back_to_default)
     # finally
@@ -1096,7 +1096,8 @@ def summarise_given_logs():
             else:
                 cpu_nodes[cpu] = [1, log_description.at[2, 'Values']]
 
-            total_cpu_usage += float(log_resources.at[0, 'Usage']) if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
+            total_cpu_usage += float(log_resources.at[0, 'Usage']) \
+                if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
             total_disk_usage += int(log_resources.at[1, 'Usage'])
             total_memory_usage += int(log_resources.at[2, 'Usage'])
 
