@@ -59,9 +59,8 @@ yellow = "\033[0;33m"
 cyan = "\033[0;36m"
 back_to_default = "\033[0;39m"
 
-# thresholds for bad/good/low usage of resources
+# thresholds for bad and low usage of resources
 low_usage = 0.75
-good_usage = 0.9
 bad_usage = 1.2
 
 # global variables with default values for err/log/out files
@@ -1008,7 +1007,13 @@ def load_config(file):
 
         # Todo: thresholds
         if 'thresholds' in sections:
-            pass
+            global low_usage, bad_usage
+            if 'low_usage' in config['thresholds']:
+                low_usage = float(config['thresholds']['low_usage'])
+                logging.debug(f"Changed default low_usage to: {low_usage}")
+            if 'bad_usage' in config['thresholds']:
+                bad_usage = float(config['thresholds']['bad_usage'])
+                logging.debug(f"Changed default bad_usage to: {bad_usage}")
 
         if 'csv' in sections:
             global to_csv, indexing
