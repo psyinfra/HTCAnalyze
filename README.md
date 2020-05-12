@@ -26,16 +26,16 @@ pip install --user git+https://jugit.fz-juelich.de/inm7/infrastructure/loony_too
 ```
 - The script sits here:
 ```
-/bin/HTCompact
+/bin/htcompact
 ```
 also a basic setup.conf file will be installed, which is able to manage all command line arguments \
 check: [link to config]() for more information
 <br>
  
 ### get started:
-- *HTCompact --help* for detailed description
+- *htcompact --help* for detailed description
 - general use :
-**HTCompact \[files] \[directories] \[config_file] \[args]**
+**htcompact \[files] \[directories] \[config_file] \[args]**
 
 lets consider we have a directory /logs with this structure:
 
@@ -56,15 +56,15 @@ lets consider we have a directory /logs with this structure:
 ```
 HtCompact -h (show a detailed description to all functionalities)
 
-HTCompact path_to_logs/job_5991_0.log
+htcompact path_to_logs/job_5991_0.log
 
-HTCompact path_to_logs/job_5991_0 path_to_logs/job_5992_23.log
+htcompact path_to_logs/job_5991_0 path_to_logs/job_5992_23.log
 
-HTCompact path_to_logs (run through all files inside the logs directory)
+htcompact path_to_logs (run through all files inside the logs directory)
 
-HTCompact path_to_logs/job_5991_* -s  (summarise all files starting with: job_5991_)
+htcompact path_to_logs/job_5991_* -s  (summarise all files starting with: job_5991_)
 
-HTCompact path_to_logs/395_2.log --table-format=pretty 
+htcompact path_to_logs/395_2.log --table-format=pretty 
 ```
 
  lets consider we also have a config file (see: [link to config]()) \
@@ -72,11 +72,11 @@ HTCompact path_to_logs/395_2.log --table-format=pretty
  
  possible configurations could be reduced to something like: 
 ```
-HTCompact ( will search for setup.conf)
+htcompact ( will search for setup.conf)
 or
-HTCompact setup.conf 
+htcompact setup.conf 
 or
-HTCompact [files/directories] setup.conf (ignores files/directories set inside the config file)
+htcompact [files/directories] setup.conf (ignores files/directories set inside the config file)
 ```
 
 where all arguments, files and directories can be set inside that config file \

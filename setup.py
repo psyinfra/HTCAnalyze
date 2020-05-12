@@ -8,7 +8,7 @@ with open("README.md", "r") as readme:
     long_description = readme.read()
 
 
-setup(name='htc_summariser',
+setup(name='htcompact',
       version='0.1.0',
       description='HTCondor summariser script',
       long_description=long_description,
@@ -27,9 +27,9 @@ setup(name='htc_summariser',
             'https://github.com/astanin/python-tabulate.git'
       ],
       scripts=[
-            'script/htc_summariser'
+            'script/htcompact'
       ],
       data_files=[
-            'script/htcompact_setup.conf'
+            'script/htcsetup.conf'
       ],
       )

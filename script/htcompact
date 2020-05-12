@@ -16,7 +16,7 @@ from tabulate import tabulate
 This script is basically reading information from HTCondor log files and storing them into
 pandas DataFrames. By that its actually pretty simple to analyse the data.
 
-The script makes the information compact and easy to under stand, that's the reason for the name htc_summariser
+The script makes the information compact and easy to under stand, that's the reason for the name htcompact
 
 Single logs can be read quite easily, but also it's possible to summarise a wholöe directory with logs 
 to see for ex. the avarage runtime and usage of all the logs
@@ -60,7 +60,7 @@ back_to_default = "\033[0;39m"
 
 # global variables with default values for err/log/out files
 # Todo: implement a way that the script detects if a file is a log file etc.
-std_log = ""
+std_log = ".log"
 std_err = ".err"
 std_out = ".out"
 
@@ -243,7 +243,7 @@ def manage_params():
 
 def help_me():
     """
-    Usage: htc_summariser (log_files|config_file) [ Arguments ]
+    Usage: htcompact (log_files|config_file) [ Arguments ]
 
     Arguments:                  [-h|--help, -s|--summarise
                                 --std-log=, --std-err=, --std-out=
@@ -321,16 +321,16 @@ def help_me():
     furthermore all these variables|settings can be set inside a config file
     See the #Todo: link to config explanation
 
-    A basic config file htcompact_setup.conf will be installed with this script.
+    A basic config file htcsetup.conf will be installed with this script.
     The script is also checking for other config files in other places:
 
-    \033[0;32m"/etc" and "~/.config/htc_summariser/"\033[0;39m
+    \033[0;32m"/etc" and "~/.config/htcompact/"\033[0;39m
 
     with different priorities from 1 (high) to 4 (low):
     Priority[1] find config_file directly
     Priority[2] search for config_file in /etc
-    Priority[3] search for config_file in ~/.config/htc_summariser
-    Priority[4] take the "htcompact_setup.conf" from the Project
+    Priority[3] search for config_file in ~/.config/htcompact
+    Priority[4] take the "htcsetup.conf" from the Project
 
 
     """
@@ -403,6 +403,8 @@ def raiseValueError(message):
 
 
 # Todo: test and implement in smart_output_logs
+# Todo: store job event numbers ( see job_descriptions.txt)
+# Todo: Read HTCondor Errors that occurred
 def log_to_dataframe(file):
     try:
         job_events, job_raw_information = read_condor_logs(file)
@@ -896,7 +898,7 @@ def output_given_logs():
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
-        print(yellow+"Nothing found to analyse, please use htc_summariser --help for help"+back_to_default)
+        print(yellow+"Nothing found to analyse, please use htcompact --help for help"+back_to_default)
 
     return output_string
 
@@ -917,7 +919,7 @@ def load_config(file):
     if script_name.endswith(".py"):
         script_name = sys.argv[0][:-3]  # scriptname without .py
     config = configparser.ConfigParser()
-    # search for the given file, first directly, then in /etc and then in ~/.config/htc_summariser/
+    # search for the given file, first directly, then in /etc and then in ~/.config/htcompact/
     try:
         if os.path.isfile(file):
             logging.debug(f"Load config from given file: {file}")
@@ -1037,15 +1039,17 @@ def load_config(file):
 # Todo: test with many files
 def summarise_given_logs():
 
-    n = len(files)
+    valid_files = len(files)
     # no given files
-    if n == 0:
+    if valid_files == 0:
         return "No files to summarise"
 
     # allocated all diffrent datatypes, easier to handle
     output_string = ""
 
-    total_runtime = datetime.timedelta()
+    aborted_files = 0
+    normal_runtime = datetime.timedelta()
+    aborted_runtime = datetime.timedelta()
     cpu_nodes = dict()
 
     total_cpu_usage = float(0)
@@ -1072,11 +1076,12 @@ def summarise_given_logs():
 
             # if the Job was aborted, it still might have a runtime
             if log_description.at[0, 'Description'].__eq__("Aborted by:"):
-                print(f"The job described in {file} was aborted")
-                total_runtime += log_description.at[1, 'Values']
+                # print(f"The job described in {file} was aborted")
+                aborted_runtime += log_description.at[1, 'Values']
+                aborted_files += 1
                 continue
 
-            total_runtime += log_description.at[2, 'Values']
+            normal_runtime += log_description.at[2, 'Values']
             cpu = log_description.at[0, 'Values']
             if cpu in cpu_nodes:
                 cpu_nodes[cpu] += 1
@@ -1096,8 +1101,8 @@ def summarise_given_logs():
                 total_disk_allocated += int(log_resources.at[1, 'Allocated'])
                 total_memory_allocated += int(log_resources.at[2, 'Allocated'])
 
-            status = round(((i+1)/n)*100)
-            if int(status/percent_mark) > 0 and n > start_status:
+            status = round(((i+1)/valid_files)*100)
+            if int(status/percent_mark) > 0 and valid_files > start_status:
                 percent_mark += 10
                 print(f"Status: {status}% of all files summarised")
 
@@ -1107,52 +1112,75 @@ def summarise_given_logs():
             print(f"Summarisation error with {file}")
             continue
 
-    # Finished process, now the results
-    df_total = pd.DataFrame({
-        "Resources": ['Total Cpu', 'Total Disk (KB)', 'Total Memory (MB)'],
-        "Usage": [str(round(total_cpu_usage, 2)),
-                  str(total_disk_usage),
-                  str(total_memory_usage)],  # necessary
-        "Requested": [total_cpu_requested,
-                      total_disk_requested,
-                      total_memory_requested]
+    n = valid_files - aborted_files  # calc diffrenc of successful executed jobs
 
-    })
+    average_runtime = normal_runtime / n if n != 0 else normal_runtime
+    average_runtime = datetime.timedelta(days=average_runtime.days, seconds=average_runtime.seconds)
+    total_runtime = normal_runtime + aborted_runtime
 
-    df_average = pd.DataFrame({
-        "Resources": ['Average Cpu', 'Avergae Disk (KB)', 'Average Memory (MB)'],
-        "Usage": [round(total_cpu_usage/n, 2),
-                  round(total_disk_usage/n, 2),
-                  round(total_memory_usage/n, 2)],  # necessary
-        "Requested": [round(total_cpu_requested/n, 2),
-                      round(total_disk_requested/n, 2),
-                      round(total_memory_requested/n, 2)]
+    output_string += "-"*75 + "\n"
 
-    })
+    output_string += f"{valid_files} valid HTCondor job files found\n"
+    # it is more obvious, to see None when there was no time to detect
+    if aborted_files > 0:
+        output_string += f"{aborted_files} of the jobs were aborted\n\n"
 
-    if show_allocated_res:
-        df_total.insert(3, "Allocated", [total_cpu_allocated,
-                                         total_disk_allocated,
-                                         total_memory_allocated])
-        df_average.insert(3, "Allocated", [round(total_cpu_allocated/n, 2),
-                                           round(total_disk_allocated/n, 2),
-                                           round(total_memory_allocated/n, 2)])
+    time_dict = dict()
 
-    output_string += "-"*50 + "\n"
-    output_string += "Total used resources:\n"
-    output_string += tabulate(df_total, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
+    if normal_runtime != datetime.timedelta(0, 0, 0):
+        time_dict["Total runtime of all successful jobs"] = normal_runtime
+    if aborted_runtime != datetime.timedelta(0, 0, 0):
+        time_dict["Total runtime of all aborted jobs"] = aborted_runtime
+    if total_runtime != datetime.timedelta(0, 0, 0):
+        time_dict["Total runtime"] = total_runtime
+    if average_runtime:
+        time_dict["Average runtime per job\n(only successful executed jobs)"] = average_runtime
 
-    output_string += "Used resources in average:\n"
-    output_string += tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
+    runtime_df = pd.DataFrame(time_dict.items())
+    output_string += tabulate(runtime_df, showindex=False, tablefmt='simple') + "\n\n"
 
-    output_string += f"Total files: {n} valid HTCondor files\n"
-    output_string += f"Total runtime: {total_runtime} \n"
-    average_time = total_runtime/n
-    average_time = datetime.timedelta(days=average_time.days, seconds=average_time.seconds)
-    output_string += f"Runtime in average: {average_time} \n"  # needs to be tested
-    df_cpu = pd.DataFrame(cpu_nodes.items())
-    output_string += tabulate(df_cpu, showindex=False, headers=['Cpu nodes', 'Executed jobs'], tablefmt=table_format) +"\n"
-    output_string += "-"*50
+    if n != 0:  # do nothing, if all valid jobs were aborted
+        df_total = pd.DataFrame({
+            "Resources": ['Total Cpu', 'Total Disk (KB)', 'Total Memory (MB)'],
+            "Usage": [str(round(total_cpu_usage, 2)),
+                      str(total_disk_usage),
+                      str(total_memory_usage)],  # necessary
+            "Requested": [total_cpu_requested,
+                          total_disk_requested,
+                          total_memory_requested]
+
+        })
+        df_average = pd.DataFrame({
+            "Resources": ['Average Cpu', 'Avergae Disk (KB)', 'Average Memory (MB)'],
+            "Usage": [round(total_cpu_usage / n, 2),
+                      round(total_disk_usage / n, 2),
+                      round(total_memory_usage / n, 2)],  # necessary
+            "Requested": [round(total_cpu_requested / n, 2),
+                          round(total_disk_requested / n, 2),
+                          round(total_memory_requested / n, 2)]
+
+        })
+
+        if show_allocated_res:
+            df_total.insert(3, "Allocated", [total_cpu_allocated,
+                                             total_disk_allocated,
+                                             total_memory_allocated])
+            df_average.insert(3, "Allocated", [round(total_cpu_allocated / n, 2),
+                                               round(total_disk_allocated / n, 2),
+                                               round(total_memory_allocated / n, 2)])
+
+        output_string += "Total used resources:\n"
+        output_string += tabulate(df_total, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
+
+        output_string += "Used resources in average:\n"
+        output_string += tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
+
+    # Todo: cpu nodes might change over lifetime of a job
+    if len(cpu_nodes) > 0:
+        df_cpu = pd.DataFrame(cpu_nodes.items())
+        headers = ['Cpu nodes', 'Executed jobs']
+        output_string += tabulate(df_cpu, showindex=False, headers=headers, tablefmt=table_format) + "\n"
+    output_string += "-"*75
     return output_string
 
 
@@ -1267,9 +1295,9 @@ def main():
                     sys.argv.remove(file)
                     logging.debug("Removed {0} from arguments".format(file))
 
-        # else try to find the default htcompact_setup.conf file
+        # else try to find the default htcsetup.conf file
         if not found_config:
-            load_config("htcompact_setup.conf")
+            load_config("htcsetup.conf")
 
         manage_params()  # manage the given variables and overwrite the config set variables
 
@@ -1286,6 +1314,6 @@ def main():
         print("Script was interrupted")
 
 
-logging.debug("-------Start of htc_summariser scipt-------")
+logging.debug("-------Start of htcompact scipt-------")
 main()
-logging.debug("-------End of htc_summariser script-------")
+logging.debug("-------End of htcompact script-------")
