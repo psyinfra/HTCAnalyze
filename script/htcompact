@@ -501,8 +501,8 @@ def log_to_dataframe(file):
             if True:  # just for readability
                 # remove unnecessary lines
                 lines = relevant_str.splitlines()
-                #while not lines[0].startswith("\tPartitionable"):
-                while not re.match("[\t ]+Partitionable",lines[0]):
+                # while not lines[0].startswith("\tPartitionable"):
+                while not re.match(r"[\t ]+Partitionable", lines[0]):
                     lines.remove(lines[0])
 
                 lines.remove(lines[0])
@@ -575,7 +575,7 @@ def log_to_dataframe(file):
                 res_df.insert(temp_index, "Allocated", allocated)
                 temp_index += 1
             if gpu_found:
-                res_df.insert(temp_index, "Assigned", ["", "", gpu_name, ""])
+                res_df.insert(temp_index, "Assigned", ["", "", "", gpu_name])
 
         # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
@@ -1124,7 +1124,7 @@ def summarise_given_logs():
                 cpu_nodes[cpu] = [1, log_description.at[2, 'Values']]
 
             total_cpu_usage += float(log_resources.at[0, 'Usage']) \
-                if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
+                if str(log_resources.at[0, 'Usage']).lower() != 'nan' else 0
             total_disk_usage += int(log_resources.at[1, 'Usage'])
             total_memory_usage += int(log_resources.at[2, 'Usage'])
 
