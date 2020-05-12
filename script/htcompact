@@ -1038,6 +1038,13 @@ def load_config(file):
 
 # Todo: test with many files
 def summarise_given_logs():
+    """
+    Summarises all used resources and the runtime in total and average
+
+    Runs threw the log files via the log_to_dataframe function
+
+    :return:
+    """
 
     valid_files = len(files)
     # no given files
@@ -1084,9 +1091,10 @@ def summarise_given_logs():
             normal_runtime += log_description.at[2, 'Values']
             cpu = log_description.at[0, 'Values']
             if cpu in cpu_nodes:
-                cpu_nodes[cpu] += 1
+                cpu_nodes[cpu][0] += 1
+                cpu_nodes[cpu][1] += log_description.at[2, 'Values']
             else:
-                cpu_nodes[cpu] = 1
+                cpu_nodes[cpu] = [1, log_description.at[2, 'Values']]
 
             total_cpu_usage += float(log_resources.at[0, 'Usage']) if log_resources.at[0, 'Usage'].lower() != 'nan' else 0
             total_disk_usage += int(log_resources.at[1, 'Usage'])
@@ -1130,8 +1138,8 @@ def summarise_given_logs():
     if normal_runtime != datetime.timedelta(0, 0, 0):
         time_dict["Total runtime of all successful jobs"] = normal_runtime
     if aborted_runtime != datetime.timedelta(0, 0, 0):
+        # some jobs were aborted, diffrentiate between normal runtime, aborted runtime and total runtime
         time_dict["Total runtime of all aborted jobs"] = aborted_runtime
-    if total_runtime != datetime.timedelta(0, 0, 0):
         time_dict["Total runtime"] = total_runtime
     if average_runtime:
         time_dict["Average runtime per job\n(only successful executed jobs)"] = average_runtime
@@ -1169,17 +1177,30 @@ def summarise_given_logs():
                                                round(total_disk_allocated / n, 2),
                                                round(total_memory_allocated / n, 2)])
 
-        output_string += "Total used resources:\n"
-        output_string += tabulate(df_total, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
+        # Todo: add later
+        #output_string += "Total used resources:\n"
+        #output_string += tabulate(df_total, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
 
+        output_string += "The following data only applies to successful executed jobs\n\n"
         output_string += "Used resources in average:\n"
         output_string += tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
 
     # Todo: cpu nodes might change over lifetime of a job
     if len(cpu_nodes) > 0:
-        df_cpu = pd.DataFrame(cpu_nodes.items())
-        headers = ['Cpu nodes', 'Executed jobs']
-        output_string += tabulate(df_cpu, showindex=False, headers=headers, tablefmt=table_format) + "\n"
+
+        executed_jobs = list()
+        runtime_per_node = list()
+        for val in cpu_nodes.values():
+            executed_jobs.append(val[0])
+            average_job_duration = val[1]/val[0]
+            runtime_per_node.append(datetime.timedelta(average_job_duration.days,average_job_duration.seconds))
+
+        df_cpu = pd.DataFrame({
+            "Cpu Nodes": list(cpu_nodes.keys()),
+            "Executed Jobs": executed_jobs,
+            "Average job duration": runtime_per_node
+        })
+        output_string += tabulate(df_cpu, showindex=False, headers='keys', tablefmt=table_format) + "\n"
     output_string += "-"*75
     return output_string
 
