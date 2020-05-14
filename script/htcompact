@@ -41,7 +41,7 @@ border_str = ""
 show_output = False
 show_warnings = False
 ignore_allocated_resources = False
-show_errors = True  # Todo: after implementation set default: False
+show_errors = False
 ignore_job_information = False
 ignore_resources = False
 
@@ -64,7 +64,6 @@ low_usage = 0.75
 bad_usage = 1.2
 
 # global variables with default values for err/log/out files
-# Todo: implement a way that the script detects if a file is a log file etc.
 std_log = ""
 std_err = ""
 std_out = ""
@@ -77,7 +76,6 @@ table_format = "pretty"  # ascii by default
 # Todo: background colors etc. for terminal usage
 # Todo: filter erros better, less priority
 # Todo: realise the further specs on: https://jugit.fz-juelich.de/inm7/infrastructure/scripts/-/issues/1
-# Todo: standard sollte nicht .log sein, Skript soll selbst erkannen was log dateien sind und was nicht
 # a redirection in the terminal via > should ignore escape sequences
 
 
@@ -345,9 +343,6 @@ def help_me():
 
 
 # reads all information, but returns them in two lists
-# Todo: read specifications from a config files,
-#       cause the script is based on hardcoded interpretation for log files in
-#       the form: string_clusterId_processId.log
 def read_condor_logs(file):
     """
 
@@ -603,11 +598,8 @@ def log_to_dataframe(file):
         print(red + str(err) + back_to_default)
     # finally
     else:
-        # Todo:
         return job_df, res_df
 
-
-# Todo: gpu usage
 def smart_output_logs(file):
     """
     reads a given HTCondor .log file with the read_condor_logs() function
@@ -650,7 +642,6 @@ def smart_output_logs(file):
             border_str = "-" * len(output_string) + "\n"
 
             if not isinstance(res_df, type(None)):  # make sure res_df is not None
-                # Todo: implement thresholds
 
                 # reuested vs used disk RAM
                 if float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) > bad_usage:
@@ -825,9 +816,6 @@ def smart_manage_all(file):
         return output_string
 
 
-# Todo: params should affect output and error files
-# Todo: use the manage_all function
-# Todo: newlines when csv
 def read_through_logs_dir(directory):
     """
     Runs through the given directory and return all logs related content
@@ -862,10 +850,9 @@ def read_through_logs_dir(directory):
             list_of_outputs.append(file)
 
     list_of_logs.sort()
-    # Todo: more params, that will make the output more dynamically for:
-    # Errors, Warnings, output, kind of errors, job_descriptions, etc.
+    # now find every log
     for file in list_of_logs:
-        job_id = file[:-4]
+        job_id = file[:-len(std_log)]
         file_path = directory + "/" + job_id
 
         output_string += smart_manage_all(file_path)
@@ -1064,7 +1051,6 @@ def load_config():
                                              in accepted_states
                 logging.debug(f"Changed default ignore_allocated_res to: {ignore_allocated_resources}")
 
-        # Todo: thresholds
         if 'thresholds' in sections:
             global low_usage, bad_usage
             if 'low_usage' in config['thresholds']:
