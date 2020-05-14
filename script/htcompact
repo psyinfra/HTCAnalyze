@@ -815,55 +815,8 @@ def smart_manage_all(file):
     else:
         return output_string
 
-
-def read_through_logs_dir(directory):
-    """
-    Runs through the given directory and return all logs related content
-    via the smart_output_logs methods
-
-    :param directory: a directory were the *log/err/out* files should be stored
-
-    :return: an output string, that returns all outputs
-    """
-    path = os.getcwd()  # current working directory , should be condor job summariser script
-    logs_path = path + "/" + directory
-
-    if os.path.isdir(directory):
-        working_path = directory
-    elif os.path.isdir(logs_path):
-        working_path = logs_path
-    else:
-        raise NameError("The given directory is either no directory or the path was wrong")
-
-    output_string = ""
-    # list are better to separate corresponding files
-    list_of_logs = list()
-    list_of_errors = list()
-    list_of_outputs = list()
-    # run through all files and separate the files into log/error and output files
-    for file in os.listdir(working_path):
-        if file.endswith(std_log):
-            list_of_logs.append(file)
-        elif file.endswith(std_err):
-            list_of_errors.append(file)
-        elif file.endswith(std_out):
-            list_of_outputs.append(file)
-
-    list_of_logs.sort()
-    # now find every log
-    for file in list_of_logs:
-        job_id = file[:-len(std_log)]
-        file_path = directory + "/" + job_id
-
-        output_string += smart_manage_all(file_path)
-        # separate logs if file is not the last occurring file in the files list
-        if not file == list_of_logs[-1] or not directory == files[-1]:
-            output_string += "\n" + border_str + "\n"
-
-    return output_string
-
-
 # Todo: change for no specified type of log error and output files
+
 def output_given_logs():
     output_string = ""
     current_path = os.getcwd()
@@ -873,11 +826,9 @@ def output_given_logs():
         # for the * operation it should skip std_err and std_out files
         if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
             continue
-        # check if file is a directory and run through the whole directory
-        if os.path.isdir(file) or os.path.isdir(current_path + "/" + file):
-            output_string += read_through_logs_dir(file)
+
         # else check if file is a valid file
-        elif os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
+        if os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
             output_string += smart_manage_all(file)
 
         # if that did not work try std_log at the end of that file
@@ -890,6 +841,7 @@ def output_given_logs():
             else:
                 logging.error("No such file with that name or prefix: {0}".format(file))
                 output_string += red+"No such file with that name or prefix: {0}".format(file)+back_to_default
+
         # The given .log file was not found
         else:
             output_string += red + "No such file: {0}".format(file) + back_to_default
@@ -899,9 +851,8 @@ def output_given_logs():
         # Todo:
         if to_csv:
             pass
-        # because read_through_dir is already separating and after the last occurring file
-        # no separation is needed
-        elif not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file) and not i == len(files)-1:
+
+        elif not i == len(files)-1:
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
@@ -1419,7 +1370,7 @@ def main():
         if summarise:
             output_string = summarise_given_logs()  # summarise information
         else:
-            output_string = output_given_logs()  # print out all given files if possible
+            output_string = "\n"+ output_given_logs()  # print out all given files if possible
 
         print(output_string)  # write it to the console
 
