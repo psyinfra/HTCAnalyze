@@ -1100,6 +1100,11 @@ def load_config():
         return False
 
 
+# Todo: analyse a particular log file, with ALL kind of information, not just the defaults
+def analyse():
+    pass
+
+
 # Todo: test with many files
 def summarise_given_logs():
     """
@@ -1135,11 +1140,17 @@ def summarise_given_logs():
     total_disk_allocated = int(0)
     total_memory_allocated = int(0)
 
+    # if gpu given
+    gpu_found = False
+    total_gpu_usage = float(0)
+    total_gpu_requested = int(0)
+    total_gpu_allocated = int(0)
+    list_of_gpu_names = list()
+
     percent_mark = 10  # calculate the percentage of the running summarisation
     start_status = 50  # value that decides, when it's worth showing a status of the progress
 
     for i, file in enumerate(files):
-
         try:
             log = log_to_dataframe(file)
 
@@ -1178,6 +1189,15 @@ def summarise_given_logs():
             if int(status/percent_mark) > 0 and valid_files > start_status:
                 percent_mark += 10
                 print(f"Status: {status}% of all files summarised")
+
+            if 3 in log_resources.index:  # this means gpu information is given
+                gpu_found = True
+                total_gpu_usage += float(log_resources.at[3, 'Usage'])
+                total_gpu_requested += int(log_resources.at[3, 'Requested'])
+                if show_allocated_res:
+                    total_gpu_allocated += int(log_resources.at[3, 'Allocated'])
+                if log_resources.at[3, 'Assigned'] not in list_of_gpu_names:  # append new gpus
+                    list_of_gpu_names.append(log_resources.at[3, 'Assigned'])
 
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
@@ -1233,14 +1253,39 @@ def summarise_given_logs():
                           round(total_memory_requested / n, 2)]
 
         })
+        insert_index = 3  # for the row at the right place
 
         if show_allocated_res:
-            df_total.insert(3, "Allocated", [total_cpu_allocated,
+            df_total.insert(insert_index, "Allocated", [total_cpu_allocated,
                                              total_disk_allocated,
                                              total_memory_allocated])
-            df_average.insert(3, "Allocated", [round(total_cpu_allocated / n, 2),
+            df_average.insert(insert_index, "Allocated", [round(total_cpu_allocated / n, 2),
                                                round(total_disk_allocated / n, 2),
                                                round(total_memory_allocated / n, 2)])
+
+        # if gpu information was found
+        if gpu_found:
+            df_gpu_total = pd.DataFrame({
+                "Resources": ['Total Gpu'],
+                "Usage": [total_gpu_usage],  # necessary
+                "Requested": [total_gpu_requested]
+            })
+            df_gpu_average = pd.DataFrame({
+                "Resources": ['Average Gpu'],
+                "Usage": [round(total_gpu_usage / n, 2)],  # Todo: divide by gpu occurrence ????
+                "Requested": [round(total_gpu_requested / n, 2)]
+            })
+            if show_allocated_res:
+                df_gpu_total.insert(insert_index, "Allocated", [total_gpu_allocated])
+                df_gpu_average.insert(insert_index, "Allocated", [round(total_gpu_allocated / n, 2)])
+                insert_index += 1
+
+            df_total = df_total.append(df_gpu_total)
+            df_average = df_average.append(df_gpu_average)
+
+            df_total.insert(insert_index, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
+            df_average.insert(insert_index, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
+            insert_index += 1
 
         # Todo: add later
         #output_string += "Total used resources:\n"
@@ -1373,12 +1418,12 @@ def main():
     """
     try:
 
-        # interprete the first file, that can be interpreted as a config file and remove it, other given config files,
-        # ( you will see when you try, will be interpreted as HTCondor log file)
+        # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
+        # (you will see when you try, files will be interpreted as HTCondor log files)
         # so it's not possible to give multiple config files
         load_config()
 
-        # after that, interprete the command line arguments, these will have a higher priority, than the config setup
+        # after that, interpret the command line arguments, these will have a higher priority, than the config setup
         # and by that arguments set in the config file, will be ignored
         manage_params()
 
@@ -1386,7 +1431,7 @@ def main():
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
         if summarise:
-            output_string = summarise_given_logs() # summarise information
+            output_string = summarise_given_logs()  # summarise information
         else:
             output_string = output_given_logs()  # print out all given files if possible
 
