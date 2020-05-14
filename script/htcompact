@@ -65,9 +65,9 @@ bad_usage = 1.2
 
 # global variables with default values for err/log/out files
 # Todo: implement a way that the script detects if a file is a log file etc.
-std_log = ".log"
-std_err = ".err"
-std_out = ".out"
+std_log = ""
+std_err = ""
+std_out = ""
 
 # global variables for tabulate
 table_format = "pretty"  # ascii by default
@@ -927,12 +927,11 @@ def output_given_logs():
 # search for config file ( UNIX BASED )
 # Todo: Test
 #       Change some varibales
-def load_config(file):
+def load_config():
     """
 
     Reads config file and changes global parameter by its configuration
 
-    :param file:
     :return: False if not found, True if found and
     """
 
@@ -941,23 +940,61 @@ def load_config(file):
         script_name = sys.argv[0][:-3]  # scriptname without .py
     config = configparser.ConfigParser()
     # search for the given file, first directly, then in /etc and then in ~/.config/htcompact/
-    try:
-        if os.path.isfile(file):
-            logging.debug(f"Load config from given file: {file}")
-            config.read(file)
-        # try to find config file in /etc
-        elif os.path.isfile(f"/etc/{file}"):
-            logging.debug(f"Load config from: /etc/{file}")
-            config.read(f"/etc/{file}.conf")
-        # try to find config file in ~/.config/script_name/
-        elif os.path.isfile(f"~/.config/{script_name}/{file}"):
-            logging.debug(f"Load config from: ~/.config/{script_name}/{file}")
-        else:
-            logging.debug(f"Config file:{file} could not be found or is not a valid config file")
-            return False
+    found_config = False
 
-    # File has no readable format for the configparser, probably because it's not a config file
-    except configparser.MissingSectionHeaderError:
+    print(cyan, end="")
+
+    if len(sys.argv) > 1:
+        # run through every given argument and try to determine if it's a valid config file
+        arguments = sys.argv[1:]
+        arguments.append("htcsetup.conf")  # default config, should be checked after no one was found **
+        # Todo: maybe search in the current directory for config files
+        for file in arguments:
+            # try to find the given file in the current directory, in /etc or in ~/.config/htcompact/
+            try:
+                if os.path.isfile(file) and config.read(file):
+                    logging.debug(f"Load config from the file: {file}")
+                    print(f"Load config from the file: {file}")
+                    found_config = True
+                    arguments.remove(file)
+                    logging.debug("Removed {0} from arguments".format(file))
+                # try to find config file in /etc
+                elif os.path.isfile(f"/etc/{file}") and config.read(f"/etc/{file}"):
+                    logging.debug(f"Load config from: /etc/{file}")
+                    print(f"Load config from: /etc/{file}")
+                    found_config = True
+                    arguments.remove(file)
+                    logging.debug("Removed {0} from arguments".format(file))
+                # try to find config file in ~/.config/script_name/
+                elif os.path.isfile(f"~/.config/{script_name}/{file}") \
+                        and config.read(f"~/.config/{script_name}/{file}"):
+                    logging.debug(f"Load config from: ~/.config/{script_name}/{file}")
+                    print(f"Load config from: ~/.config/{script_name}/{file}")
+                    found_config = True
+                    arguments.remove(file)
+                    logging.debug("Removed {0} from arguments".format(file))
+                else:
+                    logging.debug(f"{file} not a file or directory")
+
+                if found_config:
+                    break
+
+            # File has no readable format for the configparser, probably because it's not a config file
+            except configparser.MissingSectionHeaderError:
+                logging.debug(f"{file} is not a valid config file")
+
+        try:
+            arguments.remove("htcsetup.conf")  # remove again, if other config file was found **
+        except ValueError:
+            pass
+        print(back_to_default, end="")
+
+        sys.argv[1:] = arguments
+
+    # break if not found
+    if not found_config:
+        print(f"No valid config file given and no default "
+              f"htcsetup.conf file found in: ({os.getcwd()}, ~/.config/htcompact/, /etc/) ")
         return False
 
     try:
@@ -1317,6 +1354,7 @@ def validate_given_logs(file_list):
                     valid_files.append(working_file_path)
                 else:
                     logging.debug(f"The given file {read_file.name} is not a valid HTCondor log file")
+                    print(yellow+f"The given file {read_file.name} is not a valid HTCondor log file"+back_to_default)
         else:
             logging.error(f"The given file: {arg} does not exist")
             print(red+f"The given file: {arg} does not exist"+back_to_default)
@@ -1334,31 +1372,26 @@ def main():
     :return:
     """
     try:
-        found_config = False
 
-        # check if a valid config file is underneeth the given files
-        if len(sys.argv) > 1:
-            for file in sys.argv[1:]:
-                if load_config(file):
-                    found_config = True
-                    sys.argv.remove(file)
-                    logging.debug("Removed {0} from arguments".format(file))
+        # interprete the first file, that can be interpreted as a config file and remove it, other given config files,
+        # ( you will see when you try, will be interpreted as HTCondor log file)
+        # so it's not possible to give multiple config files
+        load_config()
 
-        # else try to find the default htcsetup.conf file
-        if not found_config:
-            load_config("htcsetup.conf")
-
-        manage_params()  # manage the given variables and overwrite the config set variables
+        # after that, interprete the command line arguments, these will have a higher priority, than the config setup
+        # and by that arguments set in the config file, will be ignored
+        manage_params()
 
         global files
-        files = validate_given_logs(files)  # validate the files
+        files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
         if summarise:
-            output_string = summarise_given_logs()
+            output_string = summarise_given_logs() # summarise information
         else:
             output_string = output_given_logs()  # print out all given files if possible
 
         print(output_string)  # write it to the console
+
     except KeyboardInterrupt:
         print("Script was interrupted")
 
