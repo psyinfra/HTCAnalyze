@@ -41,7 +41,7 @@ border_str = ""
 show_output = False
 show_warnings = False
 ignore_allocated_resources = False
-ignore_errors = True  # Todo: after implementation set default: False
+show_errors = True  # Todo: after implementation set default: False
 ignore_job_information = False
 ignore_resources = False
 
@@ -131,7 +131,7 @@ def remove_files_from_args(args, short_opts, long_opts):
     return new_args
 
 
-#Todo: thresholds by command line
+# Todo: thresholds by command line
 def manage_params():
     """
     Interprets the given command line arguments and changes the global variables in this scrips
@@ -140,7 +140,7 @@ def manage_params():
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_output, show_warnings, ignore_allocated_resources  # show more information variables
-    global ignore_errors, ignore_resources, ignore_job_information  # ignore information variables
+    global show_errors, ignore_resources, ignore_job_information  # ignore information variables
     global to_csv, summarise, indexing  # features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
@@ -157,8 +157,8 @@ def manage_params():
 
     option_shorts = "hs"
     option_longs = ["help", "std-log=", "std-err=", "std-out=",
-                    "show-output", "show-warnings",
-                    "ignore-allocated-resources", "ignore-errors", "ignore-resources", "ignore-job-information",
+                    "show-errors", "show-output", "show-warnings",
+                    "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
                     "to-csv", "indexing=", "summarise",
                     "resolve-ip", "table-format="]
 
@@ -205,8 +205,8 @@ def manage_params():
                 ignore_allocated_resources = True
 
             # all variables to ignore unwanted information
-            elif opt.__eq__("--ignore-errors"):
-                ignore_errors = True
+            elif opt.__eq__("--show-errors"):
+                show_errors = True
             elif opt.__eq__("--ignore-resources"):
                 ignore_resources = True
             elif opt.__eq__("--ignore-job-information"):
@@ -746,7 +746,7 @@ def smart_output_error(file):
     try:
         error_content = read_condor_error(file)
         for line in error_content.split("\n"):
-            if "err" in line.lower() and not ignore_errors:
+            if "err" in line.lower() and show_errors:
                 output_string += red + line + back_to_default + "\n"
             elif "warn" in line.lower() and show_warnings:
                 output_string += yellow + line + back_to_default + "\n"
@@ -801,7 +801,7 @@ def smart_manage_all(file):
     information will be put together regarding the global booleans set by the user.
     job_spec_id, is the ClusterID_ProcessID of a job executed by HTCondor like job_4323_21 or 231_0
 
-    :param job_spec_id: file name without endling like job4323_1, job4323_1.<err|out|log> will cut the end off
+    :param file: file name without endling like job4323_1, job4323_1.<err|out|log> will cut the end off
     :return: a string that combines HTCondor log/err and out files and returns it
     """
     try:
@@ -812,7 +812,7 @@ def smart_manage_all(file):
 
         output_string = smart_output_logs(job_spec_id + std_log)  # normal smart_output of log files
 
-        if not ignore_errors:  # ignore errors ?
+        if show_errors:  # show errors ?
             output_string += smart_output_error(job_spec_id + std_err)
 
         if show_output:  # show output content ?
@@ -886,7 +886,6 @@ def output_given_logs():
         # for the * operation it should skip std_err and std_out files
         if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
             continue
-
         # check if file is a directory and run through the whole directory
         if os.path.isdir(file) or os.path.isdir(current_path + "/" + file):
             output_string += read_through_logs_dir(file)
@@ -1036,7 +1035,11 @@ def load_config():
 
         # if show variables are set for further output
         if 'show-more' in sections:
-            global show_output, show_warnings  # sources to show
+            global show_output, show_warnings, show_errors  # sources to show
+
+            if 'show_errors' in config['show-more']:
+                show_errors = config['show-more']['show_errors'].lower() in accepted_states
+                logging.debug(f"Changed default show_errors to: {show_errors}")
 
             if 'show_output' in config['show-more']:
                 show_output = config['show-more']['show_output'].lower() in accepted_states
@@ -1048,11 +1051,8 @@ def load_config():
 
         # what information should to be ignored
         if 'ignore' in sections:
-            global ignore_errors, ignore_resources, ignore_job_information, ignore_allocated_resources  # sources to ignore
+            global ignore_resources, ignore_job_information, ignore_allocated_resources  # sources to ignore
 
-            if 'ignore_errors' in config['ignore']:
-                ignore_errors = config['ignore']['ignore_errors'].lower() in accepted_states
-                logging.debug(f"Changed default ignore_errors to: {ignore_errors}")
             if 'ignore_resources' in config['ignore']:
                 ignore_resources = config['ignore']['ignore_resources'].lower() in accepted_states
                 logging.debug(f"Changed default ignore_resources to: {ignore_resources}")
