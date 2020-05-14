@@ -281,16 +281,16 @@ def help_me():
     [--show-warnings]           shows warnings that occurred inside the HTCondor
                                 error file
 
-    [--show-allocated]          shows allocated resources related to the used
-                                and requested resources
+    [--show-errors]             shows all occurring erros inside the
+                                HTCondor error files
 
     ----------------------------ignore information:-----------------------------
 
-    [--ignore-errors]           ignores all occurring erros inside the
-                                HTCondor error files
-
     [--ignore-resources]        ignores all resources, show-allocated will have
                                 no effect, if this argument is given
+
+    [--ignore-allocated         ignore allocated resources related to the used
+    -resources]                 and requested resources
 
     ----------------------------csv related settings:---------------------------
 
@@ -398,7 +398,7 @@ def read_condor_logs(file):
     return log_job_events, job_event_information
 
 
-def raiseValueError(message):
+def raise_value_error(message):
     raise ValueError(message)
 
 
@@ -510,13 +510,13 @@ def log_to_dataframe(file):
             if match:
                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
             else:
-                raiseValueError("Something went wrong reading the cpu information")
+                raise_value_error("Something went wrong reading the cpu information")
 
             match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
             if match:
                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
             else:
-                raise raiseValueError("Something went wrong reading the disk information")
+                raise raise_value_error("Something went wrong reading the disk information")
 
             # check if the log has gpu information in between
             gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
@@ -532,7 +532,7 @@ def log_to_dataframe(file):
             if match:
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
             else:
-                raiseValueError("Something went wrong reading the memory information")
+                raise_value_error("Something went wrong reading the memory information")
             # ****************************************************************************************************
 
             # list of resources and their labels
@@ -599,6 +599,7 @@ def log_to_dataframe(file):
     # finally
     else:
         return job_df, res_df
+
 
 def smart_output_logs(file):
     """
@@ -815,8 +816,8 @@ def smart_manage_all(file):
     else:
         return output_string
 
-# Todo: change for no specified type of log error and output files
 
+# Todo: change for no specified type of log error and output files
 def output_given_logs():
     output_string = ""
     current_path = os.getcwd()

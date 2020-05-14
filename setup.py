@@ -9,7 +9,7 @@ with open("README.md", "r") as readme:
 
 
 setup(name='htcompact',
-      version='0.1.0',
+      version='0.1.1',
       description='HTCondor summariser script',
       long_description=long_description,
       author='Mathis Loevenich',
@@ -18,6 +18,7 @@ setup(name='htcompact',
       license='LICENSE.txt',
       python_requires='>=3.7',
       install_requires=[
+            "numpy",
             "datetime",
             "configparser",
             "pandas",
