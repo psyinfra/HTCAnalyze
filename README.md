@@ -54,7 +54,7 @@ lets consider we have a directory /logs with this structure:
 
 #### possible configurations:
 ```
-HtCompact -h (show a detailed description to all functionalities)
+htcompact -h (show a detailed description to all functionalities)
 
 htcompact path_to_logs/job_5991_0.log
 
