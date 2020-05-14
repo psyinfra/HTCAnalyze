@@ -40,8 +40,8 @@ border_str = ""
 # variables for given parameters
 show_output = False
 show_warnings = False
-show_allocated_res = False
-ignore_errors = True  # Todo: after implementation set default: False
+ignore_allocated_resources = False
+show_errors = False
 ignore_job_information = False
 ignore_resources = False
 
@@ -64,10 +64,9 @@ low_usage = 0.75
 bad_usage = 1.2
 
 # global variables with default values for err/log/out files
-# Todo: implement a way that the script detects if a file is a log file etc.
-std_log = ".log"
-std_err = ".err"
-std_out = ".out"
+std_log = ""
+std_err = ""
+std_out = ""
 
 # global variables for tabulate
 table_format = "pretty"  # ascii by default
@@ -77,7 +76,6 @@ table_format = "pretty"  # ascii by default
 # Todo: background colors etc. for terminal usage
 # Todo: filter erros better, less priority
 # Todo: realise the further specs on: https://jugit.fz-juelich.de/inm7/infrastructure/scripts/-/issues/1
-# Todo: standard sollte nicht .log sein, Skript soll selbst erkannen was log dateien sind und was nicht
 # a redirection in the terminal via > should ignore escape sequences
 
 
@@ -131,7 +129,7 @@ def remove_files_from_args(args, short_opts, long_opts):
     return new_args
 
 
-#Todo: thresholds by command line
+# Todo: thresholds by command line
 def manage_params():
     """
     Interprets the given command line arguments and changes the global variables in this scrips
@@ -139,8 +137,8 @@ def manage_params():
     """
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
-    global show_output, show_warnings, show_allocated_res  # show more information variables
-    global ignore_errors, ignore_resources, ignore_job_information  # ignore information variables
+    global show_output, show_warnings, ignore_allocated_resources  # show more information variables
+    global show_errors, ignore_resources, ignore_job_information  # ignore information variables
     global to_csv, summarise, indexing  # features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
@@ -157,8 +155,8 @@ def manage_params():
 
     option_shorts = "hs"
     option_longs = ["help", "std-log=", "std-err=", "std-out=",
-                    "show-output", "show-warnings", "show-allocated-resources",
-                    "ignore-errors", "ignore-resources", "ignore-job-information",
+                    "show-errors", "show-output", "show-warnings",
+                    "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
                     "to-csv", "indexing=", "summarise",
                     "resolve-ip", "table-format="]
 
@@ -201,12 +199,12 @@ def manage_params():
                 show_output = True
             elif opt.__eq__("--show-warnings"):
                 show_warnings = True
-            elif opt.__eq__("--show-allocated-resources"):
-                show_allocated_res = True
+            elif opt.__eq__("--ignore-allocated-resources"):
+                ignore_allocated_resources = True
 
             # all variables to ignore unwanted information
-            elif opt.__eq__("--ignore-errors"):
-                ignore_errors = True
+            elif opt.__eq__("--show-errors"):
+                show_errors = True
             elif opt.__eq__("--ignore-resources"):
                 ignore_resources = True
             elif opt.__eq__("--ignore-job-information"):
@@ -283,16 +281,16 @@ def help_me():
     [--show-warnings]           shows warnings that occurred inside the HTCondor
                                 error file
 
-    [--show-allocated]          shows allocated resources related to the used
-                                and requested resources
+    [--show-errors]             shows all occurring erros inside the
+                                HTCondor error files
 
     ----------------------------ignore information:-----------------------------
 
-    [--ignore-errors]           ignores all occurring erros inside the
-                                HTCondor error files
-
     [--ignore-resources]        ignores all resources, show-allocated will have
                                 no effect, if this argument is given
+
+    [--ignore-allocated         ignore allocated resources related to the used
+    -resources]                 and requested resources
 
     ----------------------------csv related settings:---------------------------
 
@@ -345,9 +343,6 @@ def help_me():
 
 
 # reads all information, but returns them in two lists
-# Todo: read specifications from a config files,
-#       cause the script is based on hardcoded interpretation for log files in
-#       the form: string_clusterId_processId.log
 def read_condor_logs(file):
     """
 
@@ -403,7 +398,7 @@ def read_condor_logs(file):
     return log_job_events, job_event_information
 
 
-def raiseValueError(message):
+def raise_value_error(message):
     raise ValueError(message)
 
 
@@ -515,13 +510,13 @@ def log_to_dataframe(file):
             if match:
                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
             else:
-                raiseValueError("Something went wrong reading the cpu information")
+                raise_value_error("Something went wrong reading the cpu information")
 
             match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
             if match:
                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
             else:
-                raise raiseValueError("Something went wrong reading the disk information")
+                raise raise_value_error("Something went wrong reading the disk information")
 
             # check if the log has gpu information in between
             gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
@@ -537,7 +532,7 @@ def log_to_dataframe(file):
             if match:
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
             else:
-                raiseValueError("Something went wrong reading the memory information")
+                raise_value_error("Something went wrong reading the memory information")
             # ****************************************************************************************************
 
             # list of resources and their labels
@@ -571,7 +566,7 @@ def log_to_dataframe(file):
 
             # if the user wants allocated resources then add it to the DataFrame as well
             temp_index = 3
-            if show_allocated_res:
+            if not ignore_allocated_resources:
                 res_df.insert(temp_index, "Allocated", allocated)
                 temp_index += 1
             if gpu_found:
@@ -603,11 +598,9 @@ def log_to_dataframe(file):
         print(red + str(err) + back_to_default)
     # finally
     else:
-        # Todo:
         return job_df, res_df
 
 
-# Todo: gpu usage
 def smart_output_logs(file):
     """
     reads a given HTCondor .log file with the read_condor_logs() function
@@ -650,7 +643,6 @@ def smart_output_logs(file):
             border_str = "-" * len(output_string) + "\n"
 
             if not isinstance(res_df, type(None)):  # make sure res_df is not None
-                # Todo: implement thresholds
 
                 # reuested vs used disk RAM
                 if float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) > bad_usage:
@@ -746,7 +738,7 @@ def smart_output_error(file):
     try:
         error_content = read_condor_error(file)
         for line in error_content.split("\n"):
-            if "err" in line.lower() and not ignore_errors:
+            if "err" in line.lower() and show_errors:
                 output_string += red + line + back_to_default + "\n"
             elif "warn" in line.lower() and show_warnings:
                 output_string += yellow + line + back_to_default + "\n"
@@ -801,7 +793,7 @@ def smart_manage_all(file):
     information will be put together regarding the global booleans set by the user.
     job_spec_id, is the ClusterID_ProcessID of a job executed by HTCondor like job_4323_21 or 231_0
 
-    :param job_spec_id: file name without endling like job4323_1, job4323_1.<err|out|log> will cut the end off
+    :param file: file name without endling like job4323_1, job4323_1.<err|out|log> will cut the end off
     :return: a string that combines HTCondor log/err and out files and returns it
     """
     try:
@@ -812,7 +804,7 @@ def smart_manage_all(file):
 
         output_string = smart_output_logs(job_spec_id + std_log)  # normal smart_output of log files
 
-        if not ignore_errors:  # ignore errors ?
+        if show_errors:  # show errors ?
             output_string += smart_output_error(job_spec_id + std_err)
 
         if show_output:  # show output content ?
@@ -823,57 +815,6 @@ def smart_manage_all(file):
         sys.exit(1)
     else:
         return output_string
-
-
-# Todo: params should affect output and error files
-# Todo: use the manage_all function
-# Todo: newlines when csv
-def read_through_logs_dir(directory):
-    """
-    Runs through the given directory and return all logs related content
-    via the smart_output_logs methods
-
-    :param directory: a directory were the *log/err/out* files should be stored
-
-    :return: an output string, that returns all outputs
-    """
-    path = os.getcwd()  # current working directory , should be condor job summariser script
-    logs_path = path + "/" + directory
-
-    if os.path.isdir(directory):
-        working_path = directory
-    elif os.path.isdir(logs_path):
-        working_path = logs_path
-    else:
-        raise NameError("The given directory is either no directory or the path was wrong")
-
-    output_string = ""
-    # list are better to separate corresponding files
-    list_of_logs = list()
-    list_of_errors = list()
-    list_of_outputs = list()
-    # run through all files and separate the files into log/error and output files
-    for file in os.listdir(working_path):
-        if file.endswith(std_log):
-            list_of_logs.append(file)
-        elif file.endswith(std_err):
-            list_of_errors.append(file)
-        elif file.endswith(std_out):
-            list_of_outputs.append(file)
-
-    list_of_logs.sort()
-    # Todo: more params, that will make the output more dynamically for:
-    # Errors, Warnings, output, kind of errors, job_descriptions, etc.
-    for file in list_of_logs:
-        job_id = file[:-4]
-        file_path = directory + "/" + job_id
-
-        output_string += smart_manage_all(file_path)
-        # separate logs if file is not the last occurring file in the files list
-        if not file == list_of_logs[-1] or not directory == files[-1]:
-            output_string += "\n" + border_str + "\n"
-
-    return output_string
 
 
 # Todo: change for no specified type of log error and output files
@@ -887,11 +828,8 @@ def output_given_logs():
         if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
             continue
 
-        # check if file is a directory and run through the whole directory
-        if os.path.isdir(file) or os.path.isdir(current_path + "/" + file):
-            output_string += read_through_logs_dir(file)
         # else check if file is a valid file
-        elif os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
+        if os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
             output_string += smart_manage_all(file)
 
         # if that did not work try std_log at the end of that file
@@ -904,6 +842,7 @@ def output_given_logs():
             else:
                 logging.error("No such file with that name or prefix: {0}".format(file))
                 output_string += red+"No such file with that name or prefix: {0}".format(file)+back_to_default
+
         # The given .log file was not found
         else:
             output_string += red + "No such file: {0}".format(file) + back_to_default
@@ -913,9 +852,8 @@ def output_given_logs():
         # Todo:
         if to_csv:
             pass
-        # because read_through_dir is already separating and after the last occurring file
-        # no separation is needed
-        elif not os.path.isdir(file) and not os.path.isdir(current_path + "/" + file) and not i == len(files)-1:
+
+        elif not i == len(files)-1:
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
@@ -927,12 +865,11 @@ def output_given_logs():
 # search for config file ( UNIX BASED )
 # Todo: Test
 #       Change some varibales
-def load_config(file):
+def load_config():
     """
 
     Reads config file and changes global parameter by its configuration
 
-    :param file:
     :return: False if not found, True if found and
     """
 
@@ -941,23 +878,61 @@ def load_config(file):
         script_name = sys.argv[0][:-3]  # scriptname without .py
     config = configparser.ConfigParser()
     # search for the given file, first directly, then in /etc and then in ~/.config/htcompact/
-    try:
-        if os.path.isfile(file):
-            logging.debug(f"Load config from given file: {file}")
-            config.read(file)
-        # try to find config file in /etc
-        elif os.path.isfile(f"/etc/{file}"):
-            logging.debug(f"Load config from: /etc/{file}")
-            config.read(f"/etc/{file}.conf")
-        # try to find config file in ~/.config/script_name/
-        elif os.path.isfile(f"~/.config/{script_name}/{file}"):
-            logging.debug(f"Load config from: ~/.config/{script_name}/{file}")
-        else:
-            logging.debug(f"Config file:{file} could not be found or is not a valid config file")
-            return False
+    found_config = False
 
-    # File has no readable format for the configparser, probably because it's not a config file
-    except configparser.MissingSectionHeaderError:
+    print(cyan, end="")
+
+    if len(sys.argv) > 1:
+        # run through every given argument and try to determine if it's a valid config file
+        arguments = sys.argv[1:]
+        arguments.append("htcsetup.conf")  # default config, should be checked after no one was found **
+        # Todo: maybe search in the current directory for config files
+        for file in arguments:
+            # try to find the given file in the current directory, in /etc or in ~/.config/htcompact/
+            try:
+                if os.path.isfile(file) and config.read(file):
+                    logging.debug(f"Load config from the file: {file}")
+                    print(f"Load config from the file: {file}")
+                    found_config = True
+                    arguments.remove(file)
+                    logging.debug("Removed {0} from arguments".format(file))
+                # try to find config file in /etc
+                elif os.path.isfile(f"/etc/{file}") and config.read(f"/etc/{file}"):
+                    logging.debug(f"Load config from: /etc/{file}")
+                    print(f"Load config from: /etc/{file}")
+                    found_config = True
+                    arguments.remove(file)
+                    logging.debug("Removed {0} from arguments".format(file))
+                # try to find config file in ~/.config/script_name/
+                elif os.path.isfile(f"~/.config/{script_name}/{file}") \
+                        and config.read(f"~/.config/{script_name}/{file}"):
+                    logging.debug(f"Load config from: ~/.config/{script_name}/{file}")
+                    print(f"Load config from: ~/.config/{script_name}/{file}")
+                    found_config = True
+                    arguments.remove(file)
+                    logging.debug("Removed {0} from arguments".format(file))
+                else:
+                    logging.debug(f"{file} not a file or directory")
+
+                if found_config:
+                    break
+
+            # File has no readable format for the configparser, probably because it's not a config file
+            except configparser.MissingSectionHeaderError:
+                logging.debug(f"{file} is not a valid config file")
+
+        try:
+            arguments.remove("htcsetup.conf")  # remove again, if other config file was found **
+        except ValueError:
+            pass
+        print(back_to_default, end="")
+
+        sys.argv[1:] = arguments
+
+    # break if not found
+    if not found_config:
+        print(f"No valid config file given and no default "
+              f"htcsetup.conf file found in: ({os.getcwd()}, ~/.config/htcompact/, /etc/) ")
         return False
 
     try:
@@ -999,7 +974,11 @@ def load_config(file):
 
         # if show variables are set for further output
         if 'show-more' in sections:
-            global show_output, show_warnings, show_allocated_res  # sources to show
+            global show_output, show_warnings, show_errors  # sources to show
+
+            if 'show_errors' in config['show-more']:
+                show_errors = config['show-more']['show_errors'].lower() in accepted_states
+                logging.debug(f"Changed default show_errors to: {show_errors}")
 
             if 'show_output' in config['show-more']:
                 show_output = config['show-more']['show_output'].lower() in accepted_states
@@ -1009,25 +988,21 @@ def load_config(file):
                 show_warnings = config['show-more']['show_warnings'].lower() in accepted_states
                 logging.debug(f"Changed default show_warnings to: {show_warnings}")
 
-            if 'show_allocated_resources' in config['show-more']:
-                show_allocated_res = config['show-more']['show_allocated_resources'].lower() in accepted_states
-                logging.debug(f"Changed default show_allocated_res to: {show_allocated_res}")
-
         # what information should to be ignored
         if 'ignore' in sections:
-            global ignore_errors, ignore_resources, ignore_job_information  # sources to ignore
+            global ignore_resources, ignore_job_information, ignore_allocated_resources  # sources to ignore
 
-            if 'ignore_errors' in config['ignore']:
-                ignore_errors = config['ignore']['ignore_errors'].lower() in accepted_states
-                logging.debug(f"Changed default ignore_errors to: {ignore_errors}")
             if 'ignore_resources' in config['ignore']:
                 ignore_resources = config['ignore']['ignore_resources'].lower() in accepted_states
                 logging.debug(f"Changed default ignore_resources to: {ignore_resources}")
             if 'ignore_job_information' in config['ignore']:
                 ignore_job_information = config['ignore']['ignore_job_information'].lower() in accepted_states
                 logging.debug(f"Changed default ignore_job_information to: {ignore_job_information}")
+            if 'ignore_allocated_resources' in config['ignore']:
+                ignore_allocated_resources = config['ignore']['ignore_allocated_resources'].lower() \
+                                             in accepted_states
+                logging.debug(f"Changed default ignore_allocated_res to: {ignore_allocated_resources}")
 
-        # Todo: thresholds
         if 'thresholds' in sections:
             global low_usage, bad_usage
             if 'low_usage' in config['thresholds']:
@@ -1061,6 +1036,11 @@ def load_config(file):
     except KeyError as err:
         logging.exception(err)
         return False
+
+
+# Todo: analyse a particular log file, with ALL kind of information, not just the defaults
+def analyse():
+    pass
 
 
 # Todo: test with many files
@@ -1098,11 +1078,17 @@ def summarise_given_logs():
     total_disk_allocated = int(0)
     total_memory_allocated = int(0)
 
+    # if gpu given
+    gpu_found = False
+    total_gpu_usage = float(0)
+    total_gpu_requested = int(0)
+    total_gpu_allocated = int(0)
+    list_of_gpu_names = list()
+
     percent_mark = 10  # calculate the percentage of the running summarisation
     start_status = 50  # value that decides, when it's worth showing a status of the progress
 
     for i, file in enumerate(files):
-
         try:
             log = log_to_dataframe(file)
 
@@ -1132,7 +1118,7 @@ def summarise_given_logs():
             total_disk_requested += int(log_resources.at[1, 'Requested'])
             total_memory_requested += int(log_resources.at[2, 'Requested'])
 
-            if show_allocated_res:
+            if not ignore_allocated_resources:
                 total_cpu_allocated += int(log_resources.at[0, 'Allocated'])
                 total_disk_allocated += int(log_resources.at[1, 'Allocated'])
                 total_memory_allocated += int(log_resources.at[2, 'Allocated'])
@@ -1141,6 +1127,15 @@ def summarise_given_logs():
             if int(status/percent_mark) > 0 and valid_files > start_status:
                 percent_mark += 10
                 print(f"Status: {status}% of all files summarised")
+
+            if 3 in log_resources.index:  # this means gpu information is given
+                gpu_found = True
+                total_gpu_usage += float(log_resources.at[3, 'Usage'])
+                total_gpu_requested += int(log_resources.at[3, 'Requested'])
+                if not ignore_allocated_resources:
+                    total_gpu_allocated += int(log_resources.at[3, 'Allocated'])
+                if log_resources.at[3, 'Assigned'] not in list_of_gpu_names:  # append new gpus
+                    list_of_gpu_names.append(log_resources.at[3, 'Assigned'])
 
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
@@ -1196,14 +1191,39 @@ def summarise_given_logs():
                           round(total_memory_requested / n, 2)]
 
         })
+        insert_index = 3  # for the row at the right place
 
-        if show_allocated_res:
-            df_total.insert(3, "Allocated", [total_cpu_allocated,
+        if not ignore_allocated_resources:
+            df_total.insert(insert_index, "Allocated", [total_cpu_allocated,
                                              total_disk_allocated,
                                              total_memory_allocated])
-            df_average.insert(3, "Allocated", [round(total_cpu_allocated / n, 2),
+            df_average.insert(insert_index, "Allocated", [round(total_cpu_allocated / n, 2),
                                                round(total_disk_allocated / n, 2),
                                                round(total_memory_allocated / n, 2)])
+
+        # if gpu information was found
+        if gpu_found:
+            df_gpu_total = pd.DataFrame({
+                "Resources": ['Total Gpu'],
+                "Usage": [total_gpu_usage],  # necessary
+                "Requested": [total_gpu_requested]
+            })
+            df_gpu_average = pd.DataFrame({
+                "Resources": ['Average Gpu'],
+                "Usage": [round(total_gpu_usage / n, 2)],  # Todo: divide by gpu occurrence ????
+                "Requested": [round(total_gpu_requested / n, 2)]
+            })
+            if not ignore_allocated_resources:
+                df_gpu_total.insert(insert_index, "Allocated", [total_gpu_allocated])
+                df_gpu_average.insert(insert_index, "Allocated", [round(total_gpu_allocated / n, 2)])
+                insert_index += 1
+
+            df_total = df_total.append(df_gpu_total)
+            df_average = df_average.append(df_gpu_average)
+
+            df_total.insert(insert_index, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
+            df_average.insert(insert_index, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
+            insert_index += 1
 
         # Todo: add later
         #output_string += "Total used resources:\n"
@@ -1317,6 +1337,7 @@ def validate_given_logs(file_list):
                     valid_files.append(working_file_path)
                 else:
                     logging.debug(f"The given file {read_file.name} is not a valid HTCondor log file")
+                    print(yellow+f"The given file {read_file.name} is not a valid HTCondor log file"+back_to_default)
         else:
             logging.error(f"The given file: {arg} does not exist")
             print(red+f"The given file: {arg} does not exist"+back_to_default)
@@ -1334,31 +1355,26 @@ def main():
     :return:
     """
     try:
-        found_config = False
 
-        # check if a valid config file is underneeth the given files
-        if len(sys.argv) > 1:
-            for file in sys.argv[1:]:
-                if load_config(file):
-                    found_config = True
-                    sys.argv.remove(file)
-                    logging.debug("Removed {0} from arguments".format(file))
+        # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
+        # (you will see when you try, files will be interpreted as HTCondor log files)
+        # so it's not possible to give multiple config files
+        load_config()
 
-        # else try to find the default htcsetup.conf file
-        if not found_config:
-            load_config("htcsetup.conf")
-
-        manage_params()  # manage the given variables and overwrite the config set variables
+        # after that, interpret the command line arguments, these will have a higher priority, than the config setup
+        # and by that arguments set in the config file, will be ignored
+        manage_params()
 
         global files
-        files = validate_given_logs(files)  # validate the files
+        files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
         if summarise:
-            output_string = summarise_given_logs()
+            output_string = summarise_given_logs()  # summarise information
         else:
-            output_string = output_given_logs()  # print out all given files if possible
+            output_string = "\n"+ output_given_logs()  # print out all given files if possible
 
         print(output_string)  # write it to the console
+
     except KeyboardInterrupt:
         print("Script was interrupted")
 
