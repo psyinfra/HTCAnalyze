@@ -402,6 +402,7 @@ def raise_value_error(message):
     raise ValueError(message)
 
 
+# Todo: time seperated ( submitting / executing / terminating)
 # Todo: store job event numbers ( see job_descriptions.txt)
 # Todo: Read HTCondor Errors that occurred
 def log_to_dataframe(file):
@@ -409,12 +410,13 @@ def log_to_dataframe(file):
         job_events, job_raw_information = read_condor_logs(file)
 
         submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
+        executed_date = datetime.datetime.strptime(job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
             # calculate the runtime for the job
             terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-            runtime = terminating_date - submitted_date  # calculation of the time runtime
+            runtime = terminating_date - executed_date  # calculation of the time runtime
 
             match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
             if match_host:
