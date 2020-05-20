@@ -16,13 +16,9 @@ Now you should see a directory called *env* inside your current directory,
 ```
 source env/bin/activate
 ```
-- now cd into that *env* directory: 
-```
-cd env
-```
 - to install all necesarry packages run:
 ```
-pip install --user git+https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script.git
+pip install git+https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script.git
 ```
 - The script sits here:
 ```
