@@ -22,7 +22,8 @@ setup(name='htcompact',
             "datetime",
             "configparser",
             "pandas",
-            "tabulate"
+            "tabulate",
+            "plotille"
       ],
       dependency_links=[
             'https://github.com/astanin/python-tabulate.git'
@@ -31,6 +32,7 @@ setup(name='htcompact',
             'script/htcompact'
       ],
       data_files=[
-            'script/htcsetup.conf'
+            'script/htcsetup.conf',
+            'man/man8/htcompact.8'
       ],
       )
