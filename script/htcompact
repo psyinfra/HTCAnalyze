@@ -1479,34 +1479,43 @@ def analyse_logs(log_files):
         if len(time_dict) > 0:
             output_string += magenta + "Dates and times" + back_to_default + '\n'
             time_df = pd.DataFrame(time_dict.values(), index=time_dict.keys())
-            output_string += tabulate(time_df) + "\n"
+            output_string += tabulate(time_df) + "\n\n"
 
         if "job_df" in found_infos:
             output_string += magenta + "Execution details" + back_to_default + '\n'
-            output_string += tabulate(job_df, showindex=False) + '\n'
+            output_string += tabulate(job_df, showindex=False) + '\n\n'
         if "res_df" in found_infos:
             output_string += magenta + "Resource table" + back_to_default + '\n'
-            output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n'
+            output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n\n'
 
         if "errors" in found_infos:
+            # Todo: is this covering all cases ?
             job_ids = []
             time_list = []
             err_reason = []
 
             for err in occurred_errors:
                 job_ids.append(err[0])
-                time_list.append(err[1])
-                err_reason.append(err[2])
+                time_list.append(err[1].strftime("%m/%d %H:%M:%S"))
+                # if the line is to long, split it
+                if len(err[2]) > 50:
+                    split = int(len(err[2])/2)
+                    while err[2][split] != ' ' and split < len(err[2])-1:
+                        split += 1
+                    if split > len(err[2])-2:  # if no space was found, change back to normal
+                        split = int(len(err[2]) / 2)
+                    err_reason.append(err[2][0:split] + '\n' + err[2][split:])
+                else:
+                    err_reason.append(err[2])
 
-            # pd.set_option('display.max_colwidth', None)
             err_df = pd.DataFrame({
                 "Time": time_list,
                 "Job ID": job_ids,
-                #"Job description": job_descriptions,
                 "Reason": err_reason
             })
+
             output_string += magenta + "Occurred HTCondor errors" + back_to_default + '\n'
-            output_string += tabulate(err_df, showindex=False, headers='keys') +'\n'
+            output_string += tabulate(err_df, showindex=False, headers='keys') + '\n\n'
 
         # managing the ram history
         if "ram history" in found_infos:
@@ -1525,7 +1534,7 @@ def analyse_logs(log_files):
                 fig.x_label = "Dates"
                 fig.plot(dates, ram, lc='green')  # Todo: implement a way to show thresholds
 
-                output_string += fig.show() + "\n"
+                output_string += fig.show() + "\n\n"
             else:
                 single_date = ram_histroy[0][0].strftime("%m/%d %H:%M:%S")
                 single_ram = ram_histroy[0][2]
