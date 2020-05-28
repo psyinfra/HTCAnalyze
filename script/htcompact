@@ -1255,6 +1255,9 @@ def analyse_logs(log_files):
                     if resolve_ip_to_hostname:
                         host = "cpu node: " + host.split('.')[-1]
                     port = match_host[2]
+
+                    job_df = job_df.append(pd.DataFrame({"Description": ["Executing on Host", "Port"],
+                                                         "Values": [host, port]}))
                 else:
                     logging.exception("Host and port haven't been matched correctly")
                     print(red + "your log file has faulty values for the host ip,"
@@ -1265,8 +1268,8 @@ def analyse_logs(log_files):
                 terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
 
                 # make a fancy design for the job_information
-                job_labels = ["Executing on Host", "Port"]  # holds the labels
-                job_information = [host, port]  # holds the related job information
+                job_labels = []  # holds the labels
+                job_information = []  # holds the related job information
 
                 # check if termination state is normal or abnormal
                 match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", job_inf[0])
@@ -1429,7 +1432,8 @@ def analyse_logs(log_files):
                     for err in error_strings:
                         if err in job_desc.lower():
                             occurred_errors.append([job_id, timestamp,
-                                                    get_event_information(job_id), re.sub('\t', '', job_desc)])
+                                                    re.sub(' \t', '', job_desc)])
+                            break  # avoid duplicates
 
         found_infos = list()  # list to ask if a value was found
         if submitted_date:
@@ -1485,8 +1489,24 @@ def analyse_logs(log_files):
             output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n'
 
         if "errors" in found_infos:
+            job_ids = []
+            time_list = []
+            err_reason = []
+
             for err in occurred_errors:
-                print(err)
+                job_ids.append(err[0])
+                time_list.append(err[1])
+                err_reason.append(err[2])
+
+            # pd.set_option('display.max_colwidth', None)
+            err_df = pd.DataFrame({
+                "Time": time_list,
+                "Job ID": job_ids,
+                #"Job description": job_descriptions,
+                "Reason": err_reason
+            })
+            output_string += magenta + "Occurred HTCondor errors" + back_to_default + '\n'
+            output_string += tabulate(err_df, showindex=False, headers='keys') +'\n'
 
         # managing the ram history
         if "ram history" in found_infos:
