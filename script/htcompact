@@ -1046,6 +1046,7 @@ def load_config():
         return False
 
 
+# Todo: make flags to acces a given job_id
 def get_event_information(job_id):
     """
 Event Number: 000
@@ -1222,7 +1223,6 @@ def analyse_logs(log_files):
 
         # initialise with empty values
         submitted_date, executed_date, terminated_date = None, None, None
-        host, port = None, None
         aborted_by_user = None
         ram_histroy = list()
         occurred_errors = list()
@@ -1424,6 +1424,8 @@ def analyse_logs(log_files):
                 terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
 
                 aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
+                job_df = job_df.append(pd.DataFrame({"Description": "Job was aborted by the user",
+                                        "Values": [yellow+aborted_by_user+back_to_default]}))
 
             else:
                 timestamp = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
@@ -1442,8 +1444,6 @@ def analyse_logs(log_files):
             found_infos.append("execution")
         if terminated_date:
             found_infos.append("termination")
-        if aborted_by_user:
-            found_infos.append("aborted_by")
         if len(ram_histroy) > 0:
             found_infos.append("ram history")
         if len(occurred_errors) > 0:
