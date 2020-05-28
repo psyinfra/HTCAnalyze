@@ -33,6 +33,6 @@ setup(name='htcompact',
       ],
       data_files=[
             'script/htcsetup.conf',
-            'man/man8/htcompact.8'
+            'man/man1/htcompact.1'
       ],
       )

@@ -61,6 +61,7 @@ indexing = True # only for csv structure
 red = "\033[0;31m"
 green = "\033[0;32m"
 yellow = "\033[0;33m"
+magenta= "\033[0;35m"
 cyan = "\033[0;36m"
 back_to_default = "\033[0;39m"
 
@@ -1220,17 +1221,15 @@ def analyse_logs(log_files):
             print("The smart_output_logs method requires a " + std_log + " file as parameter")
 
         # initialise with empty values
-        submitted_date = None
-        executed_date = None
-        terminated_date = None
-        host = None
-        port = None
+        submitted_date, executed_date, terminated_date = None, None, None
+        host, port = None, None
         aborted_by_user = None
         ram_histroy = list()
-        occurred_errors = dict()
+        occurred_errors = list()
+        job_df, res_df = pd.DataFrame(columns=["Description", "Values"]), pd.DataFrame({})
 
         logging.debug(f"Analysing the HTCondor log file: {file}")
-        output_string += cyan + "Job analysis of: " + file + back_to_default + "\n"
+        output_string += green + "Job analysis of: " + file + back_to_default + "\n"
 
         for job, job_inf in zip(job_events, job_raw_information):
             job_id = job[0]
@@ -1238,12 +1237,13 @@ def analyse_logs(log_files):
             # job submitted
             if job_id == "000":
                 submitted_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-                # uncomment if user ip is needed
-                # match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job[5])
-                # if match_host:
-                #     from_host = match_host[1]
-                #     port = match_host[2]
-                #     print(from_host, port)
+
+                match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job[5])
+                if match_host:
+                    from_host = match_host[1]
+                    port = match_host[2]
+                    job_df = job_df.append(pd.DataFrame({"Description": "Submitted from host",
+                                                         "Values": [from_host]}))
 
             # job executing
             elif job_id == "001":
@@ -1263,64 +1263,70 @@ def analyse_logs(log_files):
             # job terminated
             elif job_id == "005":  # if the last job event is : Job terminated
                 terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-                runtime = terminated_date - executed_date  # calculation of the time runtime
 
                 # make a fancy design for the job_information
-                job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
-                job_information = [host, port, runtime]  # holds the related job information
+                job_labels = ["Executing on Host", "Port"]  # holds the labels
+                job_information = [host, port]  # holds the related job information
 
-                # filter the termination state ...
-                if True:
-                    # check if termination state is normal
-                    termination_state_inf = job_raw_information[-1][0]
-                    match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", termination_state_inf)
-                    if match_termination_state:
-                        job_labels.append("Termination State")
+                # check if termination state is normal or abnormal
+                match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", job_inf[0])
+                if match_termination_state:
+                    job_labels.append("Termination State")  # append the termination state
 
-                        if "Normal termination" in match_termination_state[1]:
-                            job_information.append(match_termination_state[1])
-                            match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
-                            return_value = match_return_value[1] if match_return_value else "None"
-                            if return_value == "None":
-                                logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
-                                print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
-                            else:
-                                job_labels.append("Return Value")
-                                job_information.append(return_value)
-                        elif "Abnormal termination" in match_termination_state[1]:
-                            job_information.append(red+match_termination_state[1]+back_to_default)
-
-                            match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
-                            return_value = match_return_value[1] if match_return_value else "None"
-                            if return_value == "None":
-                                logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
-                                print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
-                            else:
-                                job_labels.append("Return Value")
-                                job_information.append(return_value)
-
-                            termination_desc = list()
-                            # append the reason for the Abnormal Termination
-                            for desc in job_raw_information[-1][1:]:
-                                if re.match(r"[\t ]+\(0\)",desc):
-                                    termination_desc.append(desc[5:])
-                                else:
-                                    break
-
-                            if not len(termination_desc) == 0:
-                                job_labels.append("Description")
-                                job_information.append("\n".join(termination_desc))
-                            else:
-                                logging.debug(f"No termination description for {file} found")
-
+                    # Normal termination
+                    if "Normal termination" in match_termination_state[1]:
+                        job_information.append(match_termination_state[1])
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
+                        return_value = match_return_value[1] if match_return_value else "None"
+                        if return_value == "None":
+                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
+                            print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
                         else:
-                            logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
+                            job_labels.append("Return Value")
+                            job_information.append(return_value)
+
+                    # Abnormal Termination
+                    elif "Abnormal termination" in match_termination_state[1]:
+                        job_information.append(red+match_termination_state[1]+back_to_default)
+
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
+                        return_value = match_return_value[1] if match_return_value else "None"
+                        if return_value == "None":
+                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
+                            print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
+                        else:
+                            job_labels.append("Return Value")
+                            job_information.append(return_value)
+
+                        termination_desc = list()
+                        # append the reason for the Abnormal Termination
+                        for desc in job_raw_information[-1][1:]:
+                            if re.match(r"[\t ]+\(0\)", desc):
+                                termination_desc.append(desc[5:])
+                            else:
+                                break
+
+                        if not len(termination_desc) == 0:
+                            job_labels.append("Description")
+                            job_information.append("\n".join(termination_desc))
+                        else:
+                            logging.debug(f"No termination description for {file} found")
 
                     else:
-                        print(red + f"Termination error in HTCondor log file: {file}" + back_to_default)
+                        logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
+
+                else:
+                    print(red + f"Termination error in HTCondor log file: {file}" + back_to_default)
+
+                # now put everything together in a table
+                job_temp_df = pd.DataFrame({
+                    "Description": job_labels,
+                    "Values": job_information
+                })
+
+                job_df = job_df.append(job_temp_df)
 
                 # these where the job information now focus on the used resources
-
                 relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
 
                 # next part removes not useful lines
@@ -1387,6 +1393,21 @@ def analyse_logs(log_files):
                     if allocated[i] == "":
                         allocated[i] = np.nan
 
+                # put the data in the DataFrame
+                res_df = pd.DataFrame({
+                    "Rescources": resource_labels,
+                    "Usage": usage,
+                    "Requested": requested,
+                    # "Allocated": allocated
+                })
+                # if the user wants allocated resources then add it to the DataFrame as well
+                temp_index = 3
+                if not ignore_allocated_resources:
+                    res_df.insert(temp_index, "Allocated", allocated)
+                    temp_index += 1
+                if gpu_found:
+                    res_df.insert(temp_index, "Assigned", ["", "", "", gpu_name])
+
             # job image size updated
             elif job_id == "006":
                 date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
@@ -1405,7 +1426,7 @@ def analyse_logs(log_files):
                 for job_desc in job_inf:
                     for err in error_strings:
                         if err in job_desc.lower():
-                            occurred_errors[job_id] = [timestamp, get_event_information(job_id), re.sub('\t', '', job_desc)]
+                            occurred_errors.append([job_id,timestamp, get_event_information(job_id), re.sub('\t', '', job_desc)])
 
         # huge collection of if statements to resume all information in one single dictionary
         found_infos = dict()
@@ -1421,6 +1442,10 @@ def analyse_logs(log_files):
             found_infos["ram history"] = ram_histroy
         if len(occurred_errors) > 0:
             found_infos["errors"] = occurred_errors
+        if not job_df.empty:
+            found_infos["job_df"] = job_df
+        if not res_df.empty:
+            found_infos["res_df"] = res_df
 
         # managing the time information
         time_dict = dict()
@@ -1441,31 +1466,48 @@ def analyse_logs(log_files):
             if "submission" in found_infos:
                 total_time = found_infos["termination"] - found_infos["submission"]
                 time_dict["Total time"] = total_time
+        elif waiting_time:
+            time_dict["Termination date"] = "No valid termination occurred"
+            time_dict["Waiting time"] = waiting_time
 
-        time_df = pd.DataFrame(time_dict.values(), index=time_dict.keys())
-        output_string += tabulate(time_df) + "\n"
+        if len(time_dict) > 0:
+            output_string += magenta + "Dates and times" + back_to_default + '\n'
+            time_df = pd.DataFrame(time_dict.values(), index=time_dict.keys())
+            output_string += tabulate(time_df) + "\n"
+
+        if "job_df" in found_infos:
+            output_string += magenta + "Execution details" + back_to_default + '\n'
+            output_string += tabulate(job_df, showindex=False) + '\n'
+        if "res_df" in found_infos:
+            output_string += magenta + "Resource table" + back_to_default + '\n'
+            output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n'
+
+        if "errors" in found_infos:
+            print(occurred_errors)
+
         # managing the ram history
-
         if "ram history" in found_infos:
+            output_string += magenta + "Memory usage over time in KB" + back_to_default + '\n'
             if len(ram_histroy) > 1:
                 np_ram = np.array(ram_histroy)
                 ram = np_ram[:, 1]
                 dates = np_ram[:, 0]
-                print(ram)
+
                 fig = Figure()
                 fig.width = 55
                 fig.height = 15
                 fig.set_x_limits(min_=min(dates))
                 fig.set_y_limits(min_=min(ram))
-                fig.y_label = "Memory usage in KB"
+                fig.y_label = "Usage"
                 fig.x_label = "Dates"
                 fig.plot(dates, ram, lc='green')  # Todo: implement a way to show thresholds
+
                 output_string += fig.show() + "\n"
             else:
                 single_date = ram_histroy[0][0].strftime("%m/%d %H:%M:%S")
                 single_ram = ram_histroy[0][1]
                 output_string += f"Single memory update found:\n" \
-                    f"Memory usage on the {single_date} was updatet to {single_ram}\n"
+                    f"Memory usage on the {single_date} was updatet to {single_ram} KB\n"
 
             # rather astounishing than expected, but plottile is actually able to strech over time distances
             # return plot(dates, ram, width=55, height=10, lc='green',
@@ -1788,10 +1830,11 @@ def escape_seq_when_redirect():
     """
     # if output gets redirected with > or | or other redirection tools, ignore escape sequences
     if not sys.stdout.isatty():
-        global red, green, yellow, cyan, back_to_default
+        global red, green, yellow, magenta, cyan, back_to_default
         red = ""
         green = ""
         yellow = ""
+        magenta = ""
         cyan = ""
         back_to_default = ""
         logging.debug("Output is getting redirected, all escape sequences were set to \"\"")
