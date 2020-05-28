@@ -1,0 +1,62 @@
+.Dd May 26, 2020
+.Dt HTCompact 8
+.Os \" Current operating system.
+
+.Sh NAME
+.Nm htcompact
+.Nd summarise and analyse HTCondor log files
+
+.Sh SYNOPSIS
+.Nm
+.Op FILE
+.Ar ...
+.Op Fl s| Fl Fl summarise
+
+.Sh DESCRIPTION
+The
+.Nm
+script takes files and directories as input with given flags and
+prints out a readable result of found HTCondor log files
+.Pp
+Its arguments are as follows:
+.Bl -tag -width Ds
+
+.It Fl h | -help
+This will print a small help function, just like this.
+
+.It Fl s | -summarise
+summarises all given HTCondor log files and return a result regarding the averange usages and runtimes,
+this only makes sense, if multiple log files are given
+
+.It Fl std-log Ar standard-log
+The standard log files usually look something like
+.Qq job_452_237.log
+, if for whatever reason the format is not
+.Qq .log
+, then you can change it with this argument.
+
+.It Fl -show-errors
+This will show all occurred errors inside the standard-error files
+
+.It Fl -show-output
+This will show all occurred errors inside the standard-error files
+
+.It Ar prefix
+Prefix the output with
+.Ar prefix .
+.El
+
+.Sh EXIT STATUS
+.Ex -std
+
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa script/htcsetup.conf
+A default setup for this script.
+.El
+
+
+
+.Sh AUTHOR
+.An Mathis Loevenich,
+.Mt mathisloevenich@fz-juelich.de

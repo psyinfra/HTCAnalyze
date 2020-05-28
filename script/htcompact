@@ -10,6 +10,8 @@ import configparser
 import pandas as pd
 import numpy as np
 from tabulate import tabulate
+from plotille import plot
+from plotille import Figure
 
 
 """
@@ -38,10 +40,12 @@ files = list()
 border_str = ""
 
 # variables for given parameters
-show_output = False
-show_warnings = False
+show_std_output = False
+show_std_warnings = False
+show_std_errors = False
+
+# ignore infromation
 ignore_allocated_resources = False
-show_errors = False
 ignore_job_information = False
 ignore_resources = False
 
@@ -49,6 +53,7 @@ ignore_resources = False
 resolve_ip_to_hostname = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 summarise = False
+analyse = False
 to_csv = False
 indexing = True # only for csv structure
 
@@ -56,6 +61,7 @@ indexing = True # only for csv structure
 red = "\033[0;31m"
 green = "\033[0;32m"
 yellow = "\033[0;33m"
+magenta= "\033[0;35m"
 cyan = "\033[0;36m"
 back_to_default = "\033[0;39m"
 
@@ -137,27 +143,17 @@ def manage_params():
     """
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
-    global show_output, show_warnings, ignore_allocated_resources  # show more information variables
-    global show_errors, ignore_resources, ignore_job_information  # ignore information variables
-    global to_csv, summarise, indexing  # features
+    global show_std_output, show_std_warnings, show_std_errors  # show more information variables
+    global ignore_resources, ignore_job_information, ignore_allocated_resources # ignore information variables
+    global to_csv, summarise, analyse, indexing  # features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
-    # if output gets redirected with > or | or other redirection tools, ignore escape sequences
-    if not sys.stdout.isatty():
-        global red, green, yellow, cyan, back_to_default
-        red = ""
-        green = ""
-        yellow = ""
-        cyan = ""
-        back_to_default = ""
-        logging.debug("Output is getting redirected, all escape sequences were set to \"\"")
-
-    option_shorts = "hs"
+    option_shorts = "hsa"
     option_longs = ["help", "std-log=", "std-err=", "std-out=",
                     "show-errors", "show-output", "show-warnings",
                     "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
-                    "to-csv", "indexing=", "summarise",
+                    "to-csv", "indexing=", "summarise", "analyse",
                     "resolve-ip", "table-format="]
 
     better_args = remove_files_from_args(sys.argv[1:], option_shorts, option_longs)
@@ -178,6 +174,9 @@ def manage_params():
             elif opt in ["-s", "--summarise"]:
                 summarise = True
                 logging.debug("Summariser mode turned on")
+            elif opt in ["-a", "--analyse"]:
+                analyse = True
+                logging.debug("Analyser mode turned on")
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
             elif opt == "--std-log":
                 # to forget the . should not be painful
@@ -196,15 +195,15 @@ def manage_params():
                 std_out = arg
             # all variables, to show more specific information
             elif opt.__eq__("--show-output"):
-                show_output = True
+                show_std_output = True
             elif opt.__eq__("--show-warnings"):
-                show_warnings = True
-            elif opt.__eq__("--ignore-allocated-resources"):
-                ignore_allocated_resources = True
+                show_std_warnings = True
+            elif opt.__eq__("--show-errors"):
+                show_std_errors = True
 
             # all variables to ignore unwanted information
-            elif opt.__eq__("--show-errors"):
-                show_errors = True
+            elif opt.__eq__("--ignore-allocated-resources"):
+                ignore_allocated_resources = True
             elif opt.__eq__("--ignore-resources"):
                 ignore_resources = True
             elif opt.__eq__("--ignore-job-information"):
@@ -343,7 +342,7 @@ def help_me():
 
 
 # reads all information, but returns them in two lists
-def read_condor_logs(file):
+def read_condor_log(file):
     """
 
     reads a given HTCondor std_log file and separates the information in two lists,
@@ -402,19 +401,22 @@ def raise_value_error(message):
     raise ValueError(message)
 
 
+# Todo: time seperated ( submitting / executing / terminating)
 # Todo: store job event numbers ( see job_descriptions.txt)
 # Todo: Read HTCondor Errors that occurred
+# Todo: for loop instead of single run
 def log_to_dataframe(file):
     try:
-        job_events, job_raw_information = read_condor_logs(file)
+        job_events, job_raw_information = read_condor_log(file)
 
         submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
             # calculate the runtime for the job
+            executed_date = datetime.datetime.strptime(job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
             terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-            runtime = terminating_date - submitted_date  # calculation of the time runtime
+            runtime = terminating_date - executed_date  # calculation of the time runtime
 
             match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
             if match_host:
@@ -572,13 +574,13 @@ def log_to_dataframe(file):
             if gpu_found:
                 res_df.insert(temp_index, "Assigned", ["", "", "", gpu_name])
 
-        # Todo: more information, maybe why ?
         elif job_events[-1][0].__eq__("009"):  # job aborted
 
             # calculate the runtime for the job
             if job_events[-1].__ne__(job_events[0]):
+                executed_date = datetime.datetime.strptime(job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
                 terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-                runtime = terminating_date - submitted_date  # calculation of the time runtime
+                runtime = terminating_date - executed_date  # calculation of the time runtime
             else:
                 runtime = datetime.timedelta(0)
 
@@ -593,9 +595,14 @@ def log_to_dataframe(file):
     except NameError as err:
         logging.exception(err)
         print("The smart_output_logs method requires a " + std_log + " file as parameter")
-    except FileNotFoundError or ValueError or IndexError as err:
+    except FileNotFoundError or ValueError as err:
         logging.exception(err)
         print(red + str(err) + back_to_default)
+    except IndexError as err:
+        logging.debug(f"Index Error with {file}: ")
+        logging.exception(err)
+    except Exception as err:
+        logging.debug(err)
     # finally
     else:
         return job_df, res_df
@@ -738,9 +745,9 @@ def smart_output_error(file):
     try:
         error_content = read_condor_error(file)
         for line in error_content.split("\n"):
-            if "err" in line.lower() and show_errors:
+            if "err" in line.lower() and show_std_errors:
                 output_string += red + line + back_to_default + "\n"
-            elif "warn" in line.lower() and show_warnings:
+            elif "warn" in line.lower() and show_std_warnings:
                 output_string += yellow + line + back_to_default + "\n"
 
     except NameError as err:
@@ -804,10 +811,10 @@ def smart_manage_all(file):
 
         output_string = smart_output_logs(job_spec_id + std_log)  # normal smart_output of log files
 
-        if show_errors:  # show errors ?
+        if show_std_errors:  # show errors ?
             output_string += smart_output_error(job_spec_id + std_err)
 
-        if show_output:  # show output content ?
+        if show_std_output:  # show output content ?
             output_string += smart_output_output(job_spec_id + std_out)
     except Exception as err:
         logging.exception(err)
@@ -865,6 +872,7 @@ def output_given_logs():
 # search for config file ( UNIX BASED )
 # Todo: Test
 #       Change some varibales
+# Todo: NAlayse
 def load_config():
     """
 
@@ -974,19 +982,19 @@ def load_config():
 
         # if show variables are set for further output
         if 'show-more' in sections:
-            global show_output, show_warnings, show_errors  # sources to show
+            global show_std_output, show_std_warnings, show_std_errors  # sources to show
 
             if 'show_errors' in config['show-more']:
-                show_errors = config['show-more']['show_errors'].lower() in accepted_states
-                logging.debug(f"Changed default show_errors to: {show_errors}")
+                show_std_errors = config['show-more']['show_errors'].lower() in accepted_states
+                logging.debug(f"Changed default show_errors to: {show_std_errors}")
 
             if 'show_output' in config['show-more']:
-                show_output = config['show-more']['show_output'].lower() in accepted_states
-                logging.debug(f"Changed default show_output to: {show_output}")
+                show_std_output = config['show-more']['show_output'].lower() in accepted_states
+                logging.debug(f"Changed default show_output to: {show_std_output}")
 
             if 'show_warnings' in config['show-more']:
-                show_warnings = config['show-more']['show_warnings'].lower() in accepted_states
-                logging.debug(f"Changed default show_warnings to: {show_warnings}")
+                show_std_warnings = config['show-more']['show_warnings'].lower() in accepted_states
+                logging.debug(f"Changed default show_warnings to: {show_std_warnings}")
 
         # what information should to be ignored
         if 'ignore' in sections:
@@ -1038,13 +1046,508 @@ def load_config():
         return False
 
 
+# Todo: make flags to acces a given job_id
+def get_event_information(job_id):
+    """
+Event Number: 000
+Event Name: Job submitted
+Event Description: This event occurs when a user submits a job. It is the first event you will see for a job, and it should only occur once.
+
+Event Number: 001
+Event Name: Job executing
+Event Description: This shows up when a job is running. It might occur more than once.
+
+Event Number: 002
+Event Name: Error in executable
+Event Description: The job could not be run because the executable was bad.
+
+Event Number: 003
+Event Name: Job was checkpointed
+Event Description: The job's complete state was written to a checkpoint file. This might happen without the job being removed from a machine, because the checkpointing can happen periodically.
+
+Event Number: 004
+Event Name: Job evicted from machine
+Event Description: A job was removed from a machine before it finished, usually for a policy reason. Perhaps an interactive user has claimed the computer, or perhaps another job is higher priority.
+
+Event Number: 005
+Event Name: Job terminated
+Event Description: The job has completed.
+
+Event Number: 006
+Event Name: Image size of job updated
+Event Description: An informational event, to update the amount of memory that the job is using while running. It does not reflect the state of the job.
+
+Event Number: 007
+Event Name: Shadow exception
+Event Description: The condor_shadow, a program on the submit computer that watches over the job and performs some services for the job, failed for some catastrophic reason. The job will leave the machine and go back into the queue.
+
+Event Number: 008
+Event Name: Generic log event
+Event Description: Not used.
+
+Event Number: 009
+Event Name: Job aborted
+Event Description: The user canceled the job.
+
+Event Number: 010
+Event Name: Job was suspended
+Event Description: The job is still on the computer, but it is no longer executing. This is usually for a policy reason, such as an interactive user using the computer.
+
+Event Number: 011
+Event Name: Job was unsuspended
+Event Description: The job has resumed execution, after being suspended earlier.
+
+Event Number: 012
+Event Name: Job was held
+Event Description: The job has transitioned to the hold state. This might happen if the user applies the condor_hold command to the job.
+
+Event Number: 013
+Event Name: Job was released
+Event Description: The job was in the hold state and is to be re-run.
+
+Event Number: 014
+Event Name: Parallel node executed
+Event Description: A parallel universe program is running on a node.
+
+Event Number: 015
+Event Name: Parallel node terminated
+Event Description: A parallel universe program has completed on a node.
+
+Event Number: 016
+Event Name: POST script terminated
+Event Description: A node in a DAGMan work flow has a script that should be run after a job. The script is run on the submit host. This event signals that the post script has completed.
+
+Event Number: 017
+Event Name: Job submitted to Globus
+Event Description: A grid job has been delegated to Globus (version 2, 3, or 4). This event is no longer used.
+
+Event Number: 018
+Event Name: Globus submit failed
+Event Description: The attempt to delegate a job to Globus failed.
+
+Event Number: 019
+Event Name: Globus resource up
+Event Description: The Globus resource that a job wants to run on was unavailable, but is now available. This event is no longer used.
+
+Event Number: 020
+Event Name: Detected Down Globus Resource
+Event Description: The Globus resource that a job wants to run on has become unavailable. This event is no longer used.
+
+Event Number: 021
+Event Name: Remote error
+Event Description: The condor_starter (which monitors the job on the execution machine) has failed.
+
+Event Number: 022
+Event Name: Remote system call socket lost
+Event Description: The condor_shadow and condor_starter (which communicate while the job runs) have lost contact.
+
+Event Number: 023
+Event Name: Remote system call socket reestablished
+Event Description: The condor_shadow and condor_starter (which communicate while the job runs) have been able to resume contact before the job lease expired.
+
+Event Number: 024
+Event Name: Remote system call reconnect failure
+Event Description: The condor_shadow and condor_starter (which communicate while the job runs) were unable to resume contact before the job lease expired.
+
+Event Number: 025
+Event Name: Grid Resource Back Up
+Event Description: A grid resource that was previously unavailable is now available.
+
+Event Number: 026
+Event Name: Detected Down Grid Resource
+Event Description: The grid resource that a job is to run on is unavailable.
+
+Event Number: 027
+Event Name: Job submitted to grid resource
+Event Description: A job has been submitted, and is under the auspices of the grid resource.
+
+Event Number: 028
+Event Name: Job ad information event triggered.
+Event Description: Extra job ClassAd attributes are noted. This event is written as a supplement to other events when the configuration parameter EVENT_LOG_JOB_AD_INFORMATION_ATTRS is set.
+
+Event Number: 029
+Event Name: The job's remote status is unknown
+Event Description: No updates of the job's remote status have been received for 15 minutes.
+
+Event Number: 030
+Event Name: The job's remote status is known again
+Event Description: An update has been received for a job whose remote status was previous logged as unknown.
+
+Event Number: 031
+Event Name: Job stage in
+Event Description: A grid universe job is doing the stage in of input files.
+
+Event Number: 032
+Event Name: Job stage out
+Event Description: A grid universe job is doing the stage out of output files.
+
+Event Number: 033
+Event Name: Job ClassAd attribute update
+Event Description: A Job ClassAd attribute is changed due to action by the condor_schedd daemon. This includes changes by condor_prio.
+
+Event Number: 034
+Event Name: Pre Skip event
+Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with the defined PRE_SKIP value in the DAG input file. This makes it possible for DAGMan to do recovery in a workflow that has such an event, as it would otherwise not have any event for the DAGMan node to which the script belongs, and in recovery, DAGMan's internal tables would become corrupted.
+"""
+    doc_str = get_event_information.__doc__.split('\n')
+    for i, line in enumerate(doc_str):
+        match = re.match(r"Event Number: ([0-9]{3})", line)
+        if match:
+            if int(match[1]) == int(job_id):
+                return doc_str[i+1:i+3]
+    # else
+    return get_event_information.__doc__
+
+
 # Todo: analyse a particular log file, with ALL kind of information, not just the defaults
-def analyse():
-    pass
+def analyse_logs(log_files):
+
+    if len(log_files) == 0:
+        return "No files to analyse"
+    elif len(log_files) > 1:
+        print("More than one file is given, this mode is meant to be used for single job analysis.\n"
+              "This will change nothing, but you should rather do it just for a file one by one")
+        x = input("Want to continue (y/n): ")
+        if x != "y":
+            return "Process stoped"
+
+    output_string = ""
+
+    for file in log_files:
+
+        try:
+            job_events, job_raw_information = read_condor_log(file)
+        except NameError as err:
+            logging.exception(err)
+            print("The smart_output_logs method requires a " + std_log + " file as parameter")
+
+        # initialise with empty values
+        submitted_date, executed_date, terminated_date = None, None, None
+        aborted_by_user = None
+        ram_histroy = list()
+        occurred_errors = list()
+        job_df, res_df = pd.DataFrame(columns=["Description", "Values"]), pd.DataFrame({})
+
+        logging.debug(f"Analysing the HTCondor log file: {file}")
+        output_string += green + "Job analysis of: " + file + back_to_default + "\n"
+
+        for job, job_inf in zip(job_events, job_raw_information):
+            job_id = job[0]
+
+            # job submitted
+            if job_id == "000":
+                submitted_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+
+                match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job[5])
+                if match_host:
+                    from_host = match_host[1]
+                    port = match_host[2]
+                    job_df = job_df.append(pd.DataFrame({"Description": "Submitted from host",
+                                                         "Values": [from_host]}))
+
+            # job executing
+            elif job_id == "001":
+                executed_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+                match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job[5])
+                if match_host:
+                    host = match_host[1]
+                    # if resolve ip to hostname, change the ip to cpu: last number
+                    if resolve_ip_to_hostname:
+                        host = "cpu node: " + host.split('.')[-1]
+                    port = match_host[2]
+
+                    job_df = job_df.append(pd.DataFrame({"Description": ["Executing on Host", "Port"],
+                                                         "Values": [host, port]}))
+                else:
+                    logging.exception("Host and port haven't been matched correctly")
+                    print(red + "your log file has faulty values for the host ip,"
+                                " make sure it's a valid IPv4" + back_to_default)
+
+            # job terminated
+            elif job_id == "005":  # if the last job event is : Job terminated
+                terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+
+                # make a fancy design for the job_information
+                job_labels = []  # holds the labels
+                job_information = []  # holds the related job information
+
+                # check if termination state is normal or abnormal
+                match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", job_inf[0])
+                if match_termination_state:
+                    job_labels.append("Termination State")  # append the termination state
+
+                    # Normal termination
+                    if "Normal termination" in match_termination_state[1]:
+                        job_information.append(match_termination_state[1])
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
+                        return_value = match_return_value[1] if match_return_value else "None"
+                        if return_value == "None":
+                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
+                            print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
+                        else:
+                            job_labels.append("Return Value")
+                            job_information.append(return_value)
+
+                    # Abnormal Termination
+                    elif "Abnormal termination" in match_termination_state[1]:
+                        job_information.append(red+match_termination_state[1]+back_to_default)
+
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
+                        return_value = match_return_value[1] if match_return_value else "None"
+                        if return_value == "None":
+                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
+                            print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
+                        else:
+                            job_labels.append("Return Value")
+                            job_information.append(return_value)
+
+                        termination_desc = list()
+                        # append the reason for the Abnormal Termination
+                        for desc in job_raw_information[-1][1:]:
+                            if re.match(r"[\t ]+\(0\)", desc):
+                                termination_desc.append(desc[5:])
+                            else:
+                                break
+
+                        if not len(termination_desc) == 0:
+                            job_labels.append("Description")
+                            job_information.append("\n".join(termination_desc))
+                        else:
+                            logging.debug(f"No termination description for {file} found")
+
+                    else:
+                        logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
+
+                else:
+                    print(red + f"Termination error in HTCondor log file: {file}" + back_to_default)
+
+                # now put everything together in a table
+                job_temp_df = pd.DataFrame({
+                    "Description": job_labels,
+                    "Values": job_information
+                })
+
+                job_df = job_df.append(job_temp_df)
+
+                # these where the job information now focus on the used resources
+                relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
+
+                # next part removes not useful lines
+                if True:  # just for readability
+                    # remove unnecessary lines
+                    lines = relevant_str.splitlines()
+                    # while not lines[0].startswith("\tPartitionable"):
+                    while not re.match(r"[\t ]+Partitionable", lines[0]):
+                        lines.remove(lines[0])
+
+                    lines.remove(lines[0])
+                    partitionable_res = lines
+                    # done, partitionable_resources contain now only information about used resources
+
+                # match all resources
+                # ****************************************************************************************************
+                match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
+                if match:
+                    cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
+                else:
+                    raise_value_error("Something went wrong reading the cpu information")
+
+                match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
+                if match:
+                    disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
+                else:
+                    raise raise_value_error("Something went wrong reading the disk information")
+
+                # check if the log has gpu information in between
+                gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
+                gpu_found = False  # easier to check to add information in the DataFrame
+                match = re.match(r"[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) \"(.*)\"",
+                                 partitionable_res[gpu_match_index])
+                if match:
+                    gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
+                    gpu_match_index += 1
+                    gpu_found = True
+
+                match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[gpu_match_index])
+                if match:
+                    memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
+                else:
+                    raise_value_error("Something went wrong reading the memory information")
+                # ****************************************************************************************************
+
+                # list of resources and their labels
+                resource_labels = ["Cpu", "Disk", "Memory"]
+                usage = [cpu_usage, disk_usage, memory_usage]
+                requested = [cpu_request, disk_request, memory_request]
+                allocated = [cpu_allocated, disk_allocated, memory_allocated]
+
+                if gpu_found:
+                    resource_labels.append("Gpus")
+                    usage.append(gpu_usage)
+                    requested.append(gpu_request)
+                    allocated.append(gpu_allocated)
+
+                # Error handling: change empty values to NaN in the first column
+                for i in range(3):
+                    if usage[i] == "":
+                        usage[i] = np.nan
+                    if requested[i] == "":
+                        requested[i] = np.nan
+                    if allocated[i] == "":
+                        allocated[i] = np.nan
+
+                # put the data in the DataFrame
+                res_df = pd.DataFrame({
+                    "Rescources": resource_labels,
+                    "Usage": usage,
+                    "Requested": requested,
+                    # "Allocated": allocated
+                })
+                # if the user wants allocated resources then add it to the DataFrame as well
+                temp_index = 3
+                if not ignore_allocated_resources:
+                    res_df.insert(temp_index, "Allocated", allocated)
+                    temp_index += 1
+                if gpu_found:
+                    res_df.insert(temp_index, "Assigned", ["", "", "", gpu_name])
+
+            # job image size updated
+            elif job_id == "006":
+                date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+                image_size = job[5]
+                memory_usage = re.match("[\t ]+([0-9]+)", job_inf[0])[1]
+                resident_set_size = re.match("[\t ]+([0-9]+)", job_inf[1])[1]
+                ram_histroy.append([date, int(image_size), int(memory_usage), int(resident_set_size)])
+
+            # job aborted
+            elif job_id == "009":
+                terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+
+                aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
+                job_df = job_df.append(pd.DataFrame({"Description": "Job was aborted by the user",
+                                        "Values": [yellow+aborted_by_user+back_to_default]}))
+
+            else:
+                timestamp = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+                error_strings = ["error", "err", "warning", "warn", "exception"]
+                for job_desc in job_inf:
+                    for err in error_strings:
+                        if err in job_desc.lower():
+                            occurred_errors.append([job_id, timestamp,
+                                                    re.sub(' \t', '', job_desc)])
+                            break  # avoid duplicates
+
+        found_infos = list()  # list to ask if a value was found
+        if submitted_date:
+            found_infos.append("submission")
+        if executed_date:
+            found_infos.append("execution")
+        if terminated_date:
+            found_infos.append("termination")
+        if len(ram_histroy) > 0:
+            found_infos.append("ram history")
+        if len(occurred_errors) > 0:
+            found_infos.append("errors")
+        if not job_df.empty:
+            found_infos.append("job_df")
+        if not res_df.empty:
+            found_infos.append("res_df")
+
+        # managing the time information
+        time_dict = dict()
+        waiting_time = None
+        if "submission" in found_infos:
+            time_dict["Submission date"] = submitted_date.strftime("%m/%d %H:%M:%S")
+        if "execution" in found_infos:
+            time_dict["Execution date"] = executed_date.strftime("%m/%d %H:%M:%S")
+            if "submission" in found_infos:
+                waiting_time = executed_date - submitted_date
+        if "termination" in found_infos:
+            time_dict["Termination date"] = terminated_date.strftime("%m/%d %H:%M:%S")
+            if waiting_time:
+                time_dict["Waiting time"] = waiting_time
+            if "execution" in found_infos:
+                runtime = terminated_date - executed_date
+                time_dict["Runtime"] = runtime
+            if "submission" in found_infos:
+                total_time = executed_date - submitted_date
+                time_dict["Total time"] = total_time
+        elif waiting_time:
+            time_dict["Termination date"] = "No valid termination occurred"
+            time_dict["Waiting time"] = waiting_time
+
+        if len(time_dict) > 0:
+            output_string += magenta + "Dates and times" + back_to_default + '\n'
+            time_df = pd.DataFrame(time_dict.values(), index=time_dict.keys())
+            output_string += tabulate(time_df) + "\n\n"
+
+        if "job_df" in found_infos:
+            output_string += magenta + "Execution details" + back_to_default + '\n'
+            output_string += tabulate(job_df, showindex=False) + '\n\n'
+        if "res_df" in found_infos:
+            output_string += magenta + "Resource table" + back_to_default + '\n'
+            output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n\n'
+
+        if "errors" in found_infos:
+            # Todo: is this covering all cases ?
+            job_ids = []
+            time_list = []
+            err_reason = []
+
+            for err in occurred_errors:
+                job_ids.append(err[0])
+                time_list.append(err[1].strftime("%m/%d %H:%M:%S"))
+                # if the line is to long, split it
+                if len(err[2]) > 50:
+                    split = int(len(err[2])/2)
+                    while err[2][split] != ' ' and split < len(err[2])-1:
+                        split += 1
+                    if split > len(err[2])-2:  # if no space was found, change back to normal
+                        split = int(len(err[2]) / 2)
+                    err_reason.append(err[2][0:split] + '\n' + err[2][split:])
+                else:
+                    err_reason.append(err[2])
+
+            err_df = pd.DataFrame({
+                "Time": time_list,
+                "Job ID": job_ids,
+                "Reason": err_reason
+            })
+
+            output_string += magenta + "Occurred HTCondor errors" + back_to_default + '\n'
+            output_string += tabulate(err_df, showindex=False, headers='keys') + '\n\n'
+
+        # managing the ram history
+        if "ram history" in found_infos:
+            output_string += magenta + "Memory usage over time in MB" + back_to_default + '\n'
+            if len(ram_histroy) > 1:
+                np_ram = np.array(ram_histroy)
+                ram = np_ram[:, 2]  # second column which is memory usage
+                dates = np_ram[:, 0] # first column
+
+                fig = Figure()
+                fig.width = 55
+                fig.height = 15
+                fig.set_x_limits(min_=min(dates))
+                fig.set_y_limits(min_=min(ram))
+                fig.y_label = "Usage"
+                fig.x_label = "Dates"
+                fig.plot(dates, ram, lc='green')  # Todo: implement a way to show thresholds
+
+                output_string += fig.show() + "\n\n"
+            else:
+                single_date = ram_histroy[0][0].strftime("%m/%d %H:%M:%S")
+                single_ram = ram_histroy[0][2]
+                output_string += f"Single memory update found:\n" \
+                    f"Memory usage on the {single_date} was updatet to {single_ram} MB\n"
+
+            output_string += "\n"
+
+    return output_string
 
 
 # Todo: test with many files
-def summarise_given_logs():
+def summarise_logs(log_files):
     """
     Summarises all used resources and the runtime in total and average
 
@@ -1053,7 +1556,7 @@ def summarise_given_logs():
     :return:
     """
 
-    valid_files = len(files)
+    valid_files = len(log_files)
     # no given files
     if valid_files == 0:
         return "No files to summarise"
@@ -1088,7 +1591,7 @@ def summarise_given_logs():
     percent_mark = 10  # calculate the percentage of the running summarisation
     start_status = 50  # value that decides, when it's worth showing a status of the progress
 
-    for i, file in enumerate(files):
+    for i, file in enumerate(log_files):
         try:
             log = log_to_dataframe(file)
 
@@ -1221,6 +1724,7 @@ def summarise_given_logs():
             df_total = df_total.append(df_gpu_total)
             df_average = df_average.append(df_gpu_average)
 
+            # Todo: each gpu gets a single row
             df_total.insert(insert_index, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
             df_average.insert(insert_index, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
             insert_index += 1
@@ -1345,6 +1849,42 @@ def validate_given_logs(file_list):
     return valid_files
 
 
+def escape_seq_when_redirect():
+    """
+    This method should be activated first, when output is generated
+    it does nothing, if output is printed to the terminal.
+    If output gets redirected with > or | or other redirection tools, ignore escape sequences
+    by setting them to ""
+    :return:
+    """
+    # if output gets redirected with > or | or other redirection tools, ignore escape sequences
+    if not sys.stdout.isatty():
+        global red, green, yellow, magenta, cyan, back_to_default
+        red = ""
+        green = ""
+        yellow = ""
+        magenta = ""
+        cyan = ""
+        back_to_default = ""
+        logging.debug("Output is getting redirected, all escape sequences were set to \"\"")
+
+
+def test():
+    # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
+    # (you will see when you try, files will be interpreted as HTCondor log files)
+    # so it's not possible to give multiple config files
+    load_config()
+
+    # after that, interpret the command line arguments, these will have a higher priority, than the config setup
+    # and by that arguments set in the config file, will be ignored
+    manage_params()
+
+    global files
+    files = validate_given_logs(files)  # validate the files, make a list of all valid config files
+
+    analyse_logs(files)
+
+
 def main():
     """
     This is the main function, which searchs first for a given config file.
@@ -1355,6 +1895,7 @@ def main():
     :return:
     """
     try:
+        escape_seq_when_redirect() # set the color sequenzes to ""
 
         # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
         # (you will see when you try, files will be interpreted as HTCondor log files)
@@ -1369,9 +1910,11 @@ def main():
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
         if summarise:
-            output_string = summarise_given_logs()  # summarise information
+            output_string = summarise_logs(files)  # summarise information
+        elif analyse:
+            output_string = analyse_logs(files)  # analyse the given files
         else:
-            output_string = "\n"+ output_given_logs()  # print out all given files if possible
+            output_string = "\n" + output_given_logs()  # print out all given files if possible
 
         print(output_string)  # write it to the console
 
