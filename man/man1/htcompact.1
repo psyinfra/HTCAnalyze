@@ -10,7 +10,7 @@
 .Nm
 .Op FILE
 .Ar ...
-.Op Fl s| Fl Fl summarise
+.Op OPTIONS
 
 .Sh DESCRIPTION
 The
@@ -21,12 +21,16 @@ prints out a readable result of found HTCondor log files
 Its arguments are as follows:
 .Bl -tag -width Ds
 
-.It Fl h | -help
+.It Fl h | Fl Fl help
 This will print a small help function, just like this.
 
-.It Fl s | -summarise
+.It Fl s | Fl Fl summarise
 summarises all given HTCondor log files and return a result regarding the averange usages and runtimes,
 this only makes sense, if multiple log files are given
+
+.It Fl a | Fl Fl analyse
+analyses a specific file, for occurred errors, ram history -> histogram,
+execution status, runtime and much more
 
 .It Fl std-log Ar standard-log
 The standard log files usually look something like
@@ -41,13 +45,14 @@ This will show all occurred errors inside the standard-error files
 .It Fl -show-output
 This will show all occurred errors inside the standard-error files
 
-.It Ar prefix
-Prefix the output with
-.Ar prefix .
-.El
+# Todo: rest of the options
 
 .Sh EXIT STATUS
-.Ex -std
+The
+.Nm
+script will exit normally in any case, if no other output is given, that tells the opposite.
+.Ex
+
 
 .Sh FILES
 .Bl -tag -width Ds
