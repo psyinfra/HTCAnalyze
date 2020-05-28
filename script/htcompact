@@ -1411,8 +1411,10 @@ def analyse_logs(log_files):
             # job image size updated
             elif job_id == "006":
                 date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-                ram_usage = job[5]
-                ram_histroy.append([date, int(ram_usage)])
+                image_size = job[5]
+                memory_usage = re.match("[\t ]+([0-9]+)", job_inf[0])[1]
+                resident_set_size = re.match("[\t ]+([0-9]+)", job_inf[1])[1]
+                ram_histroy.append([date, int(image_size), int(memory_usage), int(resident_set_size)])
 
             # job aborted
             elif job_id == "009":
@@ -1426,45 +1428,45 @@ def analyse_logs(log_files):
                 for job_desc in job_inf:
                     for err in error_strings:
                         if err in job_desc.lower():
-                            occurred_errors.append([job_id,timestamp, get_event_information(job_id), re.sub('\t', '', job_desc)])
+                            occurred_errors.append([job_id, timestamp,
+                                                    get_event_information(job_id), re.sub('\t', '', job_desc)])
 
-        # huge collection of if statements to resume all information in one single dictionary
-        found_infos = dict()
+        found_infos = list()  # list to ask if a value was found
         if submitted_date:
-            found_infos["submission"] = submitted_date
+            found_infos.append("submission")
         if executed_date:
-            found_infos["execution"] = executed_date
+            found_infos.append("execution")
         if terminated_date:
-            found_infos["termination"] = terminated_date
+            found_infos.append("termination")
         if aborted_by_user:
-            found_infos["aborted_by"] = aborted_by_user
+            found_infos.append("aborted_by")
         if len(ram_histroy) > 0:
-            found_infos["ram history"] = ram_histroy
+            found_infos.append("ram history")
         if len(occurred_errors) > 0:
-            found_infos["errors"] = occurred_errors
+            found_infos.append("errors")
         if not job_df.empty:
-            found_infos["job_df"] = job_df
+            found_infos.append("job_df")
         if not res_df.empty:
-            found_infos["res_df"] = res_df
+            found_infos.append("res_df")
 
         # managing the time information
         time_dict = dict()
         waiting_time = None
         if "submission" in found_infos:
-            time_dict["Submission date"] = found_infos["submission"].strftime("%m/%d %H:%M:%S")
+            time_dict["Submission date"] = submitted_date.strftime("%m/%d %H:%M:%S")
         if "execution" in found_infos:
-            time_dict["Execution date"] = found_infos["execution"].strftime("%m/%d %H:%M:%S")
+            time_dict["Execution date"] = executed_date.strftime("%m/%d %H:%M:%S")
             if "submission" in found_infos:
-                waiting_time = found_infos["execution"] - found_infos["submission"]
+                waiting_time = executed_date - submitted_date
         if "termination" in found_infos:
-            time_dict["Termination date"] = found_infos["termination"].strftime("%m/%d %H:%M:%S")
+            time_dict["Termination date"] = terminated_date.strftime("%m/%d %H:%M:%S")
             if waiting_time:
                 time_dict["Waiting time"] = waiting_time
             if "execution" in found_infos:
-                runtime = found_infos["termination"] - found_infos["execution"]
+                runtime = terminated_date - executed_date
                 time_dict["Runtime"] = runtime
             if "submission" in found_infos:
-                total_time = found_infos["termination"] - found_infos["submission"]
+                total_time = executed_date - submitted_date
                 time_dict["Total time"] = total_time
         elif waiting_time:
             time_dict["Termination date"] = "No valid termination occurred"
@@ -1483,15 +1485,16 @@ def analyse_logs(log_files):
             output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n'
 
         if "errors" in found_infos:
-            print(occurred_errors)
+            for err in occurred_errors:
+                print(err)
 
         # managing the ram history
         if "ram history" in found_infos:
-            output_string += magenta + "Memory usage over time in KB" + back_to_default + '\n'
+            output_string += magenta + "Memory usage over time in MB" + back_to_default + '\n'
             if len(ram_histroy) > 1:
                 np_ram = np.array(ram_histroy)
-                ram = np_ram[:, 1]
-                dates = np_ram[:, 0]
+                ram = np_ram[:, 2]  # second column which is memory usage
+                dates = np_ram[:, 0] # first column
 
                 fig = Figure()
                 fig.width = 55
@@ -1505,13 +1508,10 @@ def analyse_logs(log_files):
                 output_string += fig.show() + "\n"
             else:
                 single_date = ram_histroy[0][0].strftime("%m/%d %H:%M:%S")
-                single_ram = ram_histroy[0][1]
+                single_ram = ram_histroy[0][2]
                 output_string += f"Single memory update found:\n" \
-                    f"Memory usage on the {single_date} was updatet to {single_ram} KB\n"
+                    f"Memory usage on the {single_date} was updatet to {single_ram} MB\n"
 
-            # rather astounishing than expected, but plottile is actually able to strech over time distances
-            # return plot(dates, ram, width=55, height=10, lc='green',
-            #             y_min=min(ram), y_max=max(ram), x_min=min(dates), Y_label="Memory Usage in KB")
             output_string += "\n"
 
     return output_string
