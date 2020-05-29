@@ -1031,13 +1031,16 @@ def load_config():
 
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
-            global resolve_ip_to_hostname, reverse_dns_lookup, summarise  # extra parameters
+            global resolve_ip_to_hostname, reverse_dns_lookup, summarise, analyse  # extra parameters
             if 'resolve_ip_to_hostname' in config['features']:
                 resolve_ip_to_hostname = config['features']['resolve_ip_to_hostname'].lower() in accepted_states
                 logging.debug(f"Changed default resolve_ip_to_hostname to: {resolve_ip_to_hostname}")
             if 'summarise' in config['features']:
                 summarise = config['features']['summarise'].lower() in accepted_states
                 logging.debug(f"Changed default summarise to: {summarise}")
+            if 'analyse' in config['features']:
+                analyse = config['features']['analyse'].lower() in accepted_states
+                logging.debug(f"Changed default analyse to: {analyse}")
 
         return True
 
