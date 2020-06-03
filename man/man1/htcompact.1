@@ -8,7 +8,7 @@
 
 .Sh SYNOPSIS
 .Nm
-.Op FILE
+.Op FILES
 .Ar ...
 .Op OPTIONS
 
@@ -21,8 +21,16 @@ prints out a readable result of found HTCondor log files
 Its arguments are as follows:
 .Bl -tag -width Ds
 
+.It Ar FILES
+just pass any files or directories, you just need to seperate them by space
+
+.It Ar OPTIONS
+
 .It Fl h | Fl Fl help
 This will print a small help function, just like this.
+
+.It Fl e Ar event_number| Fl Fl get-event Ar event_number
+Give a detailed description for a HTCondor Event Number
 
 .It Fl s | Fl Fl summarise
 summarises all given HTCondor log files and return a result regarding the averange usages and runtimes,
@@ -32,34 +40,53 @@ this only makes sense, if multiple log files are given
 analyses a specific file, for occurred errors, ram history -> histogram,
 execution status, runtime and much more
 
-.It Fl std-log Ar standard-log
+.It Fl Fl std-log Ar standard-log
 The standard log files usually look something like
 .Qq job_452_237.log
 , if for whatever reason the format is not
 .Qq .log
 , then you can change it with this argument.
 
-.It Fl std-err Ar standard-err
+.It Fl Fl std-err Ar standard-err
 The standard error files usually look something like
 .Qq job_452_237.err
 , if for whatever reason the format is not
 .Qq .err
 , then you can change it with this argument.
 
-.It Fl std-out Ar standard-out
+.It Fl Fl std-out Ar standard-out
 The standard output files usually look something like
 .Qq job_452_237.out
 , if for whatever reason the format is not
 .Qq .out
 , then you can change it with this argument.
 
-.It Fl -show-errors
+.It Fl Fl show-errors
 This will show all occurred errors inside the standard-error files
 
-.It Fl -show-output
-This will show all occurred errors inside the standard-error files
+.It Fl Fl show-output
+This will show the content of a standard-output file
 
-# Todo: rest of the options
+.It Fl Fl show-warnings
+This will show all occurred warnings inside the standard-error files
+
+.It Fl Fl ignore-resources
+Ignore the resources of a HTCondor job
+
+.It Fl Fl ignore-job-information
+Ignore all the information like executing time, host, runtime, etc.
+this is usually set to just have the resource table
+
+.It Fl Fl ignore-allocated-resources
+Ignore allocated resources in the resource table
+
+.It Fl Fl to-csv
+Restructure the resource table into a csv format
+# Todo
+
+.It Fl Fl resolve-ip
+The normal output for host in the job-information section is just a raw ip address,
+this flag will change it to interpret the last byte as the cpu-node that the job was running at
 
 .Sh EXIT STATUS
 The
