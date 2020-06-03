@@ -269,92 +269,20 @@ def help_me():
     """
     Usage: htcompact (log_files|config_file) [ Arguments ]
 
-    Arguments:                  [-h|--help, -s|--summarise
-                                --std-log=, --std-err=, --std-out=
-                                --show-output, --show-warnings, --show-allocated
-                                --ignore-errors, --ignore-resources
-                                --to-csv,
-                                --resolve-ip
-                                table-format=]
-
-    [-h|--help]                 to show this dialog
-
-    ----------------------------standard HTCondor files:------------------------
-
-    [--std-log=log_file]        describe the format of the HTCondor log files
-                                for example if log files look like: 452_0.log
-                                then set --std-log=.log  | default is .log
-
-    [--std-err=error_file]      describe the format of the HTCondor err files
-                                for example if error files look like: 452_0.err
-                                then set --std-err=.err  | default is .err
-
-    [--std-out=output_file]     describe the format of the HTCondor output files
-                                for example if output files look like: 452_0.out
-                                then set --std-out=.out  | default is .out
-
-    ----------------------------show more information:--------------------------
-
-    [--show-output]             shows job related output if the related output
-                                file is in the same directory as the log file
-
-    [--show-warnings]           shows warnings that occurred inside the HTCondor
-                                error file
-
-    [--show-errors]             shows all occurring erros inside the
-                                HTCondor error files
-
-    ----------------------------ignore information:-----------------------------
-
-    [--ignore-resources]        ignores all resources, show-allocated will have
-                                no effect, if this argument is given
-
-    [--ignore-allocated         ignore allocated resources related to the used
-    -resources]                 and requested resources
-
-    ----------------------------csv related settings:---------------------------
-
-    [--to-csv]                  Has to be implemented
-
-    ----------------------------features:---------------------------------------
+    ----------------------------Main features:---------------------------------
 
     [-s|--summarise]            Takes all given logs and summarises resources,
                                 runtime and other informations in total and
                                 average
 
-    [--resolve-ip]              if set ips like: 10.0.9.4:9618, will be reduced
-                                to cpu 4, which only applies to our cluster in
-                                the FZJ
-
-    ----------------------------output settings:--------------------------------
-
-    [--table-format=format]     the table format for the output,
-                                if not res-to-csv or job-to-csv is given
-
-                                valid arguments are:
-                                [plain, simple, github, grid, fancy_grid, pipe,
-                                orgtbl, rst, mediawiki, html, latex, latex_raw,
-                                latex_booktabs, tsv, pretty]
-
-                                default: pretty
-
-    ----------------------------config setup:----------------------------------
-
-    furthermore all these variables|settings can be set inside a config file
-    See the #Todo: link to config explanation
-
-    A basic config file htcsetup.conf will be installed with this script.
-    The script is also checking for other config files in other places:
-
-    \033[0;32m"/etc" and "~/.config/htcompact/"\033[0;39m
-
-    with different priorities from 1 (high) to 4 (low):
-    Priority[1] find config_file directly
-    Priority[2] search for config_file in /etc
-    Priority[3] search for config_file in ~/.config/htcompact
-    Priority[4] take the "htcsetup.conf" from the Project
+    [-a|--analyse]              Takes a sepcific log and analyses it,
+                                however multiple logs are possible.
+                                The result will have all time diffrences,
+                                a histogram of ram usage over time,
+                                ocurred errors and much more
 
 
+    More help on other options with: man htcompact
     """
     # returns this docstring
     return help_me.__doc__

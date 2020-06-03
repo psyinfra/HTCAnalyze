@@ -88,6 +88,34 @@ Restructure the resource table into a csv format
 The normal output for host in the job-information section is just a raw ip address,
 this flag will change it to interpret the last byte as the cpu-node that the job was running at
 
+.It Fl Fl table-format Ar format
+the table format for the output
+
+valid arguments are:
+[plain, simple, github, grid, fancy_grid, pipe,
+orgtbl, rst, mediawiki, html, latex, latex_raw,
+latex_booktabs, tsv, pretty]
+
+default: pretty
+
+.Sh CONFIG
+
+----------------------------config setup:----------------------------------
+
+    furthermore all these variables|settings can be set inside a config file
+    See the #Todo: link to config explanation
+
+    A basic config file htcsetup.conf will be installed with this script.
+    The script is also checking for other config files in other places:
+
+    "/etc" and "~/.config/htcompact/"
+
+    with different priorities from 1 (high) to 4 (low):
+    Priority[1] find config_file directly
+    Priority[2] search for config_file in /etc
+    Priority[3] search for config_file in ~/.config/htcompact
+    Priority[4] take the "htcsetup.conf" from the Project
+
 .Sh EXIT STATUS
 The
 .Nm
