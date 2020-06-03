@@ -1205,7 +1205,7 @@ def analyse_logs(log_files):
                 match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job[5])
                 if match_host:
                     from_host = match_host[1]
-                    port = match_host[2]
+                    # port = match_host[2]
                     job_df = job_df.append(pd.DataFrame({"Description": "Submitted from host",
                                                          "Values": [from_host]}))
 
@@ -1387,9 +1387,10 @@ def analyse_logs(log_files):
             elif job_id == "009":
                 terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
 
-                aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
-                job_df = job_df.append(pd.DataFrame({"Description": "Job was aborted by the user",
-                                                     "Values": [yellow+aborted_by_user+back_to_default]}))
+                aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]  # Todo: write unter error section
+                # job_df = job_df.append(pd.DataFrame({"Description": "Job was aborted by the user",
+                #                                      "Values": [yellow+aborted_by_user+back_to_default]}))
+                occurred_errors.append([job_id, terminated_date, "Terminated by user: "+aborted_by_user])
 
             else:
                 timestamp = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
@@ -1401,39 +1402,23 @@ def analyse_logs(log_files):
                                                     re.sub(' \t', '', job_desc)])
                             break  # avoid duplicates
 
-        found_infos = list()  # list to ask if a value was found
-        if submitted_date:
-            found_infos.append("submission")
-        if executed_date:
-            found_infos.append("execution")
-        if terminated_date:
-            found_infos.append("termination")
-        if len(ram_histroy) > 0:
-            found_infos.append("ram history")
-        if len(occurred_errors) > 0:
-            found_infos.append("errors")
-        if not job_df.empty:
-            found_infos.append("job_df")
-        if not res_df.empty:
-            found_infos.append("res_df")
-
         # managing the time information
         time_dict = dict()
         waiting_time = None
-        if "submission" in found_infos:
+        if submitted_date:
             time_dict["Submission date"] = submitted_date.strftime("%m/%d %H:%M:%S")
-        if "execution" in found_infos:
+        if executed_date:
             time_dict["Execution date"] = executed_date.strftime("%m/%d %H:%M:%S")
-            if "submission" in found_infos:
+            if submitted_date:
                 waiting_time = executed_date - submitted_date
-        if "termination" in found_infos:
+        if terminated_date:
             time_dict["Termination date"] = terminated_date.strftime("%m/%d %H:%M:%S")
             if waiting_time:
                 time_dict["Waiting time"] = waiting_time
-            if "execution" in found_infos:
+            if executed_date:
                 runtime = terminated_date - executed_date
                 time_dict["Runtime"] = runtime
-            if "submission" in found_infos:
+            if submitted_date:
                 total_time = terminated_date - submitted_date
                 time_dict["Total time"] = total_time
         elif waiting_time:
@@ -1445,14 +1430,17 @@ def analyse_logs(log_files):
             time_df = pd.DataFrame(time_dict.values(), index=time_dict.keys())
             output_string += tabulate(time_df) + "\n\n"
 
-        if "job_df" in found_infos:
+        if not job_df.empty:
             output_string += magenta + "Execution details" + back_to_default + '\n'
             output_string += tabulate(job_df, showindex=False) + '\n\n'
-        if "res_df" in found_infos:
+        if not res_df.empty:
             output_string += magenta + "Resource table" + back_to_default + '\n'
             output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n\n'
 
-        if "errors" in found_infos:
+        err_df = pd.DataFrame({})
+
+        # show HTCondor errors
+        if len(occurred_errors) > 0:
             # Todo: is this covering all cases ?
             event_numbers = []
             time_list = []
@@ -1482,7 +1470,7 @@ def analyse_logs(log_files):
             output_string += tabulate(err_df, showindex=False, headers='keys') + '\n\n'
 
         # managing the ram history
-        if "ram history" in found_infos:
+        if len(ram_histroy) > 0:
             output_string += magenta + "Memory usage over time in MB" + back_to_default + '\n'
             if len(ram_histroy) > 1:
                 np_ram = np.array(ram_histroy)
@@ -1834,22 +1822,6 @@ def escape_seq_when_redirect():
         cyan = ""
         back_to_default = ""
         logging.debug("Output is getting redirected, all escape sequences were set to \"\"")
-
-
-def test():
-    # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
-    # (you will see when you try, files will be interpreted as HTCondor log files)
-    # so it's not possible to give multiple config files
-    load_config()
-
-    # after that, interpret the command line arguments, these will have a higher priority, than the config setup
-    # and by that arguments set in the config file, will be ignored
-    manage_params()
-
-    global files
-    files = validate_given_logs(files)  # validate the files, make a list of all valid config files
-
-    analyse_logs(files)
 
 
 if __name__ == "__main__":
