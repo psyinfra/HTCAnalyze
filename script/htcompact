@@ -138,7 +138,6 @@ def remove_files_from_args(args, short_opts, long_opts):
     return new_args
 
 
-# Todo: if a parameter like -h is given this should be checked first, because this will exit the script
 def manage_exit_params():
 
     global option_shorts, option_longs
@@ -501,14 +500,13 @@ def raise_value_error(message):
 
 
 # Todo: time seperated ( submitting / executing / terminating)
-# Todo: store job event numbers ( see job_descriptions.txt)
 # Todo: Read HTCondor Errors that occurred
 # Todo: for loop instead of single run
 def log_to_dataframe(file):
     try:
         job_events, job_raw_information = read_condor_log(file)
 
-        submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
+        # submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
 
@@ -972,7 +970,6 @@ def output_given_logs():
 # search for config file ( UNIX BASED )
 # Todo: Test
 #       Change some varibales
-# Todo: NAlayse
 def load_config():
     """
 
@@ -1163,7 +1160,8 @@ def _int_formatter(val, chars, delta, left=False):
     return '{:{}{}d}'.format(int(val), align, chars)
 
 
-# Todo: analyse a particular log file, with ALL kind of information, not just the defaults
+# Todo: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
+#       until now there is not the need for other filters but it might be needed to extend this fucntion
 def analyse_logs(log_files):
 
     if len(log_files) == 0:
@@ -1387,7 +1385,7 @@ def analyse_logs(log_files):
             elif job_id == "009":
                 terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
 
-                aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]  # Todo: write unter error section
+                aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
                 # job_df = job_df.append(pd.DataFrame({"Description": "Job was aborted by the user",
                 #                                      "Values": [yellow+aborted_by_user+back_to_default]}))
                 occurred_errors.append([job_id, terminated_date, "Terminated by user: "+aborted_by_user])
@@ -1436,8 +1434,6 @@ def analyse_logs(log_files):
         if not res_df.empty:
             output_string += magenta + "Resource table" + back_to_default + '\n'
             output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n\n'
-
-        err_df = pd.DataFrame({})
 
         # show HTCondor errors
         if len(occurred_errors) > 0:
@@ -1501,7 +1497,6 @@ def analyse_logs(log_files):
     return output_string
 
 
-# Todo: test with many files
 def summarise_logs(log_files):
     """
     Summarises all used resources and the runtime in total and average
@@ -1712,7 +1707,6 @@ def summarise_logs(log_files):
     return output_string
 
 
-# Todo: how many valid files and how many not valid and what type etc JUST EVERYTHING
 def validate_given_logs(file_list):
     """
     This method is supposed to take the given log files (by config or command line argument)
