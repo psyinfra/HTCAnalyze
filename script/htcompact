@@ -10,9 +10,7 @@ import configparser
 import pandas as pd
 import numpy as np
 from tabulate import tabulate
-from plotille import plot
 from plotille import Figure
-
 
 """
 
@@ -135,6 +133,10 @@ def remove_files_from_args(args, short_opts, long_opts):
     return new_args
 
 
+# Todo: if a parameter like -h is given this should be checked first, because this will exit the script
+def manage_exit_params():
+    pass
+
 # Todo: thresholds by command line
 def manage_params():
     """
@@ -149,11 +151,11 @@ def manage_params():
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
-    option_shorts = "hsa"
+    option_shorts = "hsae:"
     option_longs = ["help", "std-log=", "std-err=", "std-out=",
                     "show-errors", "show-output", "show-warnings",
                     "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
-                    "to-csv", "indexing=", "summarise", "analyse",
+                    "to-csv", "indexing=", "summarise", "analyse","get-event="
                     "resolve-ip", "table-format="]
 
     better_args = remove_files_from_args(sys.argv[1:], option_shorts, option_longs)
@@ -170,6 +172,10 @@ def manage_params():
 
             if opt in ["-h", "--help"]:
                 print(help_me())
+                sys.exit(0)
+            elif opt in ["-e", "--get-event"]:
+                for desc in get_event_information(arg):
+                    print(desc)
                 sys.exit(0)
             elif opt in ["-s", "--summarise"]:
                 summarise = True
@@ -339,6 +345,158 @@ def help_me():
     """
     # returns this docstring
     return help_me.__doc__
+
+
+def get_event_information(event_id):
+    """
+Event Number: 000
+Event Name: Job submitted
+Event Description: This event occurs when a user submits a job. It is the first event you will see for a job, and it should only occur once.
+
+Event Number: 001
+Event Name: Job executing
+Event Description: This shows up when a job is running. It might occur more than once.
+
+Event Number: 002
+Event Name: Error in executable
+Event Description: The job could not be run because the executable was bad.
+
+Event Number: 003
+Event Name: Job was checkpointed
+Event Description: The job's complete state was written to a checkpoint file. This might happen without the job being removed from a machine, because the checkpointing can happen periodically.
+
+Event Number: 004
+Event Name: Job evicted from machine
+Event Description: A job was removed from a machine before it finished, usually for a policy reason. Perhaps an interactive user has claimed the computer, or perhaps another job is higher priority.
+
+Event Number: 005
+Event Name: Job terminated
+Event Description: The job has completed.
+
+Event Number: 006
+Event Name: Image size of job updated
+Event Description: An informational event, to update the amount of memory that the job is using while running. It does not reflect the state of the job.
+
+Event Number: 007
+Event Name: Shadow exception
+Event Description: The condor_shadow, a program on the submit computer that watches over the job and performs some services for the job, failed for some catastrophic reason. The job will leave the machine and go back into the queue.
+
+Event Number: 008
+Event Name: Generic log event
+Event Description: Not used.
+
+Event Number: 009
+Event Name: Job aborted
+Event Description: The user canceled the job.
+
+Event Number: 010
+Event Name: Job was suspended
+Event Description: The job is still on the computer, but it is no longer executing. This is usually for a policy reason, such as an interactive user using the computer.
+
+Event Number: 011
+Event Name: Job was unsuspended
+Event Description: The job has resumed execution, after being suspended earlier.
+
+Event Number: 012
+Event Name: Job was held
+Event Description: The job has transitioned to the hold state. This might happen if the user applies the condor_hold command to the job.
+
+Event Number: 013
+Event Name: Job was released
+Event Description: The job was in the hold state and is to be re-run.
+
+Event Number: 014
+Event Name: Parallel node executed
+Event Description: A parallel universe program is running on a node.
+
+Event Number: 015
+Event Name: Parallel node terminated
+Event Description: A parallel universe program has completed on a node.
+
+Event Number: 016
+Event Name: POST script terminated
+Event Description: A node in a DAGMan work flow has a script that should be run after a job. The script is run on the submit host. This event signals that the post script has completed.
+
+Event Number: 017
+Event Name: Job submitted to Globus
+Event Description: A grid job has been delegated to Globus (version 2, 3, or 4). This event is no longer used.
+
+Event Number: 018
+Event Name: Globus submit failed
+Event Description: The attempt to delegate a job to Globus failed.
+
+Event Number: 019
+Event Name: Globus resource up
+Event Description: The Globus resource that a job wants to run on was unavailable, but is now available. This event is no longer used.
+
+Event Number: 020
+Event Name: Detected Down Globus Resource
+Event Description: The Globus resource that a job wants to run on has become unavailable. This event is no longer used.
+
+Event Number: 021
+Event Name: Remote error
+Event Description: The condor_starter (which monitors the job on the execution machine) has failed.
+
+Event Number: 022
+Event Name: Remote system call socket lost
+Event Description: The condor_shadow and condor_starter (which communicate while the job runs) have lost contact.
+
+Event Number: 023
+Event Name: Remote system call socket reestablished
+Event Description: The condor_shadow and condor_starter (which communicate while the job runs) have been able to resume contact before the job lease expired.
+
+Event Number: 024
+Event Name: Remote system call reconnect failure
+Event Description: The condor_shadow and condor_starter (which communicate while the job runs) were unable to resume contact before the job lease expired.
+
+Event Number: 025
+Event Name: Grid Resource Back Up
+Event Description: A grid resource that was previously unavailable is now available.
+
+Event Number: 026
+Event Name: Detected Down Grid Resource
+Event Description: The grid resource that a job is to run on is unavailable.
+
+Event Number: 027
+Event Name: Job submitted to grid resource
+Event Description: A job has been submitted, and is under the auspices of the grid resource.
+
+Event Number: 028
+Event Name: Job ad information event triggered.
+Event Description: Extra job ClassAd attributes are noted. This event is written as a supplement to other events when the configuration parameter EVENT_LOG_JOB_AD_INFORMATION_ATTRS is set.
+
+Event Number: 029
+Event Name: The job's remote status is unknown
+Event Description: No updates of the job's remote status have been received for 15 minutes.
+
+Event Number: 030
+Event Name: The job's remote status is known again
+Event Description: An update has been received for a job whose remote status was previous logged as unknown.
+
+Event Number: 031
+Event Name: Job stage in
+Event Description: A grid universe job is doing the stage in of input files.
+
+Event Number: 032
+Event Name: Job stage out
+Event Description: A grid universe job is doing the stage out of output files.
+
+Event Number: 033
+Event Name: Job ClassAd attribute update
+Event Description: A Job ClassAd attribute is changed due to action by the condor_schedd daemon. This includes changes by condor_prio.
+
+Event Number: 034
+Event Name: Pre Skip event
+Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with the defined PRE_SKIP value in the DAG input file. This makes it possible for DAGMan to do recovery in a workflow that has such an event, as it would otherwise not have any event for the DAGMan node to which the script belongs, and in recovery, DAGMan's internal tables would become corrupted.
+"""
+    doc_str = get_event_information.__doc__.split('\n')
+    for i, line in enumerate(doc_str):
+        match = re.match(r"Event Number: ([0-9]{3})", line)
+        if match:
+            if int(match[1]) == int(event_id):
+                return doc_str[i:i+3]
+    # else
+    return ["This Event Number Does Not Exist"]
 
 
 # reads all information, but returns them in two lists
@@ -825,6 +983,7 @@ def smart_manage_all(file):
 
 
 # Todo: change for no specified type of log error and output files
+# Todo: err and output not visible ???
 def output_given_logs():
     output_string = ""
     current_path = os.getcwd()
@@ -880,6 +1039,9 @@ def load_config():
 
     :return: False if not found, True if found and
     """
+
+    # check if exit parameters are in the sys.argv
+    for arg in sys.argv:
 
     script_name = sys.argv[0]
     if script_name.endswith(".py"):
@@ -1049,157 +1211,21 @@ def load_config():
         return False
 
 
-# Todo: make flags to acces a given job_id
-def get_event_information(job_id):
+# in order that plotille has nothing like a int converter,
+# I have to set it up manually to show the y - label in number format
+def _int_formatter(val, chars, delta, left=False):
     """
-Event Number: 000
-Event Name: Job submitted
-Event Description: This event occurs when a user submits a job. It is the first event you will see for a job, and it should only occur once.
+    Usage of this is shown here:
+    https://github.com/tammoippen/plotille/issues/11
 
-Event Number: 001
-Event Name: Job executing
-Event Description: This shows up when a job is running. It might occur more than once.
-
-Event Number: 002
-Event Name: Error in executable
-Event Description: The job could not be run because the executable was bad.
-
-Event Number: 003
-Event Name: Job was checkpointed
-Event Description: The job's complete state was written to a checkpoint file. This might happen without the job being removed from a machine, because the checkpointing can happen periodically.
-
-Event Number: 004
-Event Name: Job evicted from machine
-Event Description: A job was removed from a machine before it finished, usually for a policy reason. Perhaps an interactive user has claimed the computer, or perhaps another job is higher priority.
-
-Event Number: 005
-Event Name: Job terminated
-Event Description: The job has completed.
-
-Event Number: 006
-Event Name: Image size of job updated
-Event Description: An informational event, to update the amount of memory that the job is using while running. It does not reflect the state of the job.
-
-Event Number: 007
-Event Name: Shadow exception
-Event Description: The condor_shadow, a program on the submit computer that watches over the job and performs some services for the job, failed for some catastrophic reason. The job will leave the machine and go back into the queue.
-
-Event Number: 008
-Event Name: Generic log event
-Event Description: Not used.
-
-Event Number: 009
-Event Name: Job aborted
-Event Description: The user canceled the job.
-
-Event Number: 010
-Event Name: Job was suspended
-Event Description: The job is still on the computer, but it is no longer executing. This is usually for a policy reason, such as an interactive user using the computer.
-
-Event Number: 011
-Event Name: Job was unsuspended
-Event Description: The job has resumed execution, after being suspended earlier.
-
-Event Number: 012
-Event Name: Job was held
-Event Description: The job has transitioned to the hold state. This might happen if the user applies the condor_hold command to the job.
-
-Event Number: 013
-Event Name: Job was released
-Event Description: The job was in the hold state and is to be re-run.
-
-Event Number: 014
-Event Name: Parallel node executed
-Event Description: A parallel universe program is running on a node.
-
-Event Number: 015
-Event Name: Parallel node terminated
-Event Description: A parallel universe program has completed on a node.
-
-Event Number: 016
-Event Name: POST script terminated
-Event Description: A node in a DAGMan work flow has a script that should be run after a job. The script is run on the submit host. This event signals that the post script has completed.
-
-Event Number: 017
-Event Name: Job submitted to Globus
-Event Description: A grid job has been delegated to Globus (version 2, 3, or 4). This event is no longer used.
-
-Event Number: 018
-Event Name: Globus submit failed
-Event Description: The attempt to delegate a job to Globus failed.
-
-Event Number: 019
-Event Name: Globus resource up
-Event Description: The Globus resource that a job wants to run on was unavailable, but is now available. This event is no longer used.
-
-Event Number: 020
-Event Name: Detected Down Globus Resource
-Event Description: The Globus resource that a job wants to run on has become unavailable. This event is no longer used.
-
-Event Number: 021
-Event Name: Remote error
-Event Description: The condor_starter (which monitors the job on the execution machine) has failed.
-
-Event Number: 022
-Event Name: Remote system call socket lost
-Event Description: The condor_shadow and condor_starter (which communicate while the job runs) have lost contact.
-
-Event Number: 023
-Event Name: Remote system call socket reestablished
-Event Description: The condor_shadow and condor_starter (which communicate while the job runs) have been able to resume contact before the job lease expired.
-
-Event Number: 024
-Event Name: Remote system call reconnect failure
-Event Description: The condor_shadow and condor_starter (which communicate while the job runs) were unable to resume contact before the job lease expired.
-
-Event Number: 025
-Event Name: Grid Resource Back Up
-Event Description: A grid resource that was previously unavailable is now available.
-
-Event Number: 026
-Event Name: Detected Down Grid Resource
-Event Description: The grid resource that a job is to run on is unavailable.
-
-Event Number: 027
-Event Name: Job submitted to grid resource
-Event Description: A job has been submitted, and is under the auspices of the grid resource.
-
-Event Number: 028
-Event Name: Job ad information event triggered.
-Event Description: Extra job ClassAd attributes are noted. This event is written as a supplement to other events when the configuration parameter EVENT_LOG_JOB_AD_INFORMATION_ATTRS is set.
-
-Event Number: 029
-Event Name: The job's remote status is unknown
-Event Description: No updates of the job's remote status have been received for 15 minutes.
-
-Event Number: 030
-Event Name: The job's remote status is known again
-Event Description: An update has been received for a job whose remote status was previous logged as unknown.
-
-Event Number: 031
-Event Name: Job stage in
-Event Description: A grid universe job is doing the stage in of input files.
-
-Event Number: 032
-Event Name: Job stage out
-Event Description: A grid universe job is doing the stage out of output files.
-
-Event Number: 033
-Event Name: Job ClassAd attribute update
-Event Description: A Job ClassAd attribute is changed due to action by the condor_schedd daemon. This includes changes by condor_prio.
-
-Event Number: 034
-Event Name: Pre Skip event
-Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with the defined PRE_SKIP value in the DAG input file. This makes it possible for DAGMan to do recovery in a workflow that has such an event, as it would otherwise not have any event for the DAGMan node to which the script belongs, and in recovery, DAGMan's internal tables would become corrupted.
-"""
-    doc_str = get_event_information.__doc__.split('\n')
-    for i, line in enumerate(doc_str):
-        match = re.match(r"Event Number: ([0-9]{3})", line)
-        if match:
-            if int(match[1]) == int(job_id):
-                return doc_str[i+1:i+3]
-    # else
-    return get_event_information.__doc__
+    :param val:
+    :param chars:
+    :param delta:
+    :param left:
+    :return:
+    """
+    align = '<' if left else ''
+    return '{:{}{}d}'.format(int(val), align, chars)
 
 
 # Todo: analyse a particular log file, with ALL kind of information, not just the defaults
@@ -1379,7 +1405,7 @@ def analyse_logs(log_files):
                 # ****************************************************************************************************
 
                 # list of resources and their labels
-                resource_labels = ["Cpu", "Disk", "Memory"]
+                resource_labels = ["Cpu", "Disk (KB)", "Memory (MB)"]
                 usage = [cpu_usage, disk_usage, memory_usage]
                 requested = [cpu_request, disk_request, memory_request]
                 allocated = [cpu_allocated, disk_allocated, memory_allocated]
@@ -1428,7 +1454,7 @@ def analyse_logs(log_files):
 
                 aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
                 job_df = job_df.append(pd.DataFrame({"Description": "Job was aborted by the user",
-                                        "Values": [yellow+aborted_by_user+back_to_default]}))
+                                                     "Values": [yellow+aborted_by_user+back_to_default]}))
 
             else:
                 timestamp = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
@@ -1473,7 +1499,7 @@ def analyse_logs(log_files):
                 runtime = terminated_date - executed_date
                 time_dict["Runtime"] = runtime
             if "submission" in found_infos:
-                total_time = executed_date - submitted_date
+                total_time = terminated_date - submitted_date
                 time_dict["Total time"] = total_time
         elif waiting_time:
             time_dict["Termination date"] = "No valid termination occurred"
@@ -1493,12 +1519,12 @@ def analyse_logs(log_files):
 
         if "errors" in found_infos:
             # Todo: is this covering all cases ?
-            job_ids = []
+            event_numbers = []
             time_list = []
             err_reason = []
 
             for err in occurred_errors:
-                job_ids.append(err[0])
+                event_numbers.append(err[0])
                 time_list.append(err[1].strftime("%m/%d %H:%M:%S"))
                 # if the line is to long, split it
                 if len(err[2]) > 50:
@@ -1513,7 +1539,7 @@ def analyse_logs(log_files):
 
             err_df = pd.DataFrame({
                 "Time": time_list,
-                "Job ID": job_ids,
+                "Event Number": event_numbers,
                 "Reason": err_reason
             })
 
@@ -1526,7 +1552,7 @@ def analyse_logs(log_files):
             if len(ram_histroy) > 1:
                 np_ram = np.array(ram_histroy)
                 ram = np_ram[:, 2]  # second column which is memory usage
-                dates = np_ram[:, 0] # first column
+                dates = np_ram[:, 0]  # first column
 
                 fig = Figure()
                 fig.width = 55
@@ -1534,10 +1560,13 @@ def analyse_logs(log_files):
                 fig.set_x_limits(min_=min(dates))
                 fig.set_y_limits(min_=min(ram))
                 fig.y_label = "Usage"
-                fig.x_label = "Dates"
-                fig.plot(dates, ram, lc='green')  # Todo: implement a way to show thresholds
+                fig.x_label = "Time"
 
-                output_string += fig.show() + "\n\n"
+                # this will use the self written function _num_formatter, to convert the y-label to int values
+                fig.register_label_formatter(float, _int_formatter)
+                fig.plot(dates, ram, lc='green', label="Continuous Graph")  # Todo: implement a way to show thresholds
+                fig.scatter(dates, ram, lc='red', label="Single Values")
+                output_string += fig.show(legend=True)
             else:
                 single_date = ram_histroy[0][0].strftime("%m/%d %H:%M:%S")
                 single_ram = ram_histroy[0][2]
@@ -1888,7 +1917,7 @@ def test():
     analyse_logs(files)
 
 
-def main():
+if __name__ == "__main__":
     """
     This is the main function, which searchs first for a given config file.
     After that, given parameters in the terminal will be interpreted, so they have a higher priority
@@ -1898,7 +1927,9 @@ def main():
     :return:
     """
     try:
-        escape_seq_when_redirect() # set the color sequenzes to ""
+
+        logging.debug("-------Start of htcompact scipt-------")
+        escape_seq_when_redirect()  # set the color sequenzes to ""
 
         # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
         # (you will see when you try, files will be interpreted as HTCondor log files)
@@ -1909,22 +1940,20 @@ def main():
         # and by that arguments set in the config file, will be ignored
         manage_params()
 
-        global files
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
         if summarise:
-            output_string = summarise_logs(files)  # summarise information
+            output_str = summarise_logs(files)  # summarise information
         elif analyse:
-            output_string = analyse_logs(files)  # analyse the given files
+            output_str = analyse_logs(files)  # analyse the given files
         else:
-            output_string = "\n" + output_given_logs()  # print out all given files if possible
+            output_str = "\n" + output_given_logs()  # print out all given files if possible
 
-        print(output_string)  # write it to the console
+        print(output_str)  # write it to the console
+
+        logging.debug("-------End of htcompact script-------")
 
     except KeyboardInterrupt:
         print("Script was interrupted")
 
 
-logging.debug("-------Start of htcompact scipt-------")
-main()
-logging.debug("-------End of htcompact script-------")
