@@ -36,6 +36,12 @@ if not log_disabled:
 accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
 files = list()
 border_str = ""
+option_shorts = "hsae:"
+option_longs = ["help", "std-log=", "std-err=", "std-out=",
+                "show-errors", "show-output", "show-warnings",
+                "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
+                "to-csv", "indexing=", "summarise", "analyse", "get-event=",
+                "resolve-ip", "table-format="]
 
 # variables for given parameters
 show_std_output = False
@@ -135,7 +141,32 @@ def remove_files_from_args(args, short_opts, long_opts):
 
 # Todo: if a parameter like -h is given this should be checked first, because this will exit the script
 def manage_exit_params():
-    pass
+
+    global option_shorts, option_longs
+
+    # if for whatever reasons files were given
+    better_args = remove_files_from_args(sys.argv[1:], option_shorts, option_longs)
+
+    try:
+        opts, args = getopt.getopt(better_args, option_shorts, option_longs)
+
+        for opt, arg in opts:
+
+            if opt in ["-h", "--help"]:
+                print(help_me())
+                sys.exit(0)
+            elif opt in ["-e", "--get-event"]:
+                for desc in get_event_information(arg):
+                    print(desc)
+                sys.exit(0)
+
+    # print error messages
+    except Exception as err:
+        logging.exception(err)  # write a detailed description in the stdout.log file
+        print((red + "{0}: {1}" + back_to_default).format(err.__class__.__name__, err))
+        print(help_me())
+        sys.exit(1)
+
 
 # Todo: thresholds by command line
 def manage_params():
@@ -151,12 +182,7 @@ def manage_params():
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
-    option_shorts = "hsae:"
-    option_longs = ["help", "std-log=", "std-err=", "std-out=",
-                    "show-errors", "show-output", "show-warnings",
-                    "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
-                    "to-csv", "indexing=", "summarise", "analyse","get-event="
-                    "resolve-ip", "table-format="]
+    global option_shorts, option_longs
 
     better_args = remove_files_from_args(sys.argv[1:], option_shorts, option_longs)
 
@@ -170,13 +196,6 @@ def manage_params():
                 print(yellow+"The argument for {0} is {1}, is that wanted?".format(opt, arg)+back_to_default)
                 logging.warning("The argument for {0} is {1}, is that wanted?".format(opt, arg))
 
-            if opt in ["-h", "--help"]:
-                print(help_me())
-                sys.exit(0)
-            elif opt in ["-e", "--get-event"]:
-                for desc in get_event_information(arg):
-                    print(desc)
-                sys.exit(0)
             elif opt in ["-s", "--summarise"]:
                 summarise = True
                 logging.debug("Summariser mode turned on")
@@ -496,7 +515,7 @@ Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with t
             if int(match[1]) == int(event_id):
                 return doc_str[i:i+3]
     # else
-    return ["This Event Number Does Not Exist"]
+    return ["This event number does not exist", "Valid event numbers range from 000 to 034"]
 
 
 # reads all information, but returns them in two lists
@@ -1039,9 +1058,6 @@ def load_config():
 
     :return: False if not found, True if found and
     """
-
-    # check if exit parameters are in the sys.argv
-    for arg in sys.argv:
 
     script_name = sys.argv[0]
     if script_name.endswith(".py"):
@@ -1930,6 +1946,10 @@ if __name__ == "__main__":
 
         logging.debug("-------Start of htcompact scipt-------")
         escape_seq_when_redirect()  # set the color sequenzes to ""
+
+        # if exit parameters are given that will interrupt this script, like --help,
+        # catch them here so the config won't be unnecessary loaded
+        manage_exit_params()
 
         # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
         # (you will see when you try, files will be interpreted as HTCondor log files)
