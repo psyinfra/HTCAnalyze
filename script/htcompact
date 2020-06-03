@@ -40,7 +40,7 @@ option_shorts = "hsae:"
 option_longs = ["help", "std-log=", "std-err=", "std-out=",
                 "show-errors", "show-output", "show-warnings",
                 "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
-                "to-csv", "indexing=", "summarise", "analyse", "get-event=",
+                "to-csv", "summarise", "analyse", "get-event=",
                 "resolve-ip", "table-format="]
 
 # variables for given parameters
@@ -59,7 +59,6 @@ reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 summarise = False
 analyse = False
 to_csv = False
-indexing = True # only for csv structure
 
 # escape sequences for colors
 red = "\033[0;31m"
@@ -178,7 +177,7 @@ def manage_params():
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_std_output, show_std_warnings, show_std_errors  # show more information variables
     global ignore_resources, ignore_job_information, ignore_allocated_resources # ignore information variables
-    global to_csv, summarise, analyse, indexing  # features
+    global to_csv, summarise, analyse# features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
@@ -237,9 +236,6 @@ def manage_params():
             # all tabulate variables
             elif opt.__eq__("--to-csv"):
                 to_csv = True
-            elif opt.__eq__("--indexing"):
-                indexing = (arg.lower() in accepted_states)
-                logging.debug("Indexing set to: {0}".format(indexing))
 
             elif opt.__eq__("--table-format"):
                 types = "plain,simple,github,grid,fancy_grid,pipe," \
@@ -277,7 +273,7 @@ def help_me():
                                 --std-log=, --std-err=, --std-out=
                                 --show-output, --show-warnings, --show-allocated
                                 --ignore-errors, --ignore-resources
-                                --to-csv, indexing=,
+                                --to-csv,
                                 --resolve-ip
                                 table-format=]
 
@@ -319,8 +315,6 @@ def help_me():
     ----------------------------csv related settings:---------------------------
 
     [--to-csv]                  Has to be implemented
-
-    [--indexing=(True|False)]   no effect yet
 
     ----------------------------features:---------------------------------------
 
@@ -1199,13 +1193,10 @@ def load_config():
                 logging.debug(f"Changed default bad_usage to: {bad_usage}")
 
         if 'csv' in sections:
-            global to_csv, indexing
+            global to_csv
             if 'to_csv' in config['csv']:
                 to_csv = config['csv']['to_csv'].lower() in accepted_states
                 logging.debug(f"Changed default to_csv to: {to_csv}")
-            if 'indexing' in config['csv']:
-                indexing = config['csv']['indexing'].lower() in accepted_states
-                logging.debug(f"Changed default indexing to: {indexing}")
 
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
