@@ -82,7 +82,6 @@ Ignore allocated resources in the resource table
 
 .It Fl Fl to-csv
 Restructure the resource table into a csv format
-# Todo
 
 .It Fl Fl resolve-ip
 The normal output for host in the job-information section is just a raw ip address,
@@ -92,6 +91,7 @@ this flag will change it to interpret the last byte as the cpu-node that the job
 the table format for the output
 
 valid arguments are:
+
 [plain, simple, github, grid, fancy_grid, pipe,
 orgtbl, rst, mediawiki, html, latex, latex_raw,
 latex_booktabs, tsv, pretty]
@@ -99,22 +99,31 @@ latex_booktabs, tsv, pretty]
 default: pretty
 
 .Sh CONFIG
+furthermore all these variables|settings can be set inside a config file.
+See the #Todo: link to config explanation
 
-----------------------------config setup:----------------------------------
+A basic config file htcsetup.conf will be installed with this script.
+The script is also checking for other config files in other places:
 
-    furthermore all these variables|settings can be set inside a config file
-    See the #Todo: link to config explanation
+"/etc" and "~/.config/htcompact/"
 
-    A basic config file htcsetup.conf will be installed with this script.
-    The script is also checking for other config files in other places:
+with different priorities from 1 (high) to 4 (low):
+Priority[1] find config_file directly
+Priority[2] search for config_file in /etc
+Priority[3] search for config_file in ~/.config/htcompact
+Priority[4] take the "htcsetup.conf" from the Project
 
-    "/etc" and "~/.config/htcompact/"
 
-    with different priorities from 1 (high) to 4 (low):
-    Priority[1] find config_file directly
-    Priority[2] search for config_file in /etc
-    Priority[3] search for config_file in ~/.config/htcompact
-    Priority[4] take the "htcsetup.conf" from the Project
+.Sh EXAMPLES
+htcompact -a 398_440.log
+
+.Sh SEE ALSO
+The
+.Nm
+repository is available at
+.Lk https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script
+Bug reports, patches, and (constructive) input are always welcome.
+
 
 .Sh EXIT STATUS
 The
