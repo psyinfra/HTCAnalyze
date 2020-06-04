@@ -1185,7 +1185,6 @@ def analyse_logs(log_files):
 
         # initialise with empty values
         submitted_date, executed_date, terminated_date = None, None, None
-        aborted_by_user = None
         ram_histroy = list()
         occurred_errors = list()
         job_df, res_df = pd.DataFrame(columns=["Description", "Values"]), pd.DataFrame({})
@@ -1415,10 +1414,10 @@ def analyse_logs(log_files):
                 time_dict["Waiting time"] = waiting_time
             if executed_date:
                 runtime = terminated_date - executed_date
-                time_dict["Runtime"] = runtime
+                time_dict["Execution runtime"] = runtime
             if submitted_date:
                 total_time = terminated_date - submitted_date
-                time_dict["Total time"] = total_time
+                time_dict["Total runtime"] = total_time
         elif waiting_time:
             time_dict["Termination date"] = "No valid termination occurred"
             time_dict["Waiting time"] = waiting_time

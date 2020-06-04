@@ -116,3 +116,4 @@ please do
 - getopt
 - datetime
 - logging
+- plotille

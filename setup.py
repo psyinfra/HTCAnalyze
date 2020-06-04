@@ -23,7 +23,7 @@ setup(name='htcompact',
             "configparser",
             "pandas",
             "tabulate",
-            "plotille >= 3.2"
+            "plotille >= 3.7"
       ],
       dependency_links=[
             'https://github.com/astanin/python-tabulate.git'
