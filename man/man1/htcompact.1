@@ -40,6 +40,10 @@ this only makes sense, if multiple log files are given
 analyses a specific file, for occurred errors, ram history -> histogram,
 execution status, runtime and much more
 
+.It Fl Fl search Ar keywords
+search inside the given files or directories for the given keywords, if you want to give more than one keyword,
+use the string notation "keyword1 keyword2 ..."
+
 .It Fl Fl std-log Ar standard-log
 The standard log files usually look something like
 .Qq job_452_237.log
@@ -108,11 +112,12 @@ The script is also checking for other config files in other places:
 "/etc" and "~/.config/htcompact/"
 
 with different priorities from 1 (high) to 4 (low):
+.Bd -literal -compact
 Priority[1] find config_file directly
 Priority[2] search for config_file in /etc
 Priority[3] search for config_file in ~/.config/htcompact
 Priority[4] take the "htcsetup.conf" from the Project
-
+.Ed
 
 .Sh EXAMPLES
 htcompact -a 398_440.log
