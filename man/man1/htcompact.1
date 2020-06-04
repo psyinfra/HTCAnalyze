@@ -41,8 +41,18 @@ analyses a specific file, for occurred errors, ram history -> histogram,
 execution status, runtime and much more
 
 .It Fl Fl search Ar keywords
-search inside the given files or directories for the given keywords, if you want to give more than one keyword,
+search inside the given files or directories for the given keywords,
+if you want to give more than one keyword,
 use the string notation "keyword1 keyword2 ..."
+
+Note: This is option is NOT case sensitive
+
+.Bd -literal
+if you want to find any kind of termination, that is not normal,
+search for these keywords:
+["err", "error", "warn", "warning",
+ "exception", "aborted", "abortion", "abnormal"],
+.Em
 
 .It Fl Fl std-log Ar standard-log
 The standard log files usually look something like

@@ -1722,7 +1722,7 @@ def search_for(log_files, keywords, extend=False):
     # if extend is set, keywords like err will also look for keywords like warn exception, aborted, etc.
     if extend:  # apply some rules
         # the error list
-        err_list = ["error", "err", "warning", "warn", "exception", "aborted", "abortion"]
+        err_list = ["error", "err", "warning", "warn", "exception", "aborted", "abortion", "abnormal"]
 
         for i in range(len(keyword_list)):
             if (keyword_list[i]).lower() in err_list:
