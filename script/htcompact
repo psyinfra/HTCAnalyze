@@ -40,7 +40,7 @@ option_shorts = "hsae:"
 option_longs = ["help", "std-log=", "std-err=", "std-out=",
                 "show-errors", "show-output", "show-warnings",
                 "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
-                "to-csv", "summarise", "analyse", "get-event=",
+                "to-csv", "summarise", "analyse", "search=", "get-event=",
                 "resolve-ip", "table-format="]
 
 # variables for given parameters
@@ -58,6 +58,7 @@ resolve_ip_to_hostname = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 summarise = False
 analyse = False
+search = False
 to_csv = False
 
 # escape sequences for colors
@@ -157,6 +158,10 @@ def manage_exit_params():
                 for desc in get_event_information(arg):
                     print(desc)
                 sys.exit(0)
+            elif opt in ["--search"]:
+                search_for(files, arg)
+                logging.debug(f"Search for {search_for}")
+                sys.exit(0)
 
     # print error messages
     except Exception as err:
@@ -175,8 +180,8 @@ def manage_params():
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_std_output, show_std_warnings, show_std_errors  # show more information variables
-    global ignore_resources, ignore_job_information, ignore_allocated_resources # ignore information variables
-    global to_csv, summarise, analyse# features
+    global ignore_resources, ignore_job_information, ignore_allocated_resources  # ignore information variables
+    global to_csv, summarise, analyse, search  # features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
@@ -1390,6 +1395,7 @@ def analyse_logs(log_files):
                 occurred_errors.append([job_id, terminated_date, "Terminated by user: "+aborted_by_user])
 
             else:
+                # search for errors
                 timestamp = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
                 error_strings = ["error", "err", "warning", "warn", "exception"]
                 for job_desc in job_inf:
@@ -1706,6 +1712,50 @@ def summarise_logs(log_files):
     return output_string
 
 
+# search in the files for the keywords
+# Todo: extend
+# Todo: show which keywords have been found and which not
+def search_for(log_files, keywords, extend=False):
+
+    keyword_list = keywords.split()
+
+    # if extend is set, keywords like err will also look for keywords like warn exception, aborted, etc.
+    if extend:  # apply some rules
+        # the error list
+        err_list = ["error", "err", "warning", "warn", "exception", "aborted", "abortion"]
+
+        for i in range(len(keyword_list)):
+            if (keyword_list[i]).lower() in err_list:
+                keyword_list.remove(keyword_list[i])
+                keyword_list.extend(err_list)
+
+        print(green + f"Keyword List was extended, now search for these keywords: {keyword_list}" + back_to_default)
+    else:
+        print(green + f"Search for these keywords: {keyword_list}" + back_to_default)
+
+    logging.debug(f"These are the keywords to look for: {keyword_list}")
+
+    logs = validate_given_logs(log_files)
+    # now search
+    found_at_least_one = False
+    for file in logs:
+        found = False
+        with open(file, "r") as read_file:
+            for line in read_file:
+                for keyword in keyword_list:
+                    if re.search(keyword.lower(), line.lower()):
+                        print(file)
+                        found = True
+                        found_at_least_one = True
+                        break
+                if found:
+                    break
+
+    if not found_at_least_one:
+        print(red + f"Unable to find these keywords {keyword_list}" + back_to_default)
+        print(red + f"maybe try again with similar expressions" + back_to_default)
+
+
 def validate_given_logs(file_list):
     """
     This method is supposed to take the given log files (by config or command line argument)
@@ -1761,7 +1811,10 @@ def validate_given_logs(file_list):
                 if file.startswith("."):
                     continue
                 # if it's not a sub folder
-                file_path = working_dir_path+"/"+file
+                if working_dir_path.endswith('/'):
+                    file_path = working_dir_path + file
+                else:
+                    file_path = working_dir_path + '/' + file
 
                 if os.path.isfile(file_path):
                     with open(file_path, "r") as read_file:
