@@ -1,6 +1,6 @@
 # Script to summarise HTCondor log files
 
-### Reuirements:
+### Requirements:
 - python3
 - pip
 - git

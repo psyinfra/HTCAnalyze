@@ -1,17 +1,16 @@
 .Dd May 26, 2020
 .Dt HTCompact 1
 .Os \" Current operating system.
-
 .Sh NAME
 .Nm htcompact
 .Nd summarise and analyse HTCondor log files
-
+.
 .Sh SYNOPSIS
 .Nm
 .Op FILES
 .Ar ...
 .Op OPTIONS
-
+.
 .Sh DESCRIPTION
 The
 .Nm
@@ -20,141 +19,140 @@ prints out a readable result of found HTCondor log files
 .Pp
 Its arguments are as follows:
 .Bl -tag -width Ds
-
+.
 .It Ar FILES
 just pass any files or directories, you just need to seperate them by space
-
+.
 .It Ar OPTIONS
-
+.
 .It Fl h | Fl Fl help
 This will print a small help function, just like this.
-
+.
 .It Fl e Ar event_number| Fl Fl get-event Ar event_number
 Give a detailed description for a HTCondor Event Number
-
+.
 .It Fl s | Fl Fl summarise
 summarises all given HTCondor log files and return a result regarding the averange usages and runtimes,
 this only makes sense, if multiple log files are given
-
+.
 .It Fl a | Fl Fl analyse
 analyses a specific file, for occurred errors, ram history -> histogram,
 execution status, runtime and much more
-
+.
 .It Fl Fl search Ar keywords
 search inside the given files or directories for the given keywords,
 if you want to give more than one keyword,
 use the string notation "keyword1 keyword2 ..."
-
+.
 Note: This is option is NOT case sensitive
-
+.
 .Bd -literal
 if you want to find any kind of termination, that is not normal,
 search for these keywords:
 ["err", "error", "warn", "warning",
  "exception", "aborted", "abortion", "abnormal"],
-.Em
-
+.
 .It Fl Fl std-log Ar standard-log
 The standard log files usually look something like
-.Qq job_452_237.log
-, if for whatever reason the format is not
-.Qq .log
-, then you can change it with this argument.
-
+.Qq job_452_237.log,
+if for whatever reason the format is not
+.Qq .log,
+then you can change it with this argument.
+.
 .It Fl Fl std-err Ar standard-err
 The standard error files usually look something like
-.Qq job_452_237.err
-, if for whatever reason the format is not
-.Qq .err
-, then you can change it with this argument.
-
+.Qq job_452_237.err,
+if for whatever reason the format is not
+.Qq .err,
+then you can change it with this argument.
+.
 .It Fl Fl std-out Ar standard-out
 The standard output files usually look something like
-.Qq job_452_237.out
-, if for whatever reason the format is not
-.Qq .out
-, then you can change it with this argument.
-
+.Qq job_452_237.out,
+if for whatever reason the format is not
+.Qq .out,
+then you can change it with this argument.
+.
 .It Fl Fl show-errors
 This will show all occurred errors inside the standard-error files
-
+.
 .It Fl Fl show-output
 This will show the content of a standard-output file
-
+.
 .It Fl Fl show-warnings
 This will show all occurred warnings inside the standard-error files
-
+.
 .It Fl Fl ignore-resources
 Ignore the resources of a HTCondor job
-
+.
 .It Fl Fl ignore-job-information
 Ignore all the information like executing time, host, runtime, etc.
 this is usually set to just have the resource table
-
+.
 .It Fl Fl ignore-allocated-resources
 Ignore allocated resources in the resource table
-
+.
 .It Fl Fl to-csv
-Restructure the resource table into a csv format # Todo:
-
+Restructure the resource table into a csv format
+.
 .It Fl Fl resolve-ip
-The normal output for host in the job-information section is just a raw ip address,
-this flag will change it to interpret the last byte as the cpu-node that the job was running at
-
+The standard output for host in the job-information section
+is just a raw ip address,
+this flag will change it to interpret the last byte as the cpu-node,
+that the job was running at
+.
 .It Fl Fl table-format Ar format
 the table format for the output
-
+.
 valid arguments are:
-
+.
 [plain, simple, github, grid, fancy_grid, pipe,
 orgtbl, rst, mediawiki, html, latex, latex_raw,
 latex_booktabs, tsv, pretty]
-
+.
 default: pretty
-
+.Ed
+.El
+.
 .Sh CONFIG
+.Bd -literal -compact
 furthermore all these variables|settings can be set inside a config file.
 See the #Todo: link to config explanation
-
+.
 A basic config file htcsetup.conf will be installed with this script.
 The script is also checking for other config files in other places:
-
+.
 "/etc" and "~/.config/htcompact/"
-
+.
 with different priorities from 1 (high) to 4 (low):
-.Bd -literal -compact
 Priority[1] find config_file directly
 Priority[2] search for config_file in /etc
 Priority[3] search for config_file in ~/.config/htcompact
 Priority[4] take the "htcsetup.conf" from the Project
 .Ed
-
+.
 .Sh EXAMPLES
 htcompact -a 398_440.log
-
+.
 .Sh SEE ALSO
-The
-.Nm
-repository is available at
-.Lk https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script
+.Bd -literal
+The Repository is available at
+.Lk https://bit.ly/30KD670
 Bug reports, patches, and (constructive) input are always welcome.
-
-
+.Ed
+.
 .Sh EXIT STATUS
 The
 .Nm
 script will exit normally in any case, if no other output is given, that tells the opposite.
-.Ex
-
-
+.Ex -std
+.
 .Sh FILES
 .Bl -tag -width Ds
 .It Pa script/htcsetup.conf
 A default setup for this script.
 .El
-
-
-
+.
 .Sh AUTHOR
 .An Mathis Loevenich,
 .Mt mathisloevenich@fz-juelich.de

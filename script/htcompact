@@ -78,7 +78,8 @@ std_log = ""
 std_err = ""
 std_out = ""
 
-# global variables for tabulate
+# global defaults
+config_file = "htcsetup.conf"
 table_format = "pretty"  # ascii by default
 
 # Todos:
@@ -152,7 +153,7 @@ def manage_exit_params():
         for opt, arg in opts:
 
             if opt in ["-h", "--help"]:
-                print(help_me())
+                help_me()
                 sys.exit(0)
             elif opt in ["-e", "--get-event"]:
                 for desc in get_event_information(arg):
@@ -271,25 +272,35 @@ def manage_params():
 
 def help_me():
     """
-    Usage: htcompact (log_files|config_file) [ Arguments ]
+Usage: htcompact (log_files|config_file) [ Arguments ]
 
-    ----------------------------Main features:---------------------------------
+----------------------------Main features:---------------------------------
 
-    [-s|--summarise]            Takes all given logs and summarises resources,
-                                runtime and other informations in total and
-                                average
+[-s|--summarise]            Takes all given logs and summarises resources,
+                            runtime and other informations in total and
+                            average
 
-    [-a|--analyse]              Takes a sepcific log and analyses it,
-                                however multiple logs are possible.
-                                The result will have all time diffrences,
-                                a histogram of ram usage over time,
-                                ocurred errors and much more
+[-a|--analyse]              Takes a specific log and analyses it,
+                            however multiple logs are possible.
+                            The result will have all time diffrences,
+                            a histogram of ram usage over time,
+                            ocurred errors and much more
 
 
-    More help on other options with: man htcompact
+More help on other options with: man htcompact
     """
+
+    check_places = ['/share/man/man1/htcompact.1', '/env/share/man/man1/htcompact.1',
+                    '/man/man1/htcompact.1', '/../man/man1/htcompact.1']
+    cwd = os.getcwd()
+    for place in check_places:
+        path = cwd+place
+        if os.path.isfile(path):
+            os.system(f"groff -Tlatin1 -mandoc {path}")
+            
     # returns this docstring
-    return help_me.__doc__
+    #return help_me.__doc__
+
 
 
 def get_event_information(event_id):
@@ -995,7 +1006,7 @@ def load_config():
     if len(sys.argv) > 1:
         # run through every given argument and try to determine if it's a valid config file
         arguments = sys.argv[1:]
-        arguments.append("htcsetup.conf")  # default config, should be checked after no one was found **
+        arguments.append(config_file)  # default config, should be checked after no one was found **
         # Todo: maybe search in the current directory for config files
         for file in arguments:
             # try to find the given file in the current directory, in /etc or in ~/.config/htcompact/
@@ -1032,17 +1043,20 @@ def load_config():
                 logging.debug(f"{file} is not a valid config file")
 
         try:
-            arguments.remove("htcsetup.conf")  # remove again, if other config file was found **
+            arguments.remove(config_file)  # remove again, if other config file was found **
         except ValueError:
             pass
-        print(back_to_default, end="")
 
         sys.argv[1:] = arguments
 
-    # break if not found
+    print(back_to_default, end="")
+
+    # prepare output if not and break if not found
     if not found_config:
-        print(f"No valid config file given and no default "
-              f"htcsetup.conf file found in: ({os.getcwd()}, ~/.config/htcompact/, /etc/) ")
+        print(f"{yellow}No valid config file given and no default "
+              f"{config_file} file found in: \n"
+              f"({os.getcwd()}, ~/.config/htcompact/, /etc/) \n"
+              f"using default settings{back_to_default}")
         return False
 
     try:
