@@ -168,7 +168,7 @@ def manage_exit_params():
     except Exception as err:
         logging.exception(err)  # write a detailed description in the stdout.log file
         print((red + "{0}: {1}" + back_to_default).format(err.__class__.__name__, err))
-        print(help_me())
+        help_me()
         sys.exit(1)
 
 
@@ -1136,15 +1136,9 @@ def load_config():
                 bad_usage = float(config['thresholds']['bad_usage'])
                 logging.debug(f"Changed default bad_usage to: {bad_usage}")
 
-        if 'csv' in sections:
-            global to_csv
-            if 'to_csv' in config['csv']:
-                to_csv = config['csv']['to_csv'].lower() in accepted_states
-                logging.debug(f"Changed default to_csv to: {to_csv}")
-
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
-            global resolve_ip_to_hostname, reverse_dns_lookup, summarise, analyse  # extra parameters
+            global resolve_ip_to_hostname, reverse_dns_lookup, summarise, analyse, to_csv  # extra parameters
             if 'resolve_ip_to_hostname' in config['features']:
                 resolve_ip_to_hostname = config['features']['resolve_ip_to_hostname'].lower() in accepted_states
                 logging.debug(f"Changed default resolve_ip_to_hostname to: {resolve_ip_to_hostname}")
@@ -1154,6 +1148,9 @@ def load_config():
             if 'analyse' in config['features']:
                 analyse = config['features']['analyse'].lower() in accepted_states
                 logging.debug(f"Changed default analyse to: {analyse}")
+            if 'to_csv' in config['features']:
+                to_csv = config['features']['to_csv'].lower() in accepted_states
+                logging.debug(f"Changed default to_csv to: {to_csv}")
 
         return True
 
