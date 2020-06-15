@@ -153,7 +153,7 @@ def manage_exit_params():
         for opt, arg in opts:
 
             if opt in ["-h", "--help"]:
-                help_me()
+                big_help()
                 sys.exit(0)
             elif opt in ["-e", "--get-event"]:
                 for desc in get_event_information(arg):
@@ -168,7 +168,7 @@ def manage_exit_params():
     except Exception as err:
         logging.exception(err)  # write a detailed description in the stdout.log file
         print((red + "{0}: {1}" + back_to_default).format(err.__class__.__name__, err))
-        help_me()
+        print(small_help())
         sys.exit(1)
 
 
@@ -256,21 +256,20 @@ def manage_params():
                 resolve_ip_to_hostname = True
 
             else:
-                print(help_me())
+                print(small_help())
                 sys.exit(0)
     # print error messages
     except Exception as err:
         logging.exception(err)  # write a detailed description in the stdout.log file
         print((red+"{0}: {1}"+back_to_default).format(err.__class__.__name__, err))
-        print(help_me())
+        print(small_help())
         sys.exit(1)
 
     if len(files) == 0:
-        print(help_me())
+        print(small_help())
         sys.exit(2)
 
-
-def help_me():
+def small_help():
     """
 Usage: htcompact (log_files|config_file) [ Arguments ]
 
@@ -289,6 +288,11 @@ Usage: htcompact (log_files|config_file) [ Arguments ]
 
 More help on other options with: man htcompact
     """
+    # returns this docstring
+    return small_help.__doc__
+
+
+def big_help():
 
     check_places = ['/share/man/man1/htcompact.1', '/env/share/man/man1/htcompact.1',
                     '/man/man1/htcompact.1', '/../man/man1/htcompact.1']
@@ -298,8 +302,6 @@ More help on other options with: man htcompact
         if os.path.isfile(path):
             os.system(f"groff -Tlatin1 -mandoc {path}")
 
-    # returns this docstring
-    #return help_me.__doc__
 
 
 
@@ -1002,52 +1004,53 @@ def load_config():
     found_config = False
 
     print(cyan, end="")
+    arguments = sys.argv[1:]
+    arguments.append(config_file)  # default config, should be checked after no one was found **
 
-    if len(sys.argv) > 1:
-        # run through every given argument and try to determine if it's a valid config file
-        arguments = sys.argv[1:]
-        arguments.append(config_file)  # default config, should be checked after no one was found **
-        # Todo: maybe search in the current directory for config files
-        for file in arguments:
-            # try to find the given file in the current directory, in /etc or in ~/.config/htcompact/
-            try:
-                if os.path.isfile(file) and config.read(file):
-                    logging.debug(f"Load config from the file: {file}")
-                    print(f"Load config from the file: {file}")
-                    found_config = True
-                    arguments.remove(file)
-                    logging.debug("Removed {0} from arguments".format(file))
-                # try to find config file in /etc
-                elif os.path.isfile(f"/etc/{file}") and config.read(f"/etc/{file}"):
-                    logging.debug(f"Load config from: /etc/{file}")
-                    print(f"Load config from: /etc/{file}")
-                    found_config = True
-                    arguments.remove(file)
-                    logging.debug("Removed {0} from arguments".format(file))
-                # try to find config file in ~/.config/script_name/
-                elif os.path.isfile(f"~/.config/{script_name}/{file}") \
-                        and config.read(f"~/.config/{script_name}/{file}"):
-                    logging.debug(f"Load config from: ~/.config/{script_name}/{file}")
-                    print(f"Load config from: ~/.config/{script_name}/{file}")
-                    found_config = True
-                    arguments.remove(file)
-                    logging.debug("Removed {0} from arguments".format(file))
-                else:
-                    logging.debug(f"{file} not a file or directory")
-
-                if found_config:
-                    break
-
-            # File has no readable format for the configparser, probably because it's not a config file
-            except configparser.MissingSectionHeaderError:
-                logging.debug(f"{file} is not a valid config file")
-
+    # run through every given argument and try to determine if it's a valid config file
+    # Todo: maybe search in the current directory for config files
+    for file in arguments:
+        # try to find the given file in the current directory, in /etc or in ~/.config/htcompact/
         try:
-            arguments.remove(config_file)  # remove again, if other config file was found **
-        except ValueError:
-            pass
+            if os.path.isfile(file) and config.read(file):
+                logging.debug(f"Load config from the file: {file}")
+                print(f"Load config from the file: {file}")
+                found_config = True
+                arguments.remove(file)
+                logging.debug("Removed {0} from arguments".format(file))
+            # try to find config file in /etc
+            elif os.path.isfile(f"/etc/{file}") and config.read(f"/etc/{file}"):
+                logging.debug(f"Load config from: /etc/{file}")
+                print(f"Load config from: /etc/{file}")
+                found_config = True
+                arguments.remove(file)
+                logging.debug("Removed {0} from arguments".format(file))
+            # try to find config file in ~/.config/script_name/
+            elif os.path.isfile(f"~/.config/{script_name}/{file}") \
+                    and config.read(f"~/.config/{script_name}/{file}"):
+                logging.debug(f"Load config from: ~/.config/{script_name}/{file}")
+                print(f"Load config from: ~/.config/{script_name}/{file}")
+                found_config = True
+                arguments.remove(file)
+                logging.debug("Removed {0} from arguments".format(file))
+            else:
+                logging.debug(f"{file} not a file or directory")
 
-        sys.argv[1:] = arguments
+            if found_config:
+                break
+
+        # File has no readable format for the configparser, probably because it's not a config file
+        except configparser.MissingSectionHeaderError:
+            continue
+            #logging.debug(f"{file} is not a valid config file")
+
+    try:
+        arguments.remove(config_file)  # remove again, if other config file was found **
+    except ValueError:
+        pass
+        #print(f"{red}could not remove {config_file} from arguments{back_to_default}")
+
+    sys.argv[1:] = arguments
 
     print(back_to_default, end="")
 
