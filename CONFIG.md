@@ -104,6 +104,6 @@ You could print out *log_file1* and every log_file thats found inside *log_direc
 htcompact htcsetup.conf
 ```
 
-The idea is, that for a bunch of settings it's eaier to go with  config file, \
+The idea is, that for a bunch of settings it's eaier to go with config files, \
 so you could have a specified file for just the summary mode and an other file just for the analyser mode and so on
 
