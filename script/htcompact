@@ -297,7 +297,7 @@ More help on other options with: man htcompact
         path = cwd+place
         if os.path.isfile(path):
             os.system(f"groff -Tlatin1 -mandoc {path}")
-            
+
     # returns this docstring
     #return help_me.__doc__
 
@@ -1516,6 +1516,7 @@ def analyse_logs(log_files):
     return output_string
 
 
+# Todo: what means sucessful executed ?
 def summarise_logs(log_files):
     """
     Summarises all used resources and the runtime in total and average
