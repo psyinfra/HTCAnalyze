@@ -1005,7 +1005,8 @@ def load_config():
 
     print(cyan, end="")
     arguments = sys.argv[1:]
-    arguments.append(config_file)  # default config, should be checked after no one was found **
+    config_paths = ["env/"+config_file, config_file]  # default config, search in env and current directroy if possible
+    arguments.extend(config_paths)  # extend to arguments
 
     # run through every given argument and try to determine if it's a valid config file
     # Todo: maybe search in the current directory for config files
@@ -1042,13 +1043,15 @@ def load_config():
         # File has no readable format for the configparser, probably because it's not a config file
         except configparser.MissingSectionHeaderError:
             continue
-            #logging.debug(f"{file} is not a valid config file")
 
     try:
-        arguments.remove(config_file)  # remove again, if other config file was found **
+        arguments.remove(config_file)  # remove again, if other config file was found
     except ValueError:
         pass
-        #print(f"{red}could not remove {config_file} from arguments{back_to_default}")
+    try:
+        arguments.remove("env/"+config_file)  # remove again if other config file was found
+    except ValueError:
+        pass
 
     sys.argv[1:] = arguments
 
