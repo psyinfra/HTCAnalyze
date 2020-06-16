@@ -36,8 +36,9 @@ if not log_disabled:
 accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
 files = list()
 border_str = ""
-option_shorts = "hsade:"
-option_longs = ["help", "std-log=", "std-err=", "std-out=",
+option_shorts = "hsadve:"
+option_longs = ["help", "version",
+                "std-log=", "std-err=", "std-out=",
                 "show-errors", "show-output", "show-warnings",
                 "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
                 "to-csv", "summarise", "analyse",
@@ -162,6 +163,9 @@ def manage_exit_params():
 
             if opt in ["-h", "--help"]:
                 man_help()
+                sys.exit(0)
+            if opt in ["-v", "--version"]:
+                # Todo:
                 sys.exit(0)
             elif opt in ["-e", "--get-event"]:
                 for desc in get_event_information(arg):
@@ -992,7 +996,7 @@ def output_given_logs(log_files):
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
-        print(yellow+"Nothing found to analyse, please use htcompact --help for help"+back_to_default)
+        print(yellow+"Nothing found, please use htcompact --help for help"+back_to_default)
 
     return output_string
 
