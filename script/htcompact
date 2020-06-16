@@ -59,14 +59,16 @@ reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 summarise = False
 analyse = False
 search = False
+search_values = ""
 to_csv = False
 
 # escape sequences for colors
 red = "\033[0;31m"
 green = "\033[0;32m"
 yellow = "\033[0;33m"
-magenta= "\033[0;35m"
+magenta = "\033[0;35m"
 cyan = "\033[0;36m"
+lightgrey = "\033[37m"
 back_to_default = "\033[0;39m"
 
 # thresholds for bad and low usage of resources
@@ -153,15 +155,11 @@ def manage_exit_params():
         for opt, arg in opts:
 
             if opt in ["-h", "--help"]:
-                big_help()
+                man_help()
                 sys.exit(0)
             elif opt in ["-e", "--get-event"]:
                 for desc in get_event_information(arg):
                     print(desc)
-                sys.exit(0)
-            elif opt in ["--search"]:
-                search_for(files, arg)
-                logging.debug(f"Search for {search_for}")
                 sys.exit(0)
 
     # print error messages
@@ -182,7 +180,7 @@ def manage_params():
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_std_output, show_std_warnings, show_std_errors  # show more information variables
     global ignore_resources, ignore_job_information, ignore_allocated_resources  # ignore information variables
-    global to_csv, summarise, analyse, search  # features
+    global to_csv, summarise, analyse, search, search_values  # features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
@@ -206,6 +204,10 @@ def manage_params():
             elif opt in ["-a", "--analyse"]:
                 analyse = True
                 logging.debug("Analyser mode turned on")
+            elif opt in ["--search"]:
+                search = True
+                search_values = arg
+                logging.debug(f"Search mode turned on")
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
             elif opt == "--std-log":
                 # to forget the . should not be painful
@@ -269,6 +271,7 @@ def manage_params():
         print(small_help())
         sys.exit(2)
 
+
 def small_help():
     """
 Usage: htcompact (log_files|config_file) [ Arguments ]
@@ -292,7 +295,7 @@ More help on other options with: man htcompact
     return small_help.__doc__
 
 
-def big_help():
+def man_help():
 
     check_places = ['/share/man/man1/htcompact.1', '/env/share/man/man1/htcompact.1',
                     '/man/man1/htcompact.1', '/../man/man1/htcompact.1']
@@ -301,8 +304,6 @@ def big_help():
         path = cwd+place
         if os.path.isfile(path):
             os.system(f"groff -Tlatin1 -mandoc {path}")
-
-
 
 
 def get_event_information(event_id):
@@ -1757,22 +1758,38 @@ def search_for(log_files, keywords, extend=False):
     logs = validate_given_logs(log_files)
     # now search
     found_at_least_one = False
+    found_logs = []
     for file in logs:
         found = False
         with open(file, "r") as read_file:
             for line in read_file:
                 for keyword in keyword_list:
                     if re.search(keyword.lower(), line.lower()):
-                        print(file)
+                        if not found_at_least_one:
+                            print("Matches:")
+                        print(lightgrey+file+back_to_default)
                         found = True
                         found_at_least_one = True
                         break
                 if found:
+                    found_logs.append(file)
                     break
 
+    output_string = ""
     if not found_at_least_one:
         print(red + f"Unable to find these keywords {keyword_list}" + back_to_default)
         print(red + f"maybe try again with similar expressions" + back_to_default)
+
+    else:
+        print(f"Total count: {len(found_logs)}")
+        if summarise:
+            print(f"{magenta}Try to summarise these files{back_to_default}")
+            output_string = summarise_logs(found_logs)
+        elif analyse:
+            print(f"{magenta}Try to analyse these files{back_to_default}")
+            output_string = analyse_logs(found_logs)
+
+    return output_string
 
 
 def validate_given_logs(file_list):
@@ -1918,7 +1935,9 @@ if __name__ == "__main__":
 
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
-        if summarise:
+        if search:
+            output_str = search_for(files, search_values)
+        elif summarise:
             output_str = summarise_logs(files)  # summarise information
         elif analyse:
             output_str = analyse_logs(files)  # analyse the given files
