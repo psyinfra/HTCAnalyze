@@ -1759,11 +1759,10 @@ def search_for(log_files, keywords, extend=False):
 
     logging.debug(f"These are the keywords to look for: {keyword_list}")
 
-    logs = validate_given_logs(log_files)
     # now search
     found_at_least_one = False
     found_logs = []
-    for file in logs:
+    for file in log_files:
         found = False
         with open(file, "r") as read_file:
             for line in read_file:
@@ -1771,7 +1770,9 @@ def search_for(log_files, keywords, extend=False):
                     if re.search(keyword.lower(), line.lower()):
                         if not found_at_least_one:
                             print("Matches:")
-                        print(lightgrey+file+back_to_default)
+                        # Todo: save numbers of occurence for each keyword, if more than one is given
+                        # Todo: can be commenetd, or maybe should be hidden, if more than like 50 files are found
+                        print(f"{lightgrey}{keyword} in: \t{file}{back_to_default}")
                         found = True
                         found_at_least_one = True
                         break
@@ -1848,7 +1849,9 @@ def validate_given_logs(file_list):
             print(f"{magenta}Try to find valid log files in the given directory:{back_to_default}\n"
                   f"{working_dir_path}")
             # run through all files and separate the files into log/error and output files
-            for file in os.listdir(working_dir_path):
+            valid_dir_files = list()
+            file_dir = os.listdir(working_dir_path)
+            for file in file_dir:
                 # ignore hidden files
                 if file.startswith("."):
                     continue
@@ -1866,12 +1869,14 @@ def validate_given_logs(file_list):
 
                         if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
                             #logging.debug(f"{read_file.name} is a valid HTCondor log file")
-                            valid_files.append(file_path)
+                            valid_dir_files.append(file_path)
 
                 else:
                     logging.debug(f"Found a subfolder: {working_dir_path}/{file}, it will be ignored")
                     print(yellow+f"Found a subfolder: {working_dir_path}/{file}, it will be ignored"+back_to_default)
 
+            valid_files.extend(valid_dir_files)
+            print(f"{green}Found {len(valid_dir_files)} valid log files out of {len(file_dir)} files{back_to_default}")
         # else if path "might" be a valid HTCondor file
         elif working_file_path.__ne__(""):
             with open(working_file_path, "r") as read_file:
@@ -1888,6 +1893,8 @@ def validate_given_logs(file_list):
         else:
             logging.error(f"The given file: {arg} does not exist")
             print(red+f"The given file: {arg} does not exist"+back_to_default)
+
+    print()
 
     return valid_files
 
