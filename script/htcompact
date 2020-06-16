@@ -36,7 +36,7 @@ if not log_disabled:
 accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
 files = list()
 border_str = ""
-option_shorts = "hsae:"
+option_shorts = "hsade:"
 option_longs = ["help", "std-log=", "std-err=", "std-out=",
                 "show-errors", "show-output", "show-warnings",
                 "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
@@ -58,6 +58,7 @@ ignore_resources = False
 # Features:
 resolve_ip_to_hostname = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
+default = False  # just the default mode, the varibale is not really necessary but sometimes useful
 summarise = False
 analyse = False
 to_csv = False
@@ -185,7 +186,8 @@ def manage_params():
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_std_output, show_std_warnings, show_std_errors  # show more information variables
     global ignore_resources, ignore_job_information, ignore_allocated_resources  # ignore information variables
-    global to_csv, summarise, analyse, search, search_keywords, search_extend  # features
+    global to_csv, summarise, analyse, default  # features
+    global search, search_keywords, search_extend  # search features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
@@ -209,6 +211,8 @@ def manage_params():
             elif opt in ["-a", "--analyse"]:
                 analyse = True
                 logging.debug("Analyser mode turned on")
+            elif opt in ["-d", "--default"]:
+                default = True
             elif opt in ["--search"]:
                 search = True
                 search_keywords = arg
@@ -1114,17 +1118,17 @@ def load_config():
         if 'show-more' in sections:
             global show_std_output, show_std_warnings, show_std_errors  # sources to show
 
-            if 'show_errors' in config['show-more']:
-                show_std_errors = config['show-more']['show_errors'].lower() in accepted_states
-                logging.debug(f"Changed default show_errors to: {show_std_errors}")
+            if 'show_std_errors' in config['show-more']:
+                show_std_errors = config['show-more']['show_std_errors'].lower() in accepted_states
+                logging.debug(f"Changed default show_std_errors to: {show_std_errors}")
 
-            if 'show_output' in config['show-more']:
-                show_std_output = config['show-more']['show_output'].lower() in accepted_states
-                logging.debug(f"Changed default show_output to: {show_std_output}")
+            if 'show_std_output' in config['show-more']:
+                show_std_output = config['show-more']['show_std_output'].lower() in accepted_states
+                logging.debug(f"Changed default show_std_output to: {show_std_output}")
 
-            if 'show_warnings' in config['show-more']:
-                show_std_warnings = config['show-more']['show_warnings'].lower() in accepted_states
-                logging.debug(f"Changed default show_warnings to: {show_std_warnings}")
+            if 'show_std_warnings' in config['show-more']:
+                show_std_warnings = config['show-more']['show_std_warnings'].lower() in accepted_states
+                logging.debug(f"Changed default show_std_warnings to: {show_std_warnings}")
 
         # what information should to be ignored
         if 'ignore' in sections:
@@ -1544,7 +1548,7 @@ def analyse_logs(log_files):
 
 
 # Todo: what means sucessful executed ?
-def summarize_logs(log_files):
+def summarise_logs(log_files):
     """
     Summarises all used resources and the runtime in total and average
 
@@ -1802,23 +1806,25 @@ def search_for(log_files, keywords, extend=False):
 
     output_string = ""
     if not found_at_least_one:
-        print(red + f"Unable to find these keywords {keyword_list}" + back_to_default)
+        print(red + f"Unable to find these keywords: {keyword_list}" + back_to_default)
         print(red + f"maybe try again with similar expressions" + back_to_default)
 
     else:
         print(f"Total count: {len(found_logs)}")
-        if summarise:
+        if default:
+            output_string = output_given_logs(found_logs)
+        elif summarise:
             print(f"{magenta}Try to summarise these files{back_to_default}")
-            output_string = summarize_logs(found_logs)
+            output_string = summarise_logs(found_logs)
         elif analyse:
             print(f"{magenta}Try to analyse these files{back_to_default}")
             output_string = analyse_logs(found_logs)
         elif sys.stdout.isatty():  # if not redirected
-            x = input(blue+"Want to do more? [print default(d), summarize(s), analyse(a), exit(e)]: "+back_to_default)
+            x = input(blue+"Want to do more? [print default(d), summarise(s), analyse(a), exit(e)]: "+back_to_default)
             if x == "d":
                 output_string = output_given_logs(found_logs)
             elif x == "s":
-                output_string = summarize_logs(found_logs)
+                output_string = summarise_logs(found_logs)
             elif x == "a":
                 output_string = analyse_logs(found_logs)
 
@@ -1981,7 +1987,7 @@ if __name__ == "__main__":
         if search:
             output_str = search_for(files, search_keywords, search_extend)
         elif summarise:
-            output_str = summarize_logs(files)  # summarise information
+            output_str = summarise_logs(files)  # summarise information
         elif analyse:
             output_str = analyse_logs(files)  # analyse the given files
         else:

@@ -28,9 +28,9 @@ stderr = .err
 stdout = .out
 
 [show-more]
-show_errors = no
-show_output = no
-show_warnings = no
+show_std_errors = no
+show_std_output = no
+show_std_warnings = no
 
 [ignore]
 ignore_allocated_resources = False
