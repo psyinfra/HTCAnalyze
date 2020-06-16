@@ -68,6 +68,7 @@ green = "\033[0;32m"
 yellow = "\033[0;33m"
 magenta = "\033[0;35m"
 cyan = "\033[0;36m"
+blue = "\033[0;34m"
 lightgrey = "\033[37m"
 back_to_default = "\033[0;39m"
 
@@ -1529,7 +1530,7 @@ def summarise_logs(log_files):
     """
     Summarises all used resources and the runtime in total and average
 
-    Runs threw the log files via the log_to_dataframe function
+    Runs through the log files via the log_to_dataframe function
 
     :return:
     """
@@ -1845,6 +1846,8 @@ def validate_given_logs(file_list):
 
         # if path is a directory
         if working_dir_path.__ne__(""):
+            print(f"{magenta}Try to find valid log files in the given directory:{back_to_default}\n"
+                  f"{working_dir_path}")
             # run through all files and separate the files into log/error and output files
             for file in os.listdir(working_dir_path):
                 # ignore hidden files
@@ -1900,12 +1903,13 @@ def escape_seq_when_redirect():
     """
     # if output gets redirected with > or | or other redirection tools, ignore escape sequences
     if not sys.stdout.isatty():
-        global red, green, yellow, magenta, cyan, lightgrey, back_to_default
+        global red, green, yellow, magenta, cyan, blue, lightgrey, back_to_default
         red = ""
         green = ""
         yellow = ""
         magenta = ""
         cyan = ""
+        blue = ""
         lightgrey = ""
         back_to_default = ""
         logging.debug("Output is getting redirected, all escape sequences were set to \"\"")
