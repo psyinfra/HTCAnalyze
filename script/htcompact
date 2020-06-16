@@ -1739,7 +1739,6 @@ def summarise_logs(log_files):
 # search in the files for the keywords
 # Todo: extend
 # Todo: show which keywords have been found and which not
-# Todo: add -a and -s option so that for example all logs with errors can be summarised or analysed
 def search_for(log_files, keywords, extend=False):
 
     keyword_list = keywords.split()
