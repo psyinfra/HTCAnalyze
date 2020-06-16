@@ -1189,7 +1189,7 @@ def analyse_logs(log_files):
 
     if len(log_files) == 0:
         return "No files to analyse"
-    elif len(log_files) > 1:
+    elif len(log_files) > 1 and sys.stdout.isatty():
         print("More than one file is given, this mode is meant to be used for single job analysis.\n"
               "This will change nothing, but you should rather do it just for a file one by one")
         x = input("Want to continue (y/n): ")
@@ -1508,7 +1508,11 @@ def analyse_logs(log_files):
                 fig.register_label_formatter(float, _int_formatter)
                 fig.plot(dates, ram, lc='green', label="Continuous Graph")  # Todo: implement a way to show thresholds
                 fig.scatter(dates, ram, lc='red', label="Single Values")
-                output_string += fig.show(legend=True)
+
+                if not sys.stdout.isatty():  # if redirected, the Legend is useless
+                    output_string += fig.show() + "\n"
+                else:
+                    output_string += fig.show(legend=True) + "\n"
             else:
                 single_date = ram_histroy[0][0].strftime("%m/%d %H:%M:%S")
                 single_ram = ram_histroy[0][2]
@@ -1896,12 +1900,13 @@ def escape_seq_when_redirect():
     """
     # if output gets redirected with > or | or other redirection tools, ignore escape sequences
     if not sys.stdout.isatty():
-        global red, green, yellow, magenta, cyan, back_to_default
+        global red, green, yellow, magenta, cyan, lightgrey, back_to_default
         red = ""
         green = ""
         yellow = ""
         magenta = ""
         cyan = ""
+        lightgrey = ""
         back_to_default = ""
         logging.debug("Output is getting redirected, all escape sequences were set to \"\"")
 
