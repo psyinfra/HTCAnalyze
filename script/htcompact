@@ -40,7 +40,8 @@ option_shorts = "hsae:"
 option_longs = ["help", "std-log=", "std-err=", "std-out=",
                 "show-errors", "show-output", "show-warnings",
                 "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
-                "to-csv", "summarise", "analyse", "search=", "get-event=",
+                "to-csv", "summarise", "analyse",
+                "search=", "extend", "get-event=",
                 "resolve-ip", "table-format="]
 
 # variables for given parameters
@@ -49,7 +50,8 @@ show_std_warnings = False
 show_std_errors = False
 
 # ignore infromation
-ignore_allocated_resources = False
+# Todo: include in the summariser search and analyser mdoe
+ignore_allocated_resources = False  # already working
 ignore_job_information = False
 ignore_resources = False
 
@@ -58,9 +60,11 @@ resolve_ip_to_hostname = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
 summarise = False
 analyse = False
-search = False
-search_values = ""
 to_csv = False
+
+search = False
+search_keywords = ""
+search_extend = False
 
 # escape sequences for colors
 red = "\033[0;31m"
@@ -181,7 +185,7 @@ def manage_params():
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_std_output, show_std_warnings, show_std_errors  # show more information variables
     global ignore_resources, ignore_job_information, ignore_allocated_resources  # ignore information variables
-    global to_csv, summarise, analyse, search, search_values  # features
+    global to_csv, summarise, analyse, search, search_keywords, search_extend  # features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
@@ -207,8 +211,10 @@ def manage_params():
                 logging.debug("Analyser mode turned on")
             elif opt in ["--search"]:
                 search = True
-                search_values = arg
+                search_keywords = arg
                 logging.debug(f"Search mode turned on")
+            elif opt in ["--extend"]:
+                search_extend = True
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
             elif opt == "--std-log":
                 # to forget the . should not be painful
@@ -943,11 +949,11 @@ def smart_manage_all(file):
 
 # Todo: change for no specified type of log error and output files
 # Todo: err and output not visible ???
-def output_given_logs():
+def output_given_logs(log_files):
     output_string = ""
     current_path = os.getcwd()
     # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
-    for i, file in enumerate(files):
+    for i, file in enumerate(log_files):
 
         # for the * operation it should skip std_err and std_out files
         if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
@@ -1037,7 +1043,7 @@ def load_config():
                 arguments.remove(file)
                 logging.debug("Removed {0} from arguments".format(file))
             else:
-                logging.debug(f"{file} not a file or directory")
+                logging.debug(f"{file} not found or is not a valid config file")
 
             if found_config:
                 break
@@ -1143,6 +1149,18 @@ def load_config():
             if 'bad_usage' in config['thresholds']:
                 bad_usage = float(config['thresholds']['bad_usage'])
                 logging.debug(f"Changed default bad_usage to: {bad_usage}")
+
+        if "search" in sections:
+            global search, search_keywords, search_extend
+            search = True
+            logging.debug(f"Changed default search to: {search}")
+            if 'keywords' in config['search']:
+                search_keywords = config['search']['keywords']
+                logging.debug(f"Changed search_keywords to: {search_keywords}")
+            if 'extend' in config['search']:
+                search_extend = config['search']['extend'].lower() in accepted_states
+                logging.debug(f"Changed search_extend to: {search_extend}")
+
 
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
@@ -1416,7 +1434,7 @@ def analyse_logs(log_files):
             else:
                 # search for errors
                 timestamp = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-                error_strings = ["error", "err", "warning", "warn", "exception"]
+                error_strings = ["error", "err", "warning", "warn", "exception", "fatal"]
                 for job_desc in job_inf:
                     for err in error_strings:
                         if err in job_desc.lower():
@@ -1526,7 +1544,7 @@ def analyse_logs(log_files):
 
 
 # Todo: what means sucessful executed ?
-def summarise_logs(log_files):
+def summarize_logs(log_files):
     """
     Summarises all used resources and the runtime in total and average
 
@@ -1746,12 +1764,14 @@ def search_for(log_files, keywords, extend=False):
     # if extend is set, keywords like err will also look for keywords like warn exception, aborted, etc.
     if extend:  # apply some rules
         # the error list
-        err_list = ["error", "err", "warning", "warn", "exception", "aborted", "abortion", "abnormal"]
+        err_list = ["err", "warn", "exception", "aborted", "abortion", "abnormal", "fatal"]
 
+        # remove keyword if already in err_list
         for i in range(len(keyword_list)):
             if (keyword_list[i]).lower() in err_list:
                 keyword_list.remove(keyword_list[i])
-                keyword_list.extend(err_list)
+
+        keyword_list.extend(err_list) # extend search
 
         print(green + f"Keyword List was extended, now search for these keywords: {keyword_list}" + back_to_default)
     else:
@@ -1789,10 +1809,18 @@ def search_for(log_files, keywords, extend=False):
         print(f"Total count: {len(found_logs)}")
         if summarise:
             print(f"{magenta}Try to summarise these files{back_to_default}")
-            output_string = summarise_logs(found_logs)
+            output_string = summarize_logs(found_logs)
         elif analyse:
             print(f"{magenta}Try to analyse these files{back_to_default}")
             output_string = analyse_logs(found_logs)
+        elif sys.stdout.isatty():  # if not redirected
+            x = input(blue+"Want to do more? [print default(d), summarize(s), analyse(a), exit(e)]: "+back_to_default)
+            if x == "d":
+                output_string = output_given_logs(found_logs)
+            elif x == "s":
+                output_string = summarize_logs(found_logs)
+            elif x == "a":
+                output_string = analyse_logs(found_logs)
 
     return output_string
 
@@ -1951,13 +1979,13 @@ if __name__ == "__main__":
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
         if search:
-            output_str = search_for(files, search_values)
+            output_str = search_for(files, search_keywords, search_extend)
         elif summarise:
-            output_str = summarise_logs(files)  # summarise information
+            output_str = summarize_logs(files)  # summarise information
         elif analyse:
             output_str = analyse_logs(files)  # analyse the given files
         else:
-            output_str = "\n" + output_given_logs()  # print out all given files if possible
+            output_str = "\n" + output_given_logs(files)  # print out all given files if possible
 
         print(output_str)  # write it to the console
 

@@ -41,6 +41,13 @@ ignore_resources = False
 low_usage = 0.75 # everything under 75% is considered "wasting sources"
 bad_usage = 1.2 # everything over 120% is considered "overusing sources"
 
+# be careful with this
+[search]
+keywords = gpu
+extend = false 
+# if set, searches is extended with these keywords:
+# [err, warn, exception, aborted, abortion, abnormal, fatal]
+
 [features]
 summarise = False
 analyse = False

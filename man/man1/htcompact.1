@@ -21,7 +21,7 @@ Its arguments are as follows:
 .Bl -tag -width Ds
 .
 .It Ar FILES
-just pass any files or directories, you just need to seperate them by space
+just pass any log files, config files or directories, you just need to seperate them by space.
 .
 .It Ar OPTIONS
 .
@@ -39,18 +39,28 @@ this only makes sense, if multiple log files are given
 analyses a specific file, for occurred errors, ram history -> histogram,
 execution status, runtime and much more
 .
-.It Fl Fl search Ar keywords
-search inside the given files or directories for the given keywords,
+.Bd -literal
+.It Fl Fl search Ar keywords Op Fl Fl extend
+search inside the given files or directories
+for the given keywords,
 if you want to give more than one keyword,
 use the string notation "keyword1 keyword2 ..."
-.
-Note: This is option is NOT case sensitive
-.
+.Ed
 .Bd -literal
-if you want to find any kind of termination, that is not normal,
-search for these keywords:
+Note: This option is NOT case sensitive
+.Ed
+.Bd -literal
+if you want to find any kind of termination,
+that is not normal, search for these keywords:
+.Ed
+.Bd -literal
 ["err", "error", "warn", "warning",
- "exception", "aborted", "abortion", "abnormal"],
+ "exception", "aborted", "abortion", "abnormal", "fatal"]
+.Ed
+.Bd -literal
+Note: the additional flag --extend
+will add all these keywords above to the list
+.Ed
 .
 .It Fl Fl std-log Ar standard-log
 The standard log files usually look something like
@@ -111,7 +121,6 @@ orgtbl, rst, mediawiki, html, latex, latex_raw,
 latex_booktabs, tsv, pretty]
 .
 default: pretty
-.Ed
 .El
 .
 .Sh CONFIG
