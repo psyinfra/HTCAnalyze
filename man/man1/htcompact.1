@@ -31,6 +31,13 @@ This will print a small help function, just like this.
 .It Fl e Ar event_number| Fl Fl get-event Ar event_number
 Give a detailed description for a HTCondor Event Number
 .
+.It Fl d | Fl Fl default
+turns on the default output mode which is usually already true.
+This is only necessary, if for example the analyser mode is turned on
+(set by the config file) and should be ignored for a single run.
+An other usage is related to the --search option,
+see the --search section below.
+.
 .It Fl s | Fl Fl summarise
 summarises all given HTCondor log files and return a result regarding the averange usages and runtimes,
 this only makes sense, if multiple log files are given

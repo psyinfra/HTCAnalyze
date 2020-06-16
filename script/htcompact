@@ -58,7 +58,6 @@ ignore_resources = False
 # Features:
 resolve_ip_to_hostname = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
-default = False  # just the default mode, the varibale is not really necessary but sometimes useful
 summarise = False
 analyse = False
 to_csv = False
@@ -66,6 +65,7 @@ to_csv = False
 search = False
 search_keywords = ""
 search_extend = False
+default = False  # just for the search function to determine if default output should be printed
 
 # escape sequences for colors
 red = "\033[0;31m"
@@ -1165,7 +1165,6 @@ def load_config():
                 search_extend = config['search']['extend'].lower() in accepted_states
                 logging.debug(f"Changed search_extend to: {search_extend}")
 
-
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
             global resolve_ip_to_hostname, reverse_dns_lookup, summarise, analyse, to_csv  # extra parameters
@@ -1986,12 +1985,14 @@ if __name__ == "__main__":
 
         if search:
             output_str = search_for(files, search_keywords, search_extend)
+        elif default:
+            output_str = "\n" + output_given_logs(files) # force default with -d
         elif summarise:
             output_str = summarise_logs(files)  # summarise information
         elif analyse:
             output_str = analyse_logs(files)  # analyse the given files
         else:
-            output_str = "\n" + output_given_logs(files)  # print out all given files if possible
+            output_str = "\n" + output_given_logs(files)  # anyways try to print default output
 
         print(output_str)  # write it to the console
 
