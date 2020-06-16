@@ -9,7 +9,7 @@ with open("README.md", "r") as readme:
 
 
 setup(name='htcompact',
-      version='{tag}.dev{commitcount}+{gitsha}',
+      version_format='{tag}.dev{commitcount}+{gitsha}',
       setup_requires=['setuptools-git-version'],
       description='HTCondor summariser script',
       long_description=long_description,
