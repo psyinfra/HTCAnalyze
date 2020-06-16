@@ -108,7 +108,9 @@ please do
 
 
 #### Used frameworks and packages:
-- tabulate
+- [setuptools-git-version](https://pypi.org/project/setuptools-git-version/)
+- [tabulate](https://pypi.org/project/tabulate/)
+- [plotille](https://pypi.org/project/plotille/)
 - pandas (especially pandas.DataFrame)
 - regular expresssions (Package re)
 - sys
@@ -116,4 +118,3 @@ please do
 - getopt
 - datetime
 - logging
-- plotille

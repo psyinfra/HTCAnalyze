@@ -88,7 +88,7 @@ std_err = ""
 std_out = ""
 
 # global defaults
-config_file = "htcsetup.conf"
+config_file = "config/htcsetup.conf"
 table_format = "pretty"  # ascii by default
 
 # Todos:
@@ -1021,7 +1021,7 @@ def load_config():
 
     print(cyan, end="")
     arguments = sys.argv[1:]
-    environment_path = sys.prefix+"/config/"+config_file  # if virtual environment is used
+    environment_path = sys.prefix+"/"+config_file  # if virtual environment is used
     config_paths = [environment_path, config_file]  # default config, search in env and current directroy if possible
     arguments.extend(config_paths)  # extend to arguments
 
