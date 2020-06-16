@@ -32,7 +32,7 @@ setup(name='htcompact',
             'script/htcompact'
       ],
       data_files=[
-            'script/htcsetup.conf',
+            ('config', ['script/htcsetup.conf]']),
             ('share/man/man1', ['man/man1/htcompact.1'])
       ],
       )

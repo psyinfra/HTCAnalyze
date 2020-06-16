@@ -38,8 +38,10 @@ ignore_job_information = False
 ignore_resources = False
 
 [thresholds]
-low_usage = 0.75 # everything under 75% is considered "wasting sources"
-bad_usage = 1.2 # everything over 120% is considered "overusing sources"
+ # everything under 75% is considered "wasting sources"
+low_usage = 0.75
+# everything over 120%is considered "overusing sources"
+bad_usage = 1.2
 
 # be careful with this
 [search]

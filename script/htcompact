@@ -1017,7 +1017,8 @@ def load_config():
 
     print(cyan, end="")
     arguments = sys.argv[1:]
-    config_paths = ["env/"+config_file, config_file]  # default config, search in env and current directroy if possible
+    environment_path = sys.prefix+"/config/"+config_file  # if virtual environment is used
+    config_paths = [environment_path, config_file]  # default config, search in env and current directroy if possible
     arguments.extend(config_paths)  # extend to arguments
 
     # run through every given argument and try to determine if it's a valid config file
@@ -1061,7 +1062,7 @@ def load_config():
     except ValueError:
         pass
     try:
-        arguments.remove("env/"+config_file)  # remove again if other config file was found
+        arguments.remove(environment_path)  # remove again if other config file was found
     except ValueError:
         pass
 
@@ -1986,7 +1987,7 @@ if __name__ == "__main__":
         if search:
             output_str = search_for(files, search_keywords, search_extend)
         elif default:
-            output_str = "\n" + output_given_logs(files) # force default with -d
+            output_str = "\n" + output_given_logs(files)  # force default with -d
         elif summarise:
             output_str = summarise_logs(files)  # summarise information
         elif analyse:
