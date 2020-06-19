@@ -82,7 +82,7 @@ This will search for a config_file with the priorities from 1 (high) to 3 (low)
 
 1. search for config_file in /etc
 2. search for config_file in ~/.config/htcompact
-3. take the "htcsetup.conf" from the Project
+3. take the "htcsetup.conf" from project_folder/config
 
 ##### Note:
 Arguments given by the terminal have a higher priority,\
@@ -91,10 +91,14 @@ but all the other arguments stay how they are.
 
 ## Idea
 
-For example your config file looks like:
+For example your config file sits in one of these directoreis:
+1. /etc
+2. ~/.config/htcompact
+3. project_folder/config
+
 <details>
 <summary>
-htcsetup.conf
+htcompact_setup.conf
 </summary>
 
 ```
@@ -110,9 +114,14 @@ stdout = .out
 
 You could print out *log_file1* and every log_file thats found inside *log_directory1* just by:
 ```
-htcompact htcsetup.conf
+htcompact htcompact_setup.conf
 ```
 
-The idea is, that for a bunch of settings it's eaier to go with config files, \
+The idea is, that for a bunch of settings it's easier to go with config files, \
 so you could have a specified file for just the summary mode and an other file just for the analyser mode and so on
+
+If the name of the config file is changed to htcsetup.conf it reduced to:
+```
+htcompact
+```
 

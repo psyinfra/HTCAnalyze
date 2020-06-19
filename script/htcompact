@@ -17,7 +17,8 @@ from plotille import Figure
 This script is basically reading information from HTCondor log files and storing them into
 pandas DataFrames. By that its actually pretty simple to analyse the data.
 
-The script makes the information compact and easy to under stand, that's the reason for the name htcompact
+The script makes the information compact and easy to under stand,
+that's the reason for the name htcompact
 
 Single logs can be read quite easily, but also it's possible to summarise a wholöe directory with logs 
 to see for ex. the avarage runtime and usage of all the logs
@@ -29,8 +30,10 @@ to see for ex. the avarage runtime and usage of all the logs
 log_disabled = False
 logging.getLogger().disabled = log_disabled  # no more logging
 if not log_disabled:
-    logging.basicConfig(filename="stdout.log", level=logging.DEBUG,
-                        format='%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s')
+    format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
+    logging.basicConfig(filename="stdout.log",
+                        level=logging.DEBUG,
+                        format=format)
 
 # global parameters, used for dynamical output of information
 accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
@@ -96,6 +99,7 @@ table_format = "pretty"  # ascii by default
 # Todo: background colors etc. for terminal usage
 # Todo: filter erros better, less priority
 # Todo: realise the further specs on: https://jugit.fz-juelich.de/inm7/infrastructure/scripts/-/issues/1
+# Todo: flag --no-config
 # a redirection in the terminal via > should ignore escape sequences
 
 
@@ -958,6 +962,7 @@ def smart_manage_all(file):
 # Todo: change for no specified type of log error and output files
 # Todo: err and output not visible ???
 def output_given_logs(log_files):
+
     output_string = ""
     current_path = os.getcwd()
     # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
