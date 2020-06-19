@@ -43,23 +43,25 @@ low_usage = 0.75
 # everything over 120%is considered "overusing sources"
 bad_usage = 1.2
 
-# be careful with this
-[search]
-keywords = gpu
-extend = false 
-# if set, searches is extended with these keywords:
-# [err, warn, exception, aborted, abortion, abnormal, fatal]
+# be careful with this 
+# [search]
+# keywords = gpu
+# extend = false
+## if set, searches is extended with these keywords:
+## [err, warn, exception, aborted, abortion, abnormal, fatal]
 
 [features]
 summarise = False
 analyse = False
 to_csv = False
 reverse_dns_lookup = disabled
-resolve_ip_to_hostname = YES
+resolve_ip_to_hostname = no
 
 ```
 
 </details>
+These values are just the same as the defaults of the script,
+so it would NOT change the output, if you do not have the config file
 
 ## Specification
 
