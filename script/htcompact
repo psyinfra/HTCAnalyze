@@ -91,7 +91,7 @@ std_err = ""
 std_out = ""
 
 # global defaults
-config_file = "config/htcsetup.conf"
+config_file = "config/htcompact.conf"
 table_format = "pretty"  # ascii by default
 
 # Todos:

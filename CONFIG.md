@@ -3,7 +3,7 @@
 The default htcsetup.conf looks like this:
 <details>
 <summary>
-htcsetup.conf
+htcompact.conf
 </summary>
 
 ```
@@ -78,25 +78,31 @@ everything else will be interpreted as false
 
 If you just run the script by:
 ```
+htcompact config_file
+```
+This will search for the config_file with the priorities from 1 (high) to 3 (low)
+
+1. search config_file directly in the current directory/config (virtual environement)
+2. search for config_file in /etc
+3. search for config_file in ~/.config/htcompact
+
+Else if you just run the script by just:
+```
 htcompact
 ```
-This will search for a config_file with the priorities from 1 (high) to 3 (low)
-
-1. search for config_file in /etc
-2. search for config_file in ~/.config/htcompact
-3. take the "htcsetup.conf" from project_folder/config
+This will search for "htcompact.conf" as default in the same order
 
 ##### Note:
 Arguments given by the terminal have a higher priority,\
 so that the settings in the config file for that particular argument will be ignored (not overwritten),\
-but all the other arguments stay how they are.
+but all the other arguments stay defined by the config file.
 
 ## Idea
 
-For example your config file sits in one of these directoreis:
-1. /etc
-2. ~/.config/htcompact
-3. project_folder/config
+For example your config file sits in one of these directories:
+1.  project_folder/config
+2. /etc
+3. ~/.config/htcompact
 
 <details>
 <summary>
@@ -111,18 +117,21 @@ files = log_file1 log_directory1
 stdlog = .log
 stderr = .err
 stdout = .out
+
+[features]
+summarise = true
 ```
 </details>
 
-You could print out *log_file1* and every log_file thats found inside *log_directory1* just by:
+You could summarise *log_file1* and every log_file, that's found inside *log_directory1* just by:
 ```
 htcompact htcompact_setup.conf
 ```
 
 The idea is, that for a bunch of settings it's easier to go with config files, \
-so you could have a specified file for just the summary mode and an other file just for the analyser mode and so on
+so you could have a specified file for just the summary mode and an other file just for the analyser mode and so on ...
 
-If the name of the config file is changed to htcsetup.conf it reduced to:
+If the name of the config file is changed to htcompact.conf it reduced to:
 ```
 htcompact
 ```

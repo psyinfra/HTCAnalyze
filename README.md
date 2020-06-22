@@ -1,9 +1,15 @@
 # Script to summarise HTCondor log files
 
-### Requirements:
-- python3
-- pip
-- git
+#### Requirements:
+These are the packages you will need for manual installation
+- [setuptools-git-version](https://pypi.org/project/setuptools-git-version/)
+- [tabulate](https://pypi.org/project/tabulate/)
+- [plotille](https://pypi.org/project/plotille/)
+- pandas (especially pandas.DataFrame)
+- regular expressions (Package re)
+- getopt
+- datetime
+- (logging)
 
 ### Installation:
     
@@ -100,21 +106,6 @@ The job procedure of : ../logs/job_5991_0.log
 ```
 
 
-
 #### Contribution:
 please do
 
-
-
-
-#### Used frameworks and packages:
-- [setuptools-git-version](https://pypi.org/project/setuptools-git-version/)
-- [tabulate](https://pypi.org/project/tabulate/)
-- [plotille](https://pypi.org/project/plotille/)
-- pandas (especially pandas.DataFrame)
-- regular expresssions (Package re)
-- sys
-- os
-- getopt
-- datetime
-- logging
