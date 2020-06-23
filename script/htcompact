@@ -44,7 +44,7 @@ option_longs = ["help", "version",
                 "std-log=", "std-err=", "std-out=",
                 "show-errors", "show-output", "show-warnings",
                 "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
-                "to-csv", "summarise", "analyse",
+                "no-config", "to-csv", "summarise", "analyse",
                 "search=", "extend", "get-event=",
                 "resolve-ip", "table-format="]
 
@@ -54,10 +54,10 @@ show_std_warnings = False
 show_std_errors = False
 
 # ignore infromation
-# Todo: include in the summariser search and analyser mdoe
 ignore_allocated_resources = False  # already working
 ignore_job_information = False
 ignore_resources = False
+no_config = False
 
 # Features:
 resolve_ip_to_hostname = False
@@ -153,9 +153,10 @@ def remove_files_from_args(args, short_opts, long_opts):
     return new_args
 
 
-def manage_exit_params():
+def manage_prioritized_params():
 
     global option_shorts, option_longs
+    global no_config
 
     # if for whatever reasons files were given
     better_args = remove_files_from_args(sys.argv[1:], option_shorts, option_longs)
@@ -175,6 +176,8 @@ def manage_exit_params():
                 for desc in get_event_information(arg):
                     print(desc)
                 sys.exit(0)
+            elif opt.__eq__("--no-config"):
+                no_config = True
 
     # print error messages
     except Exception as err:
@@ -1992,12 +1995,14 @@ if __name__ == "__main__":
 
         # if exit parameters are given that will interrupt this script, like --help,
         # catch them here so the config won't be unnecessary loaded
-        manage_exit_params()
+        manage_prioritized_params()
 
+        # if not --no-config is set:
         # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
         # (you will see when you try, files will be interpreted as HTCondor log files)
         # so it's not possible to give multiple config files
-        load_config()
+        if not no_config:
+            load_config()
 
         # after that, interpret the command line arguments, these will have a higher priority, than the config setup
         # and by that arguments set in the config file, will be ignored

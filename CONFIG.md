@@ -11,9 +11,13 @@ htcompact.conf
 # the following lines represent the default htcompact config setup
 # the [] represent sections and the lines below the corresponding attributes
 # there is no need to specify all of them, but it doesn't hurt
+#
+# Values will be accepted as True for :
+# ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
+# everything else will be interpreted as False
 
 [documents]
-files = log_file1
+files = check_the_htcompact.conf
 
 [formats]
 table_format = pretty
@@ -40,14 +44,14 @@ ignore_resources = False
 [thresholds]
  # everything under 75% is considered "wasting sources"
 low_usage = 0.75
-# everything over 120%is considered "overusing sources"
+# everything over 120% is considered "overusing sources"
 bad_usage = 1.2
 
 # be careful with this 
 # [search]
 # keywords = gpu
 # extend = false
-## if set, searches is extended with these keywords:
+## if set, search is extended with these keywords:
 ## [err, warn, exception, aborted, abortion, abnormal, fatal]
 
 [features]
@@ -59,28 +63,26 @@ resolve_ip_to_hostname = no
 
 ```
 
-</details>
 These values are just the same as the defaults of the script,
-so it would NOT change the output, if you do not have the config file
+so it would NOT change the output, if you do not have this config file
+
+</details>
+
 
 ## Specification
 
-This setup will be installed if you follow the installation on [README](https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script/-/blob/master/README.md). \
+This config file will be installed if you follow the installation on [README](https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script/-/blob/master/README.md). \
 But you can also just copy this into a file and run the script with that config file like:
 ```
 htcompact config_file [files][arguments]
 ```
-
-Values will be accepted as True for :
-- ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"] 
-
-everything else will be interpreted as false
 
 If you just run the script by:
 ```
 htcompact config_file
 ```
 This will search for the config_file with the priorities from 1 (high) to 5 (low)
+if NOT --no-config Flag is set:
 
 1. search config_file directly in the current working directory
 2. search config file from current environment_directory/config (virtual environment)
