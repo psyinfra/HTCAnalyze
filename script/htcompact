@@ -97,10 +97,6 @@ table_format = "pretty"  # ascii by default
 # Todos:
 # Todo: did a lot of test, but it needs more
 # Todo: background colors etc. for terminal usage
-# Todo: filter erros better, less priority
-# Todo: realise the further specs on: https://jugit.fz-juelich.de/inm7/infrastructure/scripts/-/issues/1
-# Todo: flag --no-config
-# a redirection in the terminal via > should ignore escape sequences
 
 
 # may not be needed in future but will be used for now
@@ -300,18 +296,24 @@ Usage: htcompact (log_files|config_file) [ Arguments ]
 
 ----------------------------Main features:---------------------------------
 
-[-s|--summarise]            Takes all given logs and summarises resources,
-                            runtime and other informations in total and
-                            average
+ -s | --summarise
+         summarises all given HTCondor log files and return a result
+         regarding the averange usages and runtimes, this only makes
+         sense, if multiple log files are given
 
-[-a|--analyse]              Takes a specific log and analyses it,
-                            however multiple logs are possible.
-                            The result will have all time diffrences,
-                            a histogram of ram usage over time,
-                            ocurred errors and much more
+ -a | --analyse
+         analyses a specific file, for occurred errors, ram history ->
+         histogram, execution status, runtime and much more
+
+ --search keywords
+         search inside the given files or directories
+         for the given keywords,
+         if you want to give more than one keyword,
+         use the string notation "keyword1 keyword2 ...",
 
 
-More help on other options with: man htcompact
+More detailed descriptions and help on other options with:
+ "man htcompact" or "htcompact -h"
     """
     # returns this docstring
     return small_help.__doc__
@@ -1004,7 +1006,7 @@ def output_given_logs(log_files):
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
-        print(yellow+"Nothing found, please use htcompact --help for help"+back_to_default)
+        print(yellow+"Nothing found, please use \"man htcompact\" or \"htcompact -h\" for help"+back_to_default)
 
     return output_string
 
@@ -1780,6 +1782,11 @@ def summarise_logs(log_files):
         output_string += tabulate(df_cpu, showindex=False, headers='keys', tablefmt=table_format) + "\n"
     output_string += "-"*75
     return output_string
+
+# Todo
+def analysed_summary(log_fiels):
+
+    pass
 
 
 # search in the files for the keywords
