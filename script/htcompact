@@ -1783,14 +1783,380 @@ def summarise_logs(log_files):
     output_string += "-"*75
     return output_string
 
-# Todo
-def analysed_summary(log_fiels):
 
-    pass
+# Todo
+def analysed_summary(log_files):
+    """
+        analyse the summarised log files,
+        this is ment to give the ultimate output about verey simgle log event in average etc.
+
+        Runs through the log files via the log_to_dataframe function
+
+        :return:
+        """
+
+    valid_files = len(log_files)
+    # no given files
+    if valid_files == 0:
+        return "No files for the analysed summary"
+
+    # allocated all diffrent datatypes, easier to handle
+    output_string = ""
+
+    all_files = dict()  # fill this dict with information, execution type,
+
+    percent_mark = 10  # calculate the percentage of the running summarisation
+    start_status = 50  # value that decides, when it's worth showing a status of the progress
+
+    for i, file in enumerate(log_files):
+
+        try:
+            job_events, job_raw_information = read_condor_log(file)
+        except NameError as err:
+            logging.exception(err)
+            print("The smart_output_logs method requires a " + std_log + " file as parameter")
+
+        # initialise with empty values
+        event_number_order = []
+        submitted_date, executed_date, terminated_date = None, None, None
+        ram_histroy = list()
+        occurred_errors = list()
+        job_df, res_df = pd.DataFrame(columns=["Description", "Values"]), pd.DataFrame({})
+
+        logging.debug(f"Analysing the HTCondor log file: {file}")
+
+        # analyse
+        for job, job_inf in zip(job_events, job_raw_information):
+            event_number = job[0]
+            event_number_order.append(event_number)
+
+            # job submitted
+            if event_number == "000":
+                submitted_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+
+                match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job[5])
+                if match_host:
+                    from_host = match_host[1]
+                    # port = match_host[2]
+                    job_df = job_df.append(pd.DataFrame({"Description": "Submitted from host",
+                                                         "Values": [from_host]}))
+
+            # job executing
+            elif event_number == "001":
+                executed_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+                match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job[5])
+                if match_host:
+                    host = match_host[1]
+                    # if resolve ip to hostname, change the ip to cpu: last number
+                    if resolve_ip_to_hostname:
+                        host = "cpu node: " + host.split('.')[-1]
+                    port = match_host[2]
+
+                    job_df = job_df.append(pd.DataFrame({"Description": ["Executing on Host", "Port"],
+                                                         "Values": [host, port]}))
+                else:
+                    logging.exception("Host and port haven't been matched correctly")
+                    print(red + "your log file has faulty values for the host ip,"
+                                " make sure it's a valid IPv4" + back_to_default)
+
+            # job terminated
+            elif event_number == "005":  # if the last job event is : Job terminated
+                terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+
+                # make a fancy design for the job_information
+                job_labels = []  # holds the labels
+                job_information = []  # holds the related job information
+
+                # check if termination state is normal or abnormal
+                match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", job_inf[0])
+                if match_termination_state:
+                    job_labels.append("Termination State")  # append the termination state
+                    termination_state = match_termination_state[1]
+                    # Normal termination
+                    if "Normal termination" in termination_state:
+                        job_information.append(termination_state)
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
+                        return_value = match_return_value[1] if match_return_value else "None"
+                        if return_value == "None":
+                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
+                            print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
+                        else:
+                            job_labels.append("Return Value")
+                            job_information.append(return_value)
+
+                    # Abnormal Termination
+                    elif "Abnormal termination" in termination_state:
+                        job_information.append(red+termination_state+back_to_default)
+
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
+                        return_value = match_return_value[1] if match_return_value else "None"
+                        if return_value == "None":
+                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
+                            print(red + f"Not a valid return state in the HTCondor log file: {file}" + back_to_default)
+                        else:
+                            job_labels.append("Return Value")
+                            job_information.append(return_value)
+
+                        termination_desc = list()
+                        # append the reason for the Abnormal Termination
+                        for desc in job_raw_information[-1][1:]:
+                            if re.match(r"[\t ]+\(0\)", desc):
+                                termination_desc.append(desc[5:])
+                            else:
+                                break
+
+                        if not len(termination_desc) == 0:
+                            job_labels.append("Description")
+                            job_information.append("\n".join(termination_desc))
+                        else:
+                            logging.debug(f"No termination description for {file} found")
+
+                    else:
+                        logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
+
+                else:
+                    print(red + f"Termination error in HTCondor log file: {file}" + back_to_default)
+
+                # now put everything together in a table
+                job_temp_df = pd.DataFrame({
+                    "Description": job_labels,
+                    "Values": job_information
+                })
+
+                job_df = job_df.append(job_temp_df)
+
+                # these where the job information now focus on the used resources
+                relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
+
+                # next part removes not useful lines
+                if True:  # just for readability
+                    # remove unnecessary lines
+                    lines = relevant_str.splitlines()
+                    # while not lines[0].startswith("\tPartitionable"):
+                    while not re.match(r"[\t ]+Partitionable", lines[0]):
+                        lines.remove(lines[0])
+
+                    lines.remove(lines[0])
+                    partitionable_res = lines
+                    # done, partitionable_resources contain now only information about used resources
+
+                # match all resources
+                # ****************************************************************************************************
+                match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
+                if match:
+                    cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
+                else:
+                    raise_value_error("Something went wrong reading the cpu information")
+
+                match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
+                if match:
+                    disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
+                else:
+                    raise raise_value_error("Something went wrong reading the disk information")
+
+                # check if the log has gpu information in between
+                gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
+                gpu_found = False  # easier to check to add information in the DataFrame
+                match = re.match(r"[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) \"(.*)\"",
+                                 partitionable_res[gpu_match_index])
+                if match:
+                    gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
+                    gpu_match_index += 1
+                    termination_state = "Normal termination (GPU)"
+                    gpu_found = True
+
+                match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[gpu_match_index])
+                if match:
+                    memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
+                else:
+                    raise_value_error("Something went wrong reading the memory information")
+                # ****************************************************************************************************
+
+                # list of resources and their labels
+                resource_labels = ["Cpu", "Disk (KB)", "Memory (MB)", "Gpus"]
+
+                # Error handling: change empty values to NaN in the first column
+
+                if cpu_usage == "":
+                    cpu_usage = 0
+
+                usage = [float(cpu_usage), int(disk_usage), int(memory_usage), float(gpu_usage)]
+                requested = [float(cpu_request), int(disk_request), int(memory_request), float(gpu_request)]
+                allocated = [float(cpu_allocated), int(disk_allocated), int(memory_allocated), float(gpu_allocated)]
+
+                # if gpu_found:
+                #     #resource_labels.append("Gpus")
+                #     usage.append(gpu_usage)
+                #     requested.append(gpu_request)
+                #     allocated.append(gpu_allocated)
+
+
+                # put the data in the DataFrame
+                res_df = pd.DataFrame({
+                    "Rescources": resource_labels,
+                    "Usage": usage,
+                    "Requested": requested,
+                    # "Allocated": allocated
+                })
+                # if the user wants allocated resources then add it to the DataFrame as well
+                temp_index = 3
+                if not ignore_allocated_resources:
+                    res_df.insert(temp_index, "Allocated", allocated)
+                    temp_index += 1
+                if gpu_found:
+                    res_df.insert(temp_index, "Assigned", ["", "", "", gpu_name])
+
+            # job image size updated
+            elif event_number == "006":
+                date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+                image_size = job[5]
+                memory_usage = re.match("[\t ]+([0-9]+)", job_inf[0])[1]
+                resident_set_size = re.match("[\t ]+([0-9]+)", job_inf[1])[1]
+                ram_histroy.append([date, int(image_size), int(memory_usage), int(resident_set_size)])
+
+            # job aborted
+            elif event_number == "009":
+                terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+
+                aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
+                # job_df = job_df.append(pd.DataFrame({"Description": "Job was aborted by the user",
+                #                                      "Values": [yellow+aborted_by_user+back_to_default]}))
+                occurred_errors.append([event_number, terminated_date, "aborted", "Terminated by user: "+aborted_by_user])
+
+            else:
+                # search for errors
+                timestamp = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
+                error_strings = ["error", "err", "warning", "warn", "exception", "fatal"]
+                for job_desc in job_inf:
+                    for err in error_strings:
+                        if err in job_desc.lower():
+                            occurred_errors.append([event_number, timestamp, err,
+                                                    re.sub(' \t', '', job_desc)])
+                            break  # avoid duplicates
+
+        # managing the time information
+        waiting_time = datetime.timedelta()
+        runtime = datetime.timedelta()
+        total_time = datetime.timedelta()
+        if executed_date and submitted_date:
+                waiting_time = executed_date - submitted_date
+        if terminated_date:
+            if executed_date:
+                runtime = terminated_date - executed_date
+            if submitted_date:
+                total_time = terminated_date - submitted_date
+
+        # show HTCondor errors
+        if len(occurred_errors) > 0:
+            # Todo: is this covering all cases ?
+            event_numbers = []
+            time_list = []
+            err_keyword = []
+            err_reason = []
+
+            for err in occurred_errors:
+                event_numbers.append(err[0])
+                time_list.append(err[1].strftime("%m/%d %H:%M:%S"))
+                err_keyword.append(err[2].lower())
+                # if the line is to long, split it
+                if len(err[3]) > 50:
+                    split = int(len(err[3]) / 2)
+                    while err[3][split] != ' ' and split < len(err[2]) - 1:
+                        split += 1
+                    if split > len(err[3]) - 2:  # if no space was found, change back to normal
+                        split = int(len(err[3]) / 2)
+                    err_reason.append(err[3][0:split] + '\n' + err[3][split:])
+                else:
+                    err_reason.append(err[3])
+
+            # err_df = pd.DataFrame({
+            #     "Time": time_list,
+            #     "Event Number": event_numbers,
+            #     "Error": err_keyword,
+            #     "Reason": err_reason
+            # })
+
+        # if last termination was not 005, get last occurred error
+        if event_number_order[-1].__ne__("005"):
+            termination_type = err_keyword[-1]
+        elif not job_df.empty:
+            termination_type = termination_state
+        else:
+            termination_type = "Unknown termination"
+
+        # now insert into all_files dictionary
+        if termination_type in all_files:
+            #print(termination_type)
+            #print(all_files[termination_type])
+            all_files[termination_type][0] += 1  # count number
+            all_files[termination_type][1] += waiting_time
+            all_files[termination_type][2] += runtime
+            all_files[termination_type][3] += total_time
+            if not all_files[termination_type][4].empty:
+                # add usages
+                all_files[termination_type][4]["Usage"] = pd.Series(
+                    all_files[termination_type][4]["Usage"].values +
+                    res_df["Usage"].values)
+                # add requested
+                all_files[termination_type][4]["Requested"] = pd.Series(
+                    all_files[termination_type][4]["Requested"].values +
+                    res_df["Requested"].values)
+                # allocated
+                all_files[termination_type][4]["Allocated"] = pd.Series(
+                    all_files[termination_type][4]["Allocated"].values + res_df["Allocated"].values)
+
+            # add cpu
+            if host in all_files[termination_type][5]:
+                all_files[termination_type][5][host][0] += 1
+                all_files[termination_type][5][host][1] += total_time
+            else:
+                count_cpus = dict()
+                count_cpus[host] = [1, total_time]
+                all_files[termination_type][5] = count_cpus
+
+        else:
+            count_cpus = dict()
+            count_cpus[host] = [1, total_time]
+            all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_cpus]
+
+    headers = []
+
+    for term_state in all_files:
+        term_info = all_files[term_state]
+
+        output_string += f"\n{blue}All files summarised with the Termination State: {term_state}{back_to_default}\n"
+
+        desc_df = pd.DataFrame({
+            "Description": ["Occurence", "Waiting Time", "Runtime", "Total"],
+            "Values": [term_info[0], term_info[1], term_info[2], term_info[3]]
+        })
+
+        output_string += tabulate(desc_df, showindex=False, headers='keys', tablefmt=table_format) +'\n'
+
+        if not term_info[4].empty:
+            output_string += tabulate(term_info[4], showindex=False, headers='keys', tablefmt=table_format) +'\n'
+
+
+        executed_jobs = list()
+        runtime_per_node = list()
+        for val in term_info[5].values():
+            executed_jobs.append(val[0])
+            average_job_duration = val[1] / val[0]
+            runtime_per_node.append(datetime.timedelta(average_job_duration.days, average_job_duration.seconds))
+        cpu_df = pd.DataFrame({
+            "Cpu Nodes": list(term_info[5].keys()),
+            "Executed Jobs": executed_jobs,
+            "Average job duration": runtime_per_node
+        })
+
+        output_string += tabulate(cpu_df, showindex=False, headers='keys', tablefmt=table_format) + '\n'
+
+
+
+    return output_string
 
 
 # search in the files for the keywords
-# Todo: extend
 # Todo: show which keywords have been found and which not
 def search_for(log_files, keywords, extend=False):
 
@@ -2021,6 +2387,8 @@ if __name__ == "__main__":
             output_str = search_for(files, search_keywords, search_extend)
         elif default:
             output_str = "\n" + output_given_logs(files)  # force default with -d
+        elif summarise and analyse:
+            output_str = analysed_summary(files)
         elif summarise:
             output_str = summarise_logs(files)  # summarise information
         elif analyse:
