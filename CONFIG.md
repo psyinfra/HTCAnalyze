@@ -80,11 +80,13 @@ If you just run the script by:
 ```
 htcompact config_file
 ```
-This will search for the config_file with the priorities from 1 (high) to 3 (low)
+This will search for the config_file with the priorities from 1 (high) to 5 (low)
 
-1. search config_file directly in the current directory/config (virtual environement)
-2. search for config_file in /etc
-3. search for config_file in ~/.config/htcompact
+1. search config_file directly in the current working directory
+2. search config file from current environment_directory/config (virtual environment)
+3. search for config_file in /etc
+4. search for config_file in ~/.config/htcompact
+5. else go with default settings
 
 Else if you just run the script by just:
 ```
@@ -100,9 +102,10 @@ but all the other arguments stay defined by the config file.
 ## Idea
 
 For example your config file sits in one of these directories:
-1.  project_folder/config
-2. /etc
-3. ~/.config/htcompact
+1. current_working_directory
+2. project_directory/config
+3. /etc
+4. ~/.config/htcompact
 
 <details>
 <summary>
@@ -131,7 +134,7 @@ htcompact htcompact_setup.conf
 The idea is, that for a bunch of settings it's easier to go with config files, \
 so you could have a specified file for just the summary mode and an other file just for the analyser mode and so on ...
 
-If the name of the config file is changed to htcompact.conf it reduced to:
+If the name of the config file is changed to htcompact.conf the call reduced to:
 ```
 htcompact
 ```

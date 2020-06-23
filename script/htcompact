@@ -91,7 +91,7 @@ std_err = ""
 std_out = ""
 
 # global defaults
-config_file = "config/htcompact.conf"
+config_file = "htcompact.conf"
 table_format = "pretty"  # ascii by default
 
 # Todos:
@@ -1026,18 +1026,27 @@ def load_config():
 
     print(cyan, end="")
     arguments = sys.argv[1:]
-    environment_path = sys.prefix+"/"+config_file  # if virtual environment is used
-    config_paths = [environment_path, config_file]  # default config, search in env and current directroy if possible
-    arguments.extend(config_paths)  # extend to arguments
+    #environment_path = sys.prefix+"/"+config_file  # if virtual environment is used
+    #config_paths = [environment_path, config_file]  # default config, search in env and current directroy if possible
+    #arguments.extend(config_paths)  # extend to arguments
+    arguments.append(config_file)
 
     # run through every given argument and try to determine if it's a valid config file
     # Todo: maybe search in the current directory for config files
     for file in arguments:
         # try to find the given file in the current directory, in /etc or in ~/.config/htcompact/
         try:
+            # search in current working directory
             if os.path.isfile(file) and config.read(file):
                 logging.debug(f"Load config from the file: {file}")
                 print(f"Load config from the file: {file}")
+                found_config = True
+                arguments.remove(file)
+                logging.debug("Removed {0} from arguments".format(file))
+            # try to find the config file in the current environment hierarchy
+            elif os.path.isfile(f"{sys.prefix}/config/{file}") and config.read(f"{sys.prefix}/config/{file}"):
+                logging.debug(f"Load config from the file: /config/{file}")
+                print(f"Load config from: /config/{file}")
                 found_config = True
                 arguments.remove(file)
                 logging.debug("Removed {0} from arguments".format(file))
@@ -1070,10 +1079,10 @@ def load_config():
         arguments.remove(config_file)  # remove again, if other config file was found
     except ValueError:
         pass
-    try:
-        arguments.remove(environment_path)  # remove again if other config file was found
-    except ValueError:
-        pass
+    # try:
+    #     arguments.remove(environment_path)  # remove again if other config file was found
+    # except ValueError:
+    #     pass
 
     sys.argv[1:] = arguments
 
@@ -1083,8 +1092,11 @@ def load_config():
     if not found_config:
         print(f"{yellow}No valid config file given and no default "
               f"{config_file} file found in: \n"
-              f"({os.getcwd()}, ~/.config/htcompact/, /etc/) \n"
-              f"using default settings{back_to_default}")
+              f"- {os.getcwd()},\n"
+              f"- {sys.prefix}/config,\n"
+              f"- ~/.config/htcompact/,\n"
+              f"- /etc/ \n"
+              f"-> using default settings{back_to_default}")
         return False
 
     try:
