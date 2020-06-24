@@ -275,7 +275,11 @@ def manage_params():
             elif opt.__eq__("--resolve-ip"):
                 resolve_ip_to_hostname = True
 
+            elif opt.__eq__("--no-config"):
+                pass
+
             else:
+                print(f"{red}Option not handled yet{back_to_default}")
                 print(small_help())
                 sys.exit(0)
     # print error messages
@@ -286,6 +290,8 @@ def manage_params():
         sys.exit(1)
 
     if len(files) == 0:
+        logging.debug("No files given")
+        print(red+"No files given"+back_to_default)
         print(small_help())
         sys.exit(2)
 
