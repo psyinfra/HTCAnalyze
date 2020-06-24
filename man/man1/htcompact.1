@@ -162,20 +162,29 @@ furthermore all these variables|settings can be set inside a config file.
 See the Config specification:
 .Lk https://github.com/psyinfra/htcompact/blob/master/CONFIG.md
 .
-A basic config file htcsetup.conf will be installed with this script.
 The script is also checking for other config files in other places:
 .
-"/etc" and "~/.config/htcompact/"
-.
-with different priorities from 1 (high) to 4 (low):
+"project_directory/config", "/etc" and "~/.config/htcompact/"
+.Ed
+.Bd -literal
+with different priorities from 1 (high) to 5 (low):
 Priority[1] find config_file directly
-Priority[2] search for config_file in /etc
-Priority[3] search for config_file in ~/.config/htcompact
-Priority[4] take the "htcsetup.conf" from the Project
+Priority[2] search for config_file in project_directory/config
+Priority[3] search for config_file in /etc
+Priority[4] search for config_file in ~/.config/htcompact
+Priority[5] run with default settings
 .Ed
 .
 .Sh EXAMPLES
+.Bd -literal
 htcompact -a 398_440.log
+htcompact -s log_directory --ignore-job-information --no-config
+htcompact --search "aborted exception" -d job_234_034
+htcompact -as log_directory
+htcompact -e 005
+htcompact --search "" --extend -s --ignore-resources log_directory
+htcompact 394_440 --resolve-ip --table-format simple
+.Ed
 .
 .Sh SEE ALSO
 .Bd -literal
@@ -191,7 +200,7 @@ script will exit normally in any case, if no other output is given, that tells t
 .
 .Sh FILES
 .Bl -tag -width Ds
-.It Pa script/htcsetup.conf
+.It Pa script/htcompact.conf
 A default setup for this script.
 .El
 .
