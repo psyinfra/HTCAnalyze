@@ -31,7 +31,7 @@ log_disabled = False
 logging.getLogger().disabled = log_disabled  # no more logging
 if not log_disabled:
     format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
-    logging.basicConfig(filename="stdout.log",
+    logging.basicConfig(filename="htcompact.log",
                         level=logging.DEBUG,
                         format=format)
 
@@ -970,7 +970,6 @@ def smart_manage_all(file):
         return output_string
 
 
-# Todo: change for no specified type of log error and output files
 # Todo: err and output not visible ???
 def output_given_logs(log_files):
 
@@ -1018,8 +1017,6 @@ def output_given_logs(log_files):
 
 
 # search for config file ( UNIX BASED )
-# Todo: Test
-#       Change some varibales
 def load_config():
     """
 
@@ -1037,9 +1034,9 @@ def load_config():
 
     print(cyan, end="")
     arguments = sys.argv[1:]
-    #environment_path = sys.prefix+"/"+config_file  # if virtual environment is used
-    #config_paths = [environment_path, config_file]  # default config, search in env and current directroy if possible
-    #arguments.extend(config_paths)  # extend to arguments
+    # environment_path = sys.prefix+"/"+config_file  # if virtual environment is used
+    # config_paths = [environment_path, config_file]  # default config, search in env and current directroy if possible
+    # arguments.extend(config_paths)  # extend to arguments
     arguments.append(config_file)
 
     # run through every given argument and try to determine if it's a valid config file
@@ -1793,6 +1790,7 @@ def summarise_logs(log_files):
 # Todo more specific control what to print out
 # Todo ram histogram, BUT HOW
 # Todo get files for which the specific termination state appeared ( if not nomral ???)
+# Todo: separate Gpus from another
 def analysed_summary(log_files):
     """
         analyse the summarised log files,
@@ -1812,6 +1810,7 @@ def analysed_summary(log_files):
     output_string = ""
 
     all_files = dict()  # fill this dict with information, execution type,
+    list_of_gpu_names = list()  # list of gpus found
 
     percent_mark = 10  # calculate the percentage of the running summarisation
     start_status = 100  # value that decides, when it's worth showing a status of the progress
@@ -1975,6 +1974,8 @@ def analysed_summary(log_files):
                     temp_index += 1
                 if gpu_found:
                     res_df.insert(temp_index, "Assigned", ["", "", "", gpu_name])
+                    if gpu_name not in list_of_gpu_names:  # append new gpus
+                        list_of_gpu_names.append(gpu_name)
 
             # job image size updated
             elif event_number == "006":
@@ -2112,10 +2113,18 @@ def analysed_summary(log_files):
             "Values": [term_info[0], term_info[1], term_info[2], term_info[3]]
         })
 
-        output_string += tabulate(desc_df, showindex=False, headers='keys', tablefmt=table_format) +'\n'
+        output_string += tabulate(desc_df, showindex=False, headers='keys', tablefmt=table_format) + '\n'
 
         if not term_info[4].empty:
-            output_string += tabulate(term_info[4], showindex=False, headers='keys', tablefmt=table_format) +'\n'
+            average_res_df = term_info[4]
+            average_res_df['Usage'] = pd.Series(np.round(average_res_df['Usage'].values / term_info[0], 2))
+            average_res_df['Requested'] = pd.Series(np.round(average_res_df['Requested'].values / term_info[0], 2))
+            average_res_df['Allocated'] = pd.Series(np.round(average_res_df['Allocated'].values / term_info[0], 2))
+            new_headers = ['Resources', 'Average Usage', 'Average Requested', 'Average Allocated']
+            if 'Assigned' in average_res_df.keys():
+                new_headers.append('Assigned')
+                average_res_df['Assigned'] = pd.Series(['','','',"".join(list_of_gpu_names)])
+            output_string += tabulate(average_res_df, showindex=False, headers=new_headers, tablefmt=table_format) + '\n'
 
         executed_jobs = list()
         runtime_per_node = list()
@@ -2138,7 +2147,7 @@ def analysed_summary(log_files):
 
 # search in the files for the keywords
 # Todo: show which keywords have been found and which not
-# Todo: AND option
+# Todo: AND option, ONLY option
 def search_for(log_files, keywords, extend=False):
 
     keyword_list = keywords.split()
