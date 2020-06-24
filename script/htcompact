@@ -1790,7 +1790,9 @@ def summarise_logs(log_files):
     return output_string
 
 
-# Todo
+# Todo more specific control what to print out
+# Todo ram histogram, BUT HOW
+# Todo get files for which the specific termination state appeared ( if not nomral ???)
 def analysed_summary(log_files):
     """
         analyse the summarised log files,
@@ -2188,6 +2190,9 @@ def search_for(log_files, keywords, extend=False):
         print(f"Total count: {len(found_logs)}")
         if default:
             output_string = output_given_logs(found_logs)
+        elif analyse and summarise:
+            print(f"{magenta}Try to give an analysed summary for these files{back_to_default}")
+            output_string = analysed_summary(found_logs)
         elif summarise:
             print(f"{magenta}Try to summarise these files{back_to_default}")
             output_string = summarise_logs(found_logs)
@@ -2195,13 +2200,16 @@ def search_for(log_files, keywords, extend=False):
             print(f"{magenta}Try to analyse these files{back_to_default}")
             output_string = analyse_logs(found_logs)
         elif sys.stdout.isatty():  # if not redirected
-            x = input(blue+"Want to do more? [print default(d), summarise(s), analyse(a), exit(e)]: "+back_to_default)
+            x = input(f"{blue}Want to do more? \n[print default(d), summarise(s),"
+                      f" analyse(a), analysed summary(as), exit(e)]: {back_to_default}")
             if x == "d":
                 output_string = output_given_logs(found_logs)
             elif x == "s":
                 output_string = summarise_logs(found_logs)
             elif x == "a":
                 output_string = analyse_logs(found_logs)
+            elif x == "as":
+                output_string = analysed_summary(found_logs)
 
     return output_string
 
