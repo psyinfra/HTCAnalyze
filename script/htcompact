@@ -2123,7 +2123,7 @@ def analysed_summary(log_files):
             new_headers = ['Resources', 'Average Usage', 'Average Requested', 'Average Allocated']
             if 'Assigned' in average_res_df.keys():
                 new_headers.append('Assigned')
-                average_res_df['Assigned'] = pd.Series(['','','',"".join(list_of_gpu_names)])
+                average_res_df['Assigned'] = pd.Series(['', '', '', ", ".join(list_of_gpu_names)])
             output_string += tabulate(average_res_df, showindex=False, headers=new_headers, tablefmt=table_format) + '\n'
 
         executed_jobs = list()
@@ -2139,8 +2139,6 @@ def analysed_summary(log_files):
         })
 
         output_string += tabulate(cpu_df, showindex=False, headers='keys', tablefmt=table_format) + '\n'
-
-
 
     return output_string
 
