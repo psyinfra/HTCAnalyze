@@ -332,8 +332,16 @@ def man_help():
     cwd = os.getcwd()
     for place in check_places:
         path = cwd+place
+        # check current working directory
         if os.path.isfile(path):
             os.system(f"groff -Tlatin1 -mandoc {path}")
+            break
+        # check environment
+        path = sys.prefix + place
+        if os.path.isfile(path):
+            os.system(f"groff -Tlatin1 -mandoc {path}")
+            break
+
 
 
 def get_event_information(event_id):
