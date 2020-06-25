@@ -559,6 +559,7 @@ def raise_value_error(message):
 # Todo: time seperated ( submitting / executing / terminating)
 # Todo: Read HTCondor Errors that occurred
 # Todo: for loop instead of single run
+# Todo: termination types are dynamical
 def log_to_dataframe(file):
     try:
         job_events, job_raw_information = read_condor_log(file)
@@ -633,6 +634,7 @@ def log_to_dataframe(file):
                             logging.debug(f"No termination description for {file} found")
 
                     else:
+                        job_information.append(match_termination_state[1])
                         logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
 
                 else:
