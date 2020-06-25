@@ -24,7 +24,7 @@ source env/bin/activate
 ```
 - to install all necesarry packages run:
 ```
-pip install git+https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script.git
+pip install git+https://github.com/psyinfra/htcompact.git
 ```
 - The script sits here:
 ```
