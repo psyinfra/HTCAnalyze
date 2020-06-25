@@ -24,14 +24,14 @@ source env/bin/activate
 ```
 - to install all necesarry packages run:
 ```
-pip install git+https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script.git
+pip install git+https://github.com/psyinfra/htcompact.git
 ```
 - The script sits here:
 ```
 /bin/htcompact
 ```
 also a basic setup.conf file will be installed, which is able to manage all command line arguments \
-check: [CONFIG.md](https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script/-/blob/master/CONFIG.md) for more information
+check: [CONFIG.md](https://github.com/psyinfra/htcompact/blob/master/CONFIG.md) for more information
 <br>
  
 ### get started:
@@ -69,7 +69,7 @@ htcompact path_to_logs/job_5991_* -s  (summarise all files starting with: job_59
 htcompact path_to_logs/395_2.log --table-format=pretty 
 ```
 
- lets consider we also have a config file (see: [CONFIG.md](https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script/-/blob/master/CONFIG.md)) \
+ lets consider we also have a config file (see: [CONFIG.md](https://github.com/psyinfra/htcompact/blob/master/CONFIG.md)) \
  a default setup.conf should already exist inside the project folder
  
  possible configurations could be reduced to something like: 
@@ -82,7 +82,7 @@ htcompact [files/directories] setup.conf (ignores files/directories set inside t
 ```
 
 where all arguments, files and directories can be set inside that config file \
-see: [CONFIG.md](https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script/-/blob/master/CONFIG.md) 
+see: [CONFIG.md](https://github.com/psyinfra/htcompact/blob/master/CONFIG.md) 
 
 possible output example:
 
