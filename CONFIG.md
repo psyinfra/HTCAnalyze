@@ -55,6 +55,7 @@ bad_usage = 1.2
 ## [err, warn, exception, aborted, abortion, abnormal, fatal]
 
 [features]
+generate_log_file = False
 summarise = False
 analyse = False
 to_csv = False
@@ -86,8 +87,8 @@ if NOT --no-config Flag is set:
 
 1. search config_file directly in the current working directory
 2. search config file from current environment_directory/config (virtual environment)
-3. search for config_file in /etc
-4. search for config_file in ~/.config/htcompact
+3. search for config_file in ~/.config/htcompact
+4. search for config_file in /etc
 5. else go with default settings
 
 Else if you just run the script by just:

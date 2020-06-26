@@ -2,6 +2,7 @@
 
 #### Requirements:
 These are the packages you will need for manual installation
+- python version >= 3.7
 - [setuptools-git-version](https://pypi.org/project/setuptools-git-version/)
 - [tabulate](https://pypi.org/project/tabulate/)
 - [plotille](https://pypi.org/project/plotille/)
