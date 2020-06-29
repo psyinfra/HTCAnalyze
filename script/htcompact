@@ -38,7 +38,7 @@ option_longs = ["help", "version",
                 "show-errors", "show-output", "show-warnings",
                 "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
                 "no-config", "to-csv", "summarise", "analyse", "generate-log-file",
-                "search=", "extend", "get-event",
+                "filter=", "extend", "get-event",
                 "resolve-ip", "table-format="]
 
 # variables for given parameters
@@ -55,16 +55,16 @@ no_config = False
 # Features:
 resolve_ip_to_hostname = False
 reverse_dns_lookup = False  # Todo: implement in function (filter_for_host)
-summarise = False
-analyse = False
+summarizer_mode = False
+analyser_mode = False
 to_csv = False
 # logging tool
 generate_log_file = False
 
-search = False
-search_keywords = ""
-search_extend = False
-default = False  # just for the search function to determine if default output should be printed
+filter_mode = False
+filter_keywords = ""
+filter_extended = False
+default_mode = False  # just for the search function to determine if default output should be printed
 
 # escape sequences for colors
 red = "\033[0;31m"
@@ -92,6 +92,7 @@ table_format = "pretty"  # ascii by default
 # Todos:
 # Todo: did a lot of test, but it needs more
 # Todo: background colors etc. for terminal usage
+
 
 # may not be needed in future but will be used for now
 def remove_files_from_args(args, short_opts, long_opts):
@@ -190,8 +191,8 @@ def manage_params():
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_std_output, show_std_warnings, show_std_errors  # show more
     global ignore_resources, ignore_job_information, ignore_allocated_resources  # ignore information variables
-    global to_csv, summarise, analyse, default  # features
-    global search, search_keywords, search_extend  # search features
+    global to_csv, summarizer_mode, analyser_mode, default_mode  # features
+    global filter_mode, filter_keywords, filter_extended  # search features
     global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
@@ -210,19 +211,19 @@ def manage_params():
                 logging.warning("The argument for {0} is {1}, is that wanted?".format(opt, arg))
 
             elif opt in ["-s", "--summarise"]:
-                summarise = True
+                summarizer_mode = True
                 logging.debug("Summariser mode turned on")
             elif opt in ["-a", "--analyse"]:
-                analyse = True
+                analyser_mode = True
                 logging.debug("Analyser mode turned on")
             elif opt in ["-d", "--default"]:
-                default = True
-            elif opt in ["--search"]:
-                search = True
-                search_keywords = arg
-                logging.debug(f"Search mode turned on")
+                default_mode = True
+            elif opt in ["--filter"]:
+                filter_mode = True
+                filter_keywords = arg
+                logging.debug(f"Filter mode turned on")
             elif opt in ["--extend"]:
-                search_extend = True
+                filter_extended = True
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
             elif opt == "--std-log":
                 # to forget the . should not be painful
@@ -1222,32 +1223,42 @@ def load_config(config_file):
                 bad_usage = float(config['thresholds']['bad_usage'])
                 logging.debug(f"Changed default bad_usage to: {bad_usage}")
 
-        if "search" in sections:
-            global search, search_keywords, search_extend
-            search = True
-            logging.debug(f"Changed default search to: {search}")
-            if 'keywords' in config['search']:
-                search_keywords = config['search']['keywords']
-                logging.debug(f"Changed search_keywords to: {search_keywords}")
-            if 'extend' in config['search']:
-                search_extend = config['search']['extend'].lower() in accepted_states
-                logging.debug(f"Changed search_extend to: {search_extend}")
+        if "modes" in sections:
+            global filter_mode, default_mode, summarizer_mode, analyser_mode
+            if 'filter_mode' in config['modes']:
+                filter_mode = config['modes']['filter_mode'].lower() in accepted_states
+                logging.debug(f"Changed filter_mode to: {filter_mode}")
+
+            # if 'default_mode' in config['modes']:
+            #     default_mode = config['modes']['default_mode'].lower() in accepted_states
+            #     logging.debug(f"Changed default_mode to: {default_mode}")
+
+            if 'summarizer_mode' in config['modes']:
+                summarizer_mode = config['modes']['summarizer_mode'].lower() in accepted_states
+                logging.debug(f"Changed summarizer_mode to: {summarizer_mode}")
+
+            if 'analyser_mode' in config['modes']:
+                analyser_mode = config['modes']['analyser_mode'].lower() in accepted_states
+                logging.debug(f"Changed analyser_mode to: {analyser_mode}")
+
+        if "filter" in sections:
+            global filter_keywords, filter_extended
+            if 'filter_keywords' in config['filter']:
+                filter_keywords = config['filter']['filter_keywords']
+                logging.debug(f"Changed default filter_keywords to: {filter_keywords}")
+            if 'filter_extended' in config['filter']:
+                filter_extended = config['filter']['filter_extended'].lower() in accepted_states
+                logging.debug(f"Changed default filter_extended to: {filter_extended}")
 
         # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
-            global resolve_ip_to_hostname, reverse_dns_lookup, \
-                summarise, analyse, to_csv  # extra parameters
+            global resolve_ip_to_hostname, reverse_dns_lookup, to_csv  # extra parameters
             # the first thing to check should be if logging is turend on
 
             if 'resolve_ip_to_hostname' in config['features']:
                 resolve_ip_to_hostname = config['features']['resolve_ip_to_hostname'].lower() in accepted_states
                 logging.debug(f"Changed default resolve_ip_to_hostname to: {resolve_ip_to_hostname}")
-            if 'summarise' in config['features']:
-                summarise = config['features']['summarise'].lower() in accepted_states
-                logging.debug(f"Changed default summarise to: {summarise}")
-            if 'analyse' in config['features']:
-                analyse = config['features']['analyse'].lower() in accepted_states
-                logging.debug(f"Changed default analyse to: {analyse}")
+
             if 'to_csv' in config['features']:
                 to_csv = config['features']['to_csv'].lower() in accepted_states
                 logging.debug(f"Changed default to_csv to: {to_csv}")
@@ -2186,7 +2197,7 @@ def analysed_summary(log_files):
 # search in the files for the keywords
 # Todo: show which keywords have been found and which not
 # Todo: AND option, ONLY option
-def search_for(log_files, keywords, extend=False):
+def filter_for(log_files, keywords, extend=False):
 
     keyword_list = keywords.split()
 
@@ -2205,6 +2216,12 @@ def search_for(log_files, keywords, extend=False):
         print(green + f"Keyword List was extended, now search for these keywords: {keyword_list}" + back_to_default)
     else:
         print(green + f"Search for these keywords: {keyword_list}" + back_to_default)
+
+    if len(keyword_list) == 1 and keyword_list[0] == "":
+        logging.debug("Empty filter, don't know what to do")
+        return f"{yellow}Don't know what to do with an empty filter,\n" \
+            f"if you activate the filter mode in the config file, \n" \
+            f"please add a [filter] section with the filter_keywords = your_filter"
 
     logging.debug(f"These are the keywords to look for: {keyword_list}")
 
@@ -2236,15 +2253,15 @@ def search_for(log_files, keywords, extend=False):
 
     else:
         print(f"Total count: {len(found_logs)}")
-        if default:
+        if default_mode:
             output_string = output_given_logs(found_logs)
-        elif analyse and summarise:
+        elif analyser_mode and summarizer_mode:
             print(f"{magenta}Try to give an analysed summary for these files{back_to_default}")
             output_string = analysed_summary(found_logs)
-        elif summarise:
+        elif summarizer_mode:
             print(f"{magenta}Try to summarise these files{back_to_default}")
             output_string = summarise_logs(found_logs)
-        elif analyse:
+        elif analyser_mode:
             print(f"{magenta}Try to analyse these files{back_to_default}")
             output_string = analyse_logs(found_logs)
         elif sys.stdout.isatty():  # if not redirected
@@ -2433,15 +2450,15 @@ if __name__ == "__main__":
 
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
-        if search:
-            output_str = search_for(files, search_keywords, search_extend)
-        elif default:
+        if filter_mode:
+            output_str = filter_for(files, filter_keywords, filter_extended)
+        elif default_mode:
             output_str = "\n" + output_given_logs(files)  # force default with -d
-        elif summarise and analyse:
+        elif summarizer_mode and analyser_mode:
             output_str = analysed_summary(files)  # analysed summary ?
-        elif summarise:
+        elif summarizer_mode:
             output_str = summarise_logs(files)  # summarise information
-        elif analyse:
+        elif analyser_mode:
             output_str = analyse_logs(files)  # analyse the given files
         else:
             output_str = "\n" + output_given_logs(files)  # anyways try to print default output
