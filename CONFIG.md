@@ -76,7 +76,7 @@ so it would NOT change the output, if you do not have this config file
 
 ## Specification
 
-This config file will be installed if you follow the installation on [README](https://jugit.fz-juelich.de/inm7/infrastructure/loony_tools/htcondor-summariser-script/-/blob/master/README.md). \
+This config file will be installed if you follow the installation on [README](https://github.com/psyinfra/htcompact/blob/master/README.md). \
 But you can also just copy this into a file and run the script with that config file like:
 ```
 htcompact config_file [files][arguments]
