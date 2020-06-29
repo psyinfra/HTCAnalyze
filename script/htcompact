@@ -87,7 +87,7 @@ std_out = ""
 
 # global defaults
 default_configfile = "htcompact.conf"
-default_tablefmt = "pretty"  # ascii by default
+table_format = "pretty"  # ascii by default
 
 # Todos:
 # Todo: did a lot of test, but it needs more
@@ -192,7 +192,7 @@ def manage_params():
     global ignore_resources, ignore_job_information, ignore_allocated_resources  # ignore information variables
     global to_csv, summarise, analyse, default  # features
     global search, search_keywords, search_extend  # search features
-    global default_tablefmt  # table_format can be changed
+    global table_format  # table_format can be changed
     global resolve_ip_to_hostname  # if set hots ip will changed to a cpu-number
 
     global option_shorts, option_longs
@@ -265,7 +265,7 @@ def manage_params():
                         "latex_booktabs,tsv,pretty"
                 # only valid arguments
                 if arg in types.split(","):
-                    default_tablefmt = arg
+                    table_format = arg
                 else:
                     logging.debug("The given table format doesn't exist")
 
@@ -820,9 +820,9 @@ def smart_output_logs(file):
                     res_df.iloc[2, 1] = yellow+res_df.iloc[2, 1]+back_to_default  # changed color to yellow
 
             if not ignore_job_information:
-                output_string += tabulate(job_df, tablefmt=default_tablefmt, showindex=False) + "\n"
+                output_string += tabulate(job_df, tablefmt=table_format, showindex=False) + "\n"
             if not ignore_resources:
-                output_string += tabulate(res_df, headers='keys', tablefmt=default_tablefmt, showindex=False) + "\n"
+                output_string += tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False) + "\n"
 
     except NameError as err:
         logging.exception(err)
@@ -1036,6 +1036,8 @@ def find_config():
         - ~/.config/{script_name}/{file}"
         - /etc/{file}
 
+        ONE config will be loaded if set: generate_logging_file
+
         -> else try to find default config file "htcompact.conf"
          in the same order excluding the current working directory,
          because this might lead to misbehaviour, when the user changes the directory.
@@ -1116,10 +1118,11 @@ def find_config():
               f"-> using default settings{back_to_default}")
         return None
     elif found_default_in_cwd:
-        print(f"{yellow}Found default {default_configfile} in the current working directory")
-        x = input("Do you want to use it ? (y/n): ")
-        if x != 'y':
-            return None
+        print(f"{yellow}Found default {default_configfile} in the current working directory.\n"
+              f"It will be ignore, to use this, make sure to pass it as an argument like:\n"
+              f"htcompact {default_configfile} [logs] [options]\n"
+              f"-> using default settings{back_to_default}")
+        return None
 
     config.read(found_config_file)
     sections = config.sections()
@@ -1146,6 +1149,8 @@ def load_config(config_file):
 
         # now try filter the config file for all available parameters
 
+        print(f"{blue}Load config from file: {config_file}{back_to_default}")
+
         # all documents like files, etc.
         if 'documents' in sections:
             global files
@@ -1156,10 +1161,10 @@ def load_config(config_file):
 
         # all formats like the table format
         if 'formats' in sections:
-            global default_tablefmt
+            global table_format
             if 'table_format' in config['formats']:
-                default_tablefmt = config['formats']['table_format']
-                logging.debug(f"Changed default table_format to: {default_tablefmt}")
+                table_format = config['formats']['table_format']
+                logging.debug(f"Changed default table_format to: {table_format}")
 
         # all basic HTCondor file endings like .log, .err, .out
         if 'htc-files' in sections:
@@ -1543,7 +1548,7 @@ def analyse_logs(log_files):
             output_string += tabulate(job_df, showindex=False) + '\n\n'
         if not res_df.empty:
             output_string += magenta + "Resource table" + back_to_default + '\n'
-            output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=default_tablefmt) + '\n\n'
+            output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n\n'
 
         # show HTCondor errors
         if len(occurred_errors) > 0:
@@ -1800,7 +1805,7 @@ def summarise_logs(log_files):
 
         output_string += "The following data only applies to successful executed jobs\n\n"
         output_string += "Used resources in average:\n"
-        output_string += tabulate(df_average, showindex=False, headers='keys', tablefmt=default_tablefmt) + "\n\n"
+        output_string += tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
 
     # Todo: cpu nodes might change over lifetime of a job
     if len(cpu_nodes) > 0:
@@ -1817,7 +1822,7 @@ def summarise_logs(log_files):
             "Executed Jobs": executed_jobs,
             "Average job duration": runtime_per_node
         })
-        output_string += tabulate(df_cpu, showindex=False, headers='keys', tablefmt=default_tablefmt) + "\n"
+        output_string += tabulate(df_cpu, showindex=False, headers='keys', tablefmt=table_format) + "\n"
     output_string += "-"*75
     return output_string
 
@@ -2148,7 +2153,7 @@ def analysed_summary(log_files):
             "Values": [term_info[0], term_info[1], term_info[2], term_info[3]]
         })
 
-        output_string += tabulate(desc_df, showindex=False, headers='keys', tablefmt=default_tablefmt) + '\n'
+        output_string += tabulate(desc_df, showindex=False, headers='keys', tablefmt=table_format) + '\n'
 
         if not term_info[4].empty:
             average_res_df = term_info[4]
@@ -2159,7 +2164,7 @@ def analysed_summary(log_files):
             if 'Assigned' in average_res_df.keys():
                 new_headers.append('Assigned')
                 average_res_df['Assigned'] = pd.Series(['', '', '', ", ".join(list_of_gpu_names)])
-            output_string += tabulate(average_res_df, showindex=False, headers=new_headers, tablefmt=default_tablefmt) + '\n'
+            output_string += tabulate(average_res_df, showindex=False, headers=new_headers, tablefmt=table_format) + '\n'
 
         executed_jobs = list()
         runtime_per_node = list()
@@ -2173,7 +2178,7 @@ def analysed_summary(log_files):
             "Average job duration": runtime_per_node
         })
 
-        output_string += tabulate(cpu_df, showindex=False, headers='keys', tablefmt=default_tablefmt) + '\n'
+        output_string += tabulate(cpu_df, showindex=False, headers='keys', tablefmt=table_format) + '\n'
 
     return output_string
 
@@ -2378,7 +2383,6 @@ def escape_seq_when_redirect():
         blue = ""
         lightgrey = ""
         back_to_default = ""
-        logging.debug("Output is getting redirected, all escape sequences were set to \"\"")
 
 
 if __name__ == "__main__":
@@ -2391,12 +2395,6 @@ if __name__ == "__main__":
     :return:
     """
     try:
-
-        logging_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
-        logging.basicConfig(filename="htcompact.log",
-                            level=logging.NOTSET,
-                            format=logging_format)
-
         logging.getLogger().disabled = True
 
         escape_seq_when_redirect()  # set the color sequenzes to ""
@@ -2412,11 +2410,22 @@ if __name__ == "__main__":
         if not no_config:
             found_conf = find_config()
 
+        # set up logging tool
+        if not logging.getLogger().disabled:
+            print("TRUE")
+            # I don't know why a handler is already set,
+            # but we have to remove him in order to change the basicConfig
+            default_handler = logging.root.handlers[0]
+            logging.root.removeHandler(default_handler)
+            logging_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
+            logging.basicConfig(filename="htcompact.log",
+                                level=logging.DEBUG,
+                                format=logging_format)
+
         logging.debug("-------Start of htcompact scipt-------")
 
         if found_conf is not None:
             load_config(found_conf)
-
 
         # after that, interpret the command line arguments, these will have a higher priority, than the config setup
         # and by that arguments set in the config file, will be ignored
