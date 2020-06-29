@@ -176,7 +176,7 @@ Priority[5] run with default settings
 .Ed
 .
 .Sh FEATURES
-.Bd -lieral -compact
+.Bd -literal -compact
 - Always try to generate output, if possible
 - Listening to stdin to make the use of tools like grep possible
 -> --filter is a more naive alternative to grep
@@ -186,11 +186,12 @@ Priority[5] run with default settings
 .Bd -literal
 htcompact -a 398_440.log
 htcompact -s log_directory --ignore-job-information --no-config
-htcompact --filter "aborted exception" -d job_234_034
 htcompact -as log_directory
 htcompact -e 005
 htcompact --filter "" --extend -s --ignore-resources log_directory
-htcompact htcompact.conf 394_440 --resolve-ip --table-format simple --analyse
+htcompact htcompact.conf 394_440 -a --show-output --table-format simple
+htcompact --filter "aborted" -as ~/logs
+OR
 grep -R -l aborted ~/logs | htcompact -as
 .Ed
 .
