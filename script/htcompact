@@ -32,13 +32,13 @@ to see for ex. the average runtime and usage of all the logs
 accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
 files = list()
 border_str = ""
-option_shorts = "hsadve:"
+option_shorts = "hsadv"
 option_longs = ["help", "version",
                 "std-log=", "std-err=", "std-out=",
                 "show-errors", "show-output", "show-warnings",
                 "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
                 "no-config", "to-csv", "summarize", "analyse", "generate-log-file",
-                "filter=", "extend", "get-event",
+                "filter=", "extend", "print-events-table",
                 "resolve-ip", "table-format="]
 
 # variables for given parameters
@@ -164,9 +164,8 @@ def manage_prioritized_params():
             if opt in ["-v", "--version"]:
                 # Todo:
                 sys.exit(0)
-            elif opt in ["-e", "--get-event"]:
-                for desc in get_event_information(arg):
-                    print(desc)
+            elif opt in ["--print-events-table"]:
+                print(get_event_information())
                 sys.exit(0)
             elif opt.__eq__("--no-config"):
                 no_config = True
@@ -353,7 +352,7 @@ def man_help():
             break
 
 
-def get_event_information(event_id):
+def get_event_information(event_id=""):
     """
 Event Number: 000
 Event Name: Job submitted
@@ -495,6 +494,8 @@ Event Number: 034
 Event Name: Pre Skip event
 Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with the defined PRE_SKIP value in the DAG input file. This makes it possible for DAGMan to do recovery in a workflow that has such an event, as it would otherwise not have any event for the DAGMan node to which the script belongs, and in recovery, DAGMan's internal tables would become corrupted.
 """
+    if event_id == "":
+        return get_event_information.__doc__
     doc_str = get_event_information.__doc__.split('\n')
     for i, line in enumerate(doc_str):
         match = re.match(r"Event Number: ([0-9]{3})", line)
