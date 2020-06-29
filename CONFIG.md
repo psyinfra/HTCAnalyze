@@ -129,11 +129,11 @@ stderr = .err
 stdout = .out
 
 [features]
-summarise = true
+summarize = true
 ```
 </details>
 
-You could summarise *log_file1* and every log_file, that's found inside *log_directory1* just by:
+You could summarize *log_file1* and every log_file, that's found inside *log_directory1* just by:
 ```
 htcompact htcompact_setup.conf
 ```

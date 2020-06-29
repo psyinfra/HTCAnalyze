@@ -3,7 +3,7 @@
 .Os \" Current operating system.
 .Sh NAME
 .Nm htcompact
-.Nd summarise and analyse HTCondor log files
+.Nd summarize and analyse HTCondor log files
 .
 .Sh SYNOPSIS
 .Nm
@@ -38,26 +38,26 @@ This is only necessary, if for example the analyser mode is turned on
 An other usage is related to the --search option,
 see the --search section below.
 .
-.It Fl s | Fl Fl summarise
-summarises all given HTCondor log files and return a result regarding the averange usages and runtimes,
+.It Fl s | Fl Fl summarize
+summarizes all given HTCondor log files and return a result regarding the averange usages and runtimes,
 this only makes sense, if multiple log files are given
 .
 .It Fl a | Fl Fl analyse
 analyses a specific file, for occurred errors, ram history -> histogram,
 execution status, runtime and much more
 .
-.It Fl Fl search Ar keywords Op OPTIONS
+.It Fl Fl filter Ar keywords Op OPTIONS
 Its options are as follows:
 .Bl -tag -width Ds
 .It Ar OPTIONS
 .Op Fl d | Fl Fl default
-.Op Fl s | Fl Fl summarise
+.Op Fl s | Fl Fl summarize
 .Op Fl a | Fl Fl analyse
 .Op Fl Fl extend
 .
 .It Fl d | Fl Fl default
 Print the default output with the returned files
-.It Fl s | Fl Fl summarise
+.It Fl s | Fl Fl summarize
 Summarise the returned files
 .It Fl a | Fl Fl analyse
 Analyse the returned files
@@ -88,7 +88,7 @@ that is not normal, use --extend:
 .Bd -literal
 Small example:
 --search "exception gpu" -s
--> this will summarise all matched files,
+-> this will summarize all matched files,
 having "exception" OR "gpu" inside
 .Ed
 .
@@ -179,11 +179,11 @@ Priority[5] run with default settings
 .Bd -literal
 htcompact -a 398_440.log
 htcompact -s log_directory --ignore-job-information --no-config
-htcompact --search "aborted exception" -d job_234_034
+htcompact --filter "aborted exception" -d job_234_034
 htcompact -as log_directory
 htcompact -e 005
-htcompact --search "" --extend -s --ignore-resources log_directory
-htcompact 394_440 --resolve-ip --table-format simple
+htcompact --filter "" --extend -s --ignore-resources log_directory
+htcompact htcompact.conf 394_440 --resolve-ip --table-format simple --analyse
 .Ed
 .
 .Sh SEE ALSO

@@ -1,4 +1,4 @@
-# Script to summarise HTCondor log files
+# Script to summarize HTCondor log files
 
 #### Requirements:
 These are the packages you will need for manual installation
@@ -65,7 +65,7 @@ htcompact path_to_logs/job_5991_0 path_to_logs/job_5992_23.log
 
 htcompact path_to_logs (run through all files inside the logs directory)
 
-htcompact path_to_logs/job_5991_* -s  (summarise all files starting with: job_5991_)
+htcompact path_to_logs/job_5991_* -s  (summarize all files starting with: job_5991_)
 
 htcompact path_to_logs/395_2.log --table-format=pretty 
 ```

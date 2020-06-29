@@ -21,7 +21,7 @@ The script makes the information compact and easy to under stand,
 that's the reason for the name htcompact
 
 Single logs can be read quite easily,
-but also it's possible to summarise a whole directory with logs
+but also it's possible to summarize a whole directory with logs
 to see for ex. the average runtime and usage of all the logs
 
 """
@@ -37,7 +37,7 @@ option_longs = ["help", "version",
                 "std-log=", "std-err=", "std-out=",
                 "show-errors", "show-output", "show-warnings",
                 "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
-                "no-config", "to-csv", "summarise", "analyse", "generate-log-file",
+                "no-config", "to-csv", "summarize", "analyse", "generate-log-file",
                 "filter=", "extend", "get-event",
                 "resolve-ip", "table-format="]
 
@@ -210,7 +210,7 @@ def manage_params():
                 print(yellow+"The argument for {0} is {1}, is that wanted?".format(opt, arg)+back_to_default)
                 logging.warning("The argument for {0} is {1}, is that wanted?".format(opt, arg))
 
-            elif opt in ["-s", "--summarise"]:
+            elif opt in ["-s", "--summarize"]:
                 summarizer_mode = True
                 logging.debug("Summariser mode turned on")
             elif opt in ["-a", "--analyse"]:
@@ -304,8 +304,8 @@ Usage: htcompact (log_files|config_file) [ Arguments ]
 
 ----------------------------Main features:---------------------------------
 
- -s | --summarise
-         summarises all given HTCondor log files and return a result
+ -s | --summarize
+         summarizes all given HTCondor log files and return a result
          regarding the averange usages and runtimes, this only makes
          sense, if multiple log files are given
 
@@ -1628,7 +1628,7 @@ def analyse_logs(log_files):
 
 
 # Todo: what means sucessful executed ?
-def summarise_logs(log_files):
+def summarize_logs(log_files):
     """
     Summarises all used resources and the runtime in total and average
 
@@ -1640,7 +1640,7 @@ def summarise_logs(log_files):
     valid_files = len(log_files)
     # no given files
     if valid_files == 0:
-        return "No files to summarise"
+        return "No files to summarize"
 
     # allocated all diffrent datatypes, easier to handle
     output_string = ""
@@ -1710,7 +1710,7 @@ def summarise_logs(log_files):
             status = round(((i+1)/valid_files)*100)
             if int(status/percent_mark) > 0 and valid_files > start_status:
                 percent_mark += 10
-                print(f"Status: {status}% of all files summarised")
+                print(f"Status: {status}% of all files summarized")
 
             if 3 in log_resources.index:  # this means gpu information is given
                 gpu_found = True
@@ -1844,7 +1844,7 @@ def summarise_logs(log_files):
 # Todo: separate Gpus from another
 def analysed_summary(log_files):
     """
-        analyse the summarised log files,
+        analyse the summarized log files,
         this is ment to give the ultimate output about verey simgle log event in average etc.
 
         Runs through the log files via the log_to_dataframe function
@@ -2151,13 +2151,13 @@ def analysed_summary(log_files):
         status = round(((i + 1) / valid_files) * 100)
         if int(status / percent_mark) > 0 and valid_files > start_status:
             percent_mark += 10
-            print(f"Status: {status}% of all files summarised")
+            print(f"Status: {status}% of all files summarized")
 
     # now print out the summary
     for term_state in all_files:
         term_info = all_files[term_state]
 
-        output_string += f"\n{blue}All files summarised with the Termination State: {term_state}{back_to_default}\n"
+        output_string += f"\n{blue}All files summarized with the Termination State: {term_state}{back_to_default}\n"
 
         desc_df = pd.DataFrame({
             "Description": ["Occurence", "Waiting Time", "Runtime", "Total"],
@@ -2259,18 +2259,18 @@ def filter_for(log_files, keywords, extend=False):
             print(f"{magenta}Try to give an analysed summary for these files{back_to_default}")
             output_string = analysed_summary(found_logs)
         elif summarizer_mode:
-            print(f"{magenta}Try to summarise these files{back_to_default}")
-            output_string = summarise_logs(found_logs)
+            print(f"{magenta}Try to summarize these files{back_to_default}")
+            output_string = summarize_logs(found_logs)
         elif analyser_mode:
             print(f"{magenta}Try to analyse these files{back_to_default}")
             output_string = analyse_logs(found_logs)
         elif sys.stdout.isatty():  # if not redirected
-            x = input(f"{blue}Want to do more? \n[print default(d), summarise(s),"
+            x = input(f"{blue}Want to do more? \n[print default(d), summarize(s),"
                       f" analyse(a), analysed summary(as), exit(e)]: {back_to_default}")
             if x == "d":
                 output_string = output_given_logs(found_logs)
             elif x == "s":
-                output_string = summarise_logs(found_logs)
+                output_string = summarize_logs(found_logs)
             elif x == "a":
                 output_string = analyse_logs(found_logs)
             elif x == "as":
@@ -2305,7 +2305,7 @@ def validate_given_logs(file_list):
 
     for arg in file_list:
 
-        path = os.getcwd()  # current working directory , should be condor job summariser script
+        path = os.getcwd()  # current working directory , should be condor job summarizer script
         logs_path = path + "/" + arg  # absolute path
 
         working_dir_path = ""
@@ -2407,7 +2407,7 @@ if __name__ == "__main__":
     This is the main function, which searchs first for a given config file.
     After that, given parameters in the terminal will be interpreted, so they have a higher priority
 
-    Then it will summarise all given log files together and print the output
+    Then it will summarize all given log files together and print the output
 
     :return:
     """
@@ -2457,7 +2457,7 @@ if __name__ == "__main__":
         elif summarizer_mode and analyser_mode:
             output_str = analysed_summary(files)  # analysed summary ?
         elif summarizer_mode:
-            output_str = summarise_logs(files)  # summarise information
+            output_str = summarize_logs(files)  # summarize information
         elif analyser_mode:
             output_str = analyse_logs(files)  # analyse the given files
         else:
