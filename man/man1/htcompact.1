@@ -35,8 +35,8 @@ Print all 34 HTCondor events, with description, know at this time (29.06.2020)
 turns on the default output mode which is usually already true.
 This is only necessary, if for example the analyser mode is turned on
 (set by the config file) and should be ignored for a single run.
-An other usage is related to the --search option,
-see the --search section below.
+An other usage is related to the --filter option,
+see the --filter section below.
 .
 .It Fl s | Fl Fl summarize
 summarizes all given HTCondor log files and return a result regarding the averange usages and runtimes,
@@ -87,7 +87,7 @@ that is not normal, use --extend:
 .Ed
 .Bd -literal
 Small example:
---search "exception gpu" -s
+--filter "exception gpu" -s
 -> this will summarize all matched files,
 having "exception" OR "gpu" inside
 .Ed
