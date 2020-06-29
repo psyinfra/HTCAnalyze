@@ -198,7 +198,15 @@ def manage_params():
 
     global option_shorts, option_longs
 
-    better_args = remove_files_from_args(sys.argv[1:], option_shorts, option_longs)
+    all_args = sys.argv[1:]
+
+    # listen to stdin and add these files
+    if not sys.stdin.isatty():  # else the script will be waiting fro stdin
+        logging.debug("Listening to arguments from stdin")
+        for line in sys.stdin:
+            all_args.append(line.rstrip('\n'))
+
+    better_args = remove_files_from_args(all_args, option_shorts, option_longs)
 
     try:
         opts, args = getopt.getopt(better_args, option_shorts, option_longs)
@@ -1022,7 +1030,7 @@ def output_given_logs(log_files):
             output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
 
     if output_string == "":
-        print(yellow+"Nothing found, please use \"man htcompact\" or \"htcompact -h\" for help"+back_to_default)
+        print(yellow+"Nothing found, please use \"man htcompact\" or \"htcompact -h\" for help"+back_to_default, end="")
 
     return output_string
 
@@ -1295,9 +1303,10 @@ def analyse_logs(log_files):
     elif len(log_files) > 1 and sys.stdout.isatty():
         print("More than one file is given, this mode is meant to be used for single job analysis.\n"
               "This will change nothing, but you should rather do it just for a file one by one")
-        x = input("Want to continue (y/n): ")
-        if x != "y":
-            return "Process stoped"
+        if sys.stdin.isatty():
+            x = input("Want to continue (y/n): ")
+            if x != "y":
+                return "Process stoped"
 
     output_string = ""
 
@@ -2264,7 +2273,7 @@ def filter_for(log_files, keywords, extend=False):
         elif analyser_mode:
             print(f"{magenta}Try to analyse these files{back_to_default}")
             output_string = analyse_logs(found_logs)
-        elif sys.stdout.isatty():  # if not redirected
+        elif sys.stdin.isatty() and sys.stdout.isatty():  # if not redirected
             x = input(f"{blue}Want to do more? \n[print default(d), summarize(s),"
                       f" analyse(a), analysed summary(as), exit(e)]: {back_to_default}")
             if x == "d":
@@ -2350,7 +2359,7 @@ def validate_given_logs(file_list):
                             continue
 
                         if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
-                            #logging.debug(f"{read_file.name} is a valid HTCondor log file")
+                            # logging.debug(f"{read_file.name} is a valid HTCondor log file")
                             valid_dir_files.append(file_path)
 
                 else:
@@ -2375,8 +2384,6 @@ def validate_given_logs(file_list):
         else:
             logging.error(f"The given file: {arg} does not exist")
             print(red+f"The given file: {arg} does not exist"+back_to_default)
-
-    print()
 
     return valid_files
 
@@ -2429,11 +2436,11 @@ if __name__ == "__main__":
 
         # set up logging tool
         if not logging.getLogger().disabled:
-            print("TRUE")
             # I don't know why a handler is already set,
             # but we have to remove him in order to change the basicConfig
-            default_handler = logging.root.handlers[0]
-            logging.root.removeHandler(default_handler)
+            if len(logging.root.handlers) == 1:
+                default_handler = logging.root.handlers[0]
+                logging.root.removeHandler(default_handler)
             logging_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
             logging.basicConfig(filename="htcompact.log",
                                 level=logging.DEBUG,
