@@ -175,6 +175,13 @@ Priority[4] search for config_file in ~/.config/htcompact
 Priority[5] run with default settings
 .Ed
 .
+.Sh FEATURES
+.Bd -lieral -compact
+- Always try to generate output, if possible
+- Listening to stdin to make the use of tools like grep possible
+-> --filter is a more naive alternative to grep
+.Ed
+.
 .Sh EXAMPLES
 .Bd -literal
 htcompact -a 398_440.log
@@ -184,6 +191,7 @@ htcompact -as log_directory
 htcompact -e 005
 htcompact --filter "" --extend -s --ignore-resources log_directory
 htcompact htcompact.conf 394_440 --resolve-ip --table-format simple --analyse
+grep -R -l aborted ~/logs | htcompact -as
 .Ed
 .
 .Sh SEE ALSO
