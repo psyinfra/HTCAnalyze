@@ -10,6 +10,7 @@ import socket
 import configparser
 import pandas as pd
 import numpy as np
+from rich.progress import track,Progress
 from tabulate import tabulate
 from plotille import Figure
 
@@ -1695,10 +1696,7 @@ def summarize_logs(log_files):
     total_gpu_allocated = int(0)
     list_of_gpu_names = list()
 
-    percent_mark = 10  # calculate the percentage of the running summarisation
-    start_status = 50  # value that decides, when it's worth showing a status of the progress
-
-    for i, file in enumerate(log_files):
+    for file in track(log_files, description="Processing..."):
         try:
             log = log_to_dataframe(file)
 
@@ -1732,11 +1730,6 @@ def summarize_logs(log_files):
                 total_cpu_allocated += int(log_resources.at[0, 'Allocated'])
                 total_disk_allocated += int(log_resources.at[1, 'Allocated'])
                 total_memory_allocated += int(log_resources.at[2, 'Allocated'])
-
-            status = round(((i+1)/valid_files)*100)
-            if int(status/percent_mark) > 0 and valid_files > start_status:
-                percent_mark += 10
-                print(f"Status: {status}% of all files summarized")
 
             if 3 in log_resources.index:  # this means gpu information is given
                 gpu_found = True
@@ -1889,10 +1882,7 @@ def analysed_summary(log_files):
     all_files = dict()  # fill this dict with information, execution type,
     list_of_gpu_names = list()  # list of gpus found
 
-    percent_mark = 10  # calculate the percentage of the running summarisation
-    start_status = 100  # value that decides, when it's worth showing a status of the progress
-
-    for i, file in enumerate(log_files):
+    for file in track(log_files, description="Processing..."):
 
         try:
             job_events, job_raw_information = read_condor_log(file)
@@ -2173,12 +2163,6 @@ def analysed_summary(log_files):
                 count_cpus['Aborted before submission'] = [1, total_time]
                 all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_cpus]
 
-        # print summary status
-        status = round(((i + 1) / valid_files) * 100)
-        if int(status / percent_mark) > 0 and valid_files > start_status:
-            percent_mark += 10
-            print(f"Status: {status}% of all files summarized")
-
     # now print out the summary
     for term_state in all_files:
         term_info = all_files[term_state]
@@ -2328,79 +2312,88 @@ def validate_given_logs(file_list):
 
     """
     valid_files = list()
+    total = len(file_list)
 
-    for arg in file_list:
+    with Progress() as progress:
+        task = progress.add_task("Validating...", total=total, start=False)
 
-        path = os.getcwd()  # current working directory , should be condor job summarizer script
-        logs_path = path + "/" + arg  # absolute path
+        #progress.start_task(task)
 
-        working_dir_path = ""
-        working_file_path = ""
+        for arg in file_list:
 
-        if os.path.isdir(arg):
-            working_dir_path = arg
-        elif os.path.isdir(logs_path):
-            working_dir_path = logs_path
+            path = os.getcwd()  # current working directory , should be condor job summarizer script
+            logs_path = path + "/" + arg  # absolute path
 
-        elif os.path.isfile(arg):
-            working_file_path = arg
-        elif os.path.isfile(logs_path):
-            working_file_path = logs_path
-        # check if only the id was given and resolve it with the std_log specification
-        elif os.path.isfile(arg+std_log):
-            working_file_path = arg+std_log
-        elif os.path.isfile(logs_path+std_log):
-            working_file_path = logs_path+std_log
+            working_dir_path = ""
+            working_file_path = ""
 
-        # if path is a directory
-        if working_dir_path.__ne__(""):
-            print(f"{magenta}Try to find valid log files in the given directory:{back_to_default}\n"
-                  f"{working_dir_path}")
-            # run through all files and separate the files into log/error and output files
-            valid_dir_files = list()
-            file_dir = os.listdir(working_dir_path)
-            for file in file_dir:
-                # ignore hidden files
-                if file.startswith("."):
-                    continue
-                # if it's not a sub folder
-                if working_dir_path.endswith('/'):
-                    file_path = working_dir_path + file
-                else:
-                    file_path = working_dir_path + '/' + file
+            if os.path.isdir(arg):
+                working_dir_path = arg
+            elif os.path.isdir(logs_path):
+                working_dir_path = logs_path
 
-                if os.path.isfile(file_path):
-                    with open(file_path, "r") as read_file:
-                        # Todo: better specification with re
-                        if os.path.getsize(file_path) == 0:  # file is empty
-                            continue
+            elif os.path.isfile(arg):
+                working_file_path = arg
+            elif os.path.isfile(logs_path):
+                working_file_path = logs_path
+            # check if only the id was given and resolve it with the std_log specification
+            elif os.path.isfile(arg+std_log):
+                working_file_path = arg+std_log
+            elif os.path.isfile(logs_path+std_log):
+                working_file_path = logs_path+std_log
 
-                        if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
-                            # logging.debug(f"{read_file.name} is a valid HTCondor log file")
-                            valid_dir_files.append(file_path)
+            # if path is a directory
+            if working_dir_path.__ne__(""):
+                print(f"{magenta}Try to find valid log files in the given directory:{back_to_default}\n"
+                      f"{working_dir_path}")
+                # run through all files and separate the files into log/error and output files
+                valid_dir_files = list()
+                file_dir = os.listdir(working_dir_path)
+                total += len(file_dir) - 1
+                for file in file_dir:
+                    progress.update(task, total=total, advance=1)
+                    # ignore hidden files
+                    if file.startswith("."):
+                        continue
+                    # if it's not a sub folder
+                    if working_dir_path.endswith('/'):
+                        file_path = working_dir_path + file
+                    else:
+                        file_path = working_dir_path + '/' + file
 
-                else:
-                    logging.debug(f"Found a subfolder: {working_dir_path}/{file}, it will be ignored")
-                    print(yellow+f"Found a subfolder: {working_dir_path}/{file}, it will be ignored"+back_to_default)
+                    if os.path.isfile(file_path):
+                        with open(file_path, "r") as read_file:
+                            # Todo: better specification with re
+                            if os.path.getsize(file_path) == 0:  # file is empty
+                                continue
 
-            valid_files.extend(valid_dir_files)
-            print(f"{green}Found {len(valid_dir_files)} valid log files out of {len(file_dir)} files{back_to_default}")
-        # else if path "might" be a valid HTCondor file
-        elif working_file_path.__ne__(""):
-            with open(working_file_path, "r") as read_file:
+                            if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
+                                # logging.debug(f"{read_file.name} is a valid HTCondor log file")
+                                valid_dir_files.append(file_path)
 
-                if os.path.getsize(working_file_path) == 0:  # file is empty
-                    print(red+"How dare you, you gave me an empty file :("+back_to_default)
+                    else:
+                        logging.debug(f"Found a subfolder: {working_dir_path}/{file}, it will be ignored")
+                        print(yellow+f"Found a subfolder: {working_dir_path}/{file}, it will be ignored"+back_to_default)
 
-                elif re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
-                    logging.debug(f"{read_file.name} is a valid HTCondor log file")
-                    valid_files.append(working_file_path)
-                else:
-                    logging.debug(f"The given file {read_file.name} is not a valid HTCondor log file")
-                    print(yellow+f"The given file {read_file.name} is not a valid HTCondor log file"+back_to_default)
-        else:
-            logging.error(f"The given file: {arg} does not exist")
-            print(red+f"The given file: {arg} does not exist"+back_to_default)
+                valid_files.extend(valid_dir_files)
+                print(f"{green}Found {len(valid_dir_files)} valid log files out of {len(file_dir)} files{back_to_default}")
+            # else if path "might" be a valid HTCondor file
+            elif working_file_path.__ne__(""):
+                progress.update(task, advance=1)
+                with open(working_file_path, "r") as read_file:
+
+                    if os.path.getsize(working_file_path) == 0:  # file is empty
+                        print(red+"How dare you, you gave me an empty file :("+back_to_default)
+
+                    elif re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
+                        logging.debug(f"{read_file.name} is a valid HTCondor log file")
+                        valid_files.append(working_file_path)
+                    else:
+                        logging.debug(f"The given file {read_file.name} is not a valid HTCondor log file")
+                        print(yellow+f"The given file {read_file.name} is not a valid HTCondor log file"+back_to_default)
+            else:
+                logging.error(f"The given file: {arg} does not exist")
+                print(red+f"The given file: {arg} does not exist"+back_to_default)
 
     return valid_files
 
