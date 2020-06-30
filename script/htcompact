@@ -1696,7 +1696,7 @@ def summarize_logs(log_files):
     total_gpu_allocated = int(0)
     list_of_gpu_names = list()
 
-    for file in track(log_files, description="Processing..."):
+    for file in track(log_files, description="Summarizing..."):
         try:
             log = log_to_dataframe(file)
 
@@ -1882,7 +1882,7 @@ def analysed_summary(log_files):
     all_files = dict()  # fill this dict with information, execution type,
     list_of_gpu_names = list()  # list of gpus found
 
-    for file in track(log_files, description="Processing..."):
+    for file in track(log_files, description="Summarizing..."):
 
         try:
             job_events, job_raw_information = read_condor_log(file)
@@ -2315,9 +2315,8 @@ def validate_given_logs(file_list):
     total = len(file_list)
 
     with Progress() as progress:
-        task = progress.add_task("Validating...", total=total, start=False)
 
-        #progress.start_task(task)
+        task = progress.add_task("Validating...", total=total, start=False)
 
         for arg in file_list:
 
