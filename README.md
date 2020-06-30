@@ -85,27 +85,37 @@ htcompact [files/directories] setup.conf (ignores files/directories set inside t
 where all arguments, files and directories can be set inside that config file \
 see: [CONFIG.md](https://github.com/psyinfra/htcompact/blob/master/CONFIG.md) 
 
-possible output example:
+Examples:
 
-```
-The job procedure of : ../logs/job_5991_0.log
-+-------------------+--------------------+
-| Executing on Host |      cpu: 3        |
-|       Port        |       96186        |
-|      Runtime      |      0:00:04       |
-| Termination State | Normal termination |
-|   Return Value    |         0          |
-+-------------------+--------------------+
-+------------+-------+-----------+-----------+
-| Rescources | Usage | Requested | Allocated |
-+------------+-------+-----------+-----------+
-|    Cpu     |   0   |     1     |     1     |
-|    Disk    | 5000  |   5000    |  3770642  |
-|   Memory   |   0   |   6000    |   6016    |
-+------------+-------+-----------+-----------+
+- default mode:
+    ```
+    The job procedure of : ../logs/job_5991_0.log
+    +-------------------+--------------------+
+    | Executing on Host |      cpu: 3        |
+    |       Port        |       96186        |
+    |      Runtime      |      0:00:04       |
+    | Termination State | Normal termination |
+    |   Return Value    |         0          |
+    +-------------------+--------------------+
+    +------------+-------+-----------+-----------+
+    | Rescources | Usage | Requested | Allocated |
+    +------------+-------+-----------+-----------+
+    |    Cpu     |   0   |     1     |     1     |
+    |    Disk    | 5000  |   5000    |  3770642  |
+    |   Memory   |   0   |   6000    |   6016    |
+    +------------+-------+-----------+-----------+
+    ```
+- summarizer mode:
 
-```
+    ![Example](https://github.com/psyinfra/htcompact/blob/master/examples/example_summary_mode.png)
 
+- analyser mode:
+
+    ![Example](https://github.com/psyinfra/htcompact/blob/master/examples/example_analyser_mode.png)
+    
+- analysed summary mode:
+
+    ![Example](https://github.com/psyinfra/htcompact/blob/master/examples/example_analysed_summary_mode.png)
 
 #### Contribution:
 please do
