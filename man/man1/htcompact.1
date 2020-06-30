@@ -138,11 +138,10 @@ Do not search for a config file
 .It Fl Fl to-csv
 Restructure the resource table into a csv format
 .
-.It Fl Fl resolve-ip
-The standard output for host in the job-information section
-is just a raw ip address,
-this flag will change it to interpret the last byte as the cpu-node,
-that the job was running at
+.It Fl Fl reverse-dns-lookup
+Resolve the host the job was running on by it's ip address
+to a related domain name, if possible.
+Else, go with the ip address.
 .
 .It Fl Fl table-format Ar format
 the table format for the output
