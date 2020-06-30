@@ -1413,7 +1413,7 @@ def analyse_logs(log_files):
                             logging.debug(f"No termination description for {file} found")
 
                     else:
-                        job_information.append(match_termination_state[1])
+                        job_information.append(yellow+match_termination_state[1]+back_to_default)
                         logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
 
                 else:
