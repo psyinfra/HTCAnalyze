@@ -64,7 +64,6 @@ filter_extended = false
 generate_log_file = False
 to_csv = False
 reverse_dns_lookup = disabled
-resolve_ip_to_hostname = YES
 
 ```
 
