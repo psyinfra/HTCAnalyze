@@ -55,6 +55,7 @@ no_config = False
 
 # Features:
 reverse_dns_lookup = False
+store_dns_lookups = dict()
 summarizer_mode = False
 analyser_mode = False
 to_csv = False
@@ -892,11 +893,19 @@ def gethostbyaddr(ip):
         :return: resolved domain name, else give back the ip
     """
     try:
+        if ip in list(store_dns_lookups.keys()):
+            return store_dns_lookups[ip]
+        # else lookup
         reversed_dns = socket.gethostbyaddr(ip)
         logging.debug('Lookup sucessful ' + ip + ' resolved as: ' + reversed_dns[0])
+        # store
+        store_dns_lookups[ip] = reversed_dns[0]
+        # return
         return reversed_dns[0]
     except Exception:
         logging.debug('Not able to resolve the IP: '+ip)
+        # also store
+        store_dns_lookups[ip] = ip
         return ip
 
 
