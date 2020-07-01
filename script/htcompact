@@ -1696,7 +1696,7 @@ def summarize_logs(log_files):
     total_gpu_allocated = int(0)
     list_of_gpu_names = list()
 
-    for file in track(log_files, description="Summarizing..."):
+    for file in track(log_files, transient=True, description="Summarizing..."):
         try:
             log = log_to_dataframe(file)
 
@@ -1882,7 +1882,7 @@ def analysed_summary(log_files):
     all_files = dict()  # fill this dict with information, execution type,
     list_of_gpu_names = list()  # list of gpus found
 
-    for file in track(log_files, description="Summarizing..."):
+    for file in track(log_files, transient=True, description="Summarizing..."):
 
         try:
             job_events, job_raw_information = read_condor_log(file)
@@ -2314,7 +2314,7 @@ def validate_given_logs(file_list):
     valid_files = list()
     total = len(file_list)
 
-    with Progress() as progress:
+    with Progress(transient=True, redirect_stdout=False) as progress:
 
         task = progress.add_task("Validating...", total=total, start=False)
 
@@ -2372,7 +2372,8 @@ def validate_given_logs(file_list):
 
                     else:
                         logging.debug(f"Found a subfolder: {working_dir_path}/{file}, it will be ignored")
-                        print(yellow+f"Found a subfolder: {working_dir_path}/{file}, it will be ignored"+back_to_default)
+                        progress.console.print(f"[yellow]Found a subfolder: {working_dir_path}/{file},"
+                                               f" it will be ignored[/yellow]")
 
                 valid_files.extend(valid_dir_files)
                 print(f"{green}Found {len(valid_dir_files)} valid log files out of {len(file_dir)} files{back_to_default}")
@@ -2382,14 +2383,15 @@ def validate_given_logs(file_list):
                 with open(working_file_path, "r") as read_file:
 
                     if os.path.getsize(working_file_path) == 0:  # file is empty
-                        print(red+"How dare you, you gave me an empty file :("+back_to_default)
+                        progress.console.print(f"[red]How dare you, the file is empty: {read_file.name} :([/red]")
 
                     elif re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
                         logging.debug(f"{read_file.name} is a valid HTCondor log file")
                         valid_files.append(working_file_path)
                     else:
                         logging.debug(f"The given file {read_file.name} is not a valid HTCondor log file")
-                        print(yellow+f"The given file {read_file.name} is not a valid HTCondor log file"+back_to_default)
+                        progress.console.print(f"[yellow]The given file {read_file.name} "
+                                               f"is not a valid HTCondor log file[/yellow]",)
             else:
                 logging.error(f"The given file: {arg} does not exist")
                 print(red+f"The given file: {arg} does not exist"+back_to_default)
