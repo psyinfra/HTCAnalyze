@@ -10,7 +10,7 @@ import socket
 import configparser
 import pandas as pd
 import numpy as np
-from rich.progress import track,Progress
+from rich.progress import track, Progress
 from tabulate import tabulate
 from plotille import Figure
 

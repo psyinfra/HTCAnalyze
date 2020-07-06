@@ -6,6 +6,7 @@ These are the packages you will need for manual installation
 - [setuptools-git-version](https://pypi.org/project/setuptools-git-version/)
 - [tabulate](https://pypi.org/project/tabulate/)
 - [plotille](https://pypi.org/project/plotille/)
+- [rich](https://pypi.org/project/rich/)
 - pandas (especially pandas.DataFrame)
 - regular expressions (Package re)
 - getopt
