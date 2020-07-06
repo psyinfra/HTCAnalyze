@@ -2442,6 +2442,7 @@ if __name__ == "__main__":
         # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
         # (you will see when you try, files will be interpreted as HTCondor log files)
         # so it's not possible to give multiple config files
+        found_conf = None
         if not no_config:
             found_conf = find_config()
 
