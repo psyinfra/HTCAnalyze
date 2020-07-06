@@ -122,15 +122,17 @@ This will show the content of a standard-output file
 .It Fl Fl show-warnings
 This will show all occurred warnings inside the standard-error files
 .
-.It Fl Fl ignore-resources
-Ignore the resources of a HTCondor job
-.
-.It Fl Fl ignore-job-information
-Ignore all the information like executing time, host, runtime, etc.
-this is usually set to just have the resource table
-.
-.It Fl Fl ignore-allocated-resources
-Ignore allocated resources in the resource table
+.It Fl Fl ignore Ar keywords
+ignore a given set of information
+.Bd -literal
+Valid arguments are:
+
+[execution-details, times, gpus, cpu, errors, warnings
+used-resources, requested-resources, allocated-resources, all-resources]
+
+if you want to ignore multiple information,
+use the string notation "keyword1 keyword2 ..."
+.Ed
 .
 .It Fl Fl no-config
 Do not search for a config file
@@ -191,10 +193,10 @@ Priority[5] run with default settings
 .Sh EXAMPLES
 .Bd -literal
 htcompact -a 398_440.log
-htcompact -s log_directory --ignore-job-information --no-config
+htcompact -s log_directory --ignore execution-details --no-config
 htcompact -as log_directory
 htcompact -e 005
-htcompact --filter "" --extend -s --ignore-resources log_directory
+htcompact --filter "" --extend -s --ignore all-resources log_directory
 htcompact htcompact.conf 394_440 -a --show-output --table-format simple
 htcompact --filter "aborted" -as ~/logs
 OR

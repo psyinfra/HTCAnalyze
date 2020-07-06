@@ -38,8 +38,8 @@ option_shorts = "hsadv"
 option_longs = ["help", "version",
                 "std-log=", "std-err=", "std-out=",
                 "show-errors", "show-output", "show-warnings",
-                "ignore-resources", "ignore-job-information", "ignore-allocated-resources",
-                "no-config", "to-csv", "summarize", "analyse", "generate-log-file",
+                "ignore=", "no-config", "to-csv",
+                "summarize", "analyse", "generate-log-file",
                 "filter=", "extend", "print-events-table",
                 "reverse-dns-lookup", "table-format="]
 
@@ -49,9 +49,14 @@ show_std_warnings = False
 show_std_errors = False
 
 # ignore infromation
-ignore_allocated_resources = False  # already working
-ignore_job_information = False
-ignore_resources = False
+ignore_list = list()
+allowed_ignore_values = ["execution-details", "times",
+                         "gpus", "cpu"
+                         "used-resources", "requested-resources", "allocated-resources", "all-resources",
+                         "errors", "warnings"]
+# Todo: used-resources, requested-resources, times, gpus, cpu, errors, warnings]
+
+# if set do not use a config file, even if one was found
 no_config = False
 
 # Features:
@@ -91,11 +96,12 @@ std_out = ""
 default_configfile = "htcompact.conf"
 table_format = "pretty"  # ascii by default
 
-# Todos:
-# Todo: did a lot of test, but it needs more
-# Todo: background colors etc. for terminal usage
-
-
+# Todo: adjust this method to accept all values,
+#  that are related to an option and interpret
+#  the first one which does not as a file again
+#  -> something like --ignore allocated-resources times ... should be possible
+# Todo: consider regex in this implementation: --ignore alloc tim ...
+#  with focus on longest prefix match
 # may not be needed in future but will be used for now
 def remove_files_from_args(args, short_opts, long_opts):
     """
@@ -191,7 +197,7 @@ def manage_params():
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_std_output, show_std_warnings, show_std_errors  # show more
-    global ignore_resources, ignore_job_information, ignore_allocated_resources  # ignore information variables
+    global ignore_list  # ignore information variables
     global to_csv, summarizer_mode, analyser_mode, default_mode  # features
     global filter_mode, filter_keywords, filter_extended  # search features
     global table_format  # table_format can be changed
@@ -258,12 +264,15 @@ def manage_params():
                 show_std_errors = True
 
             # all variables to ignore unwanted information
-            elif opt.__eq__("--ignore-allocated-resources"):
-                ignore_allocated_resources = True
-            elif opt.__eq__("--ignore-resources"):
-                ignore_resources = True
-            elif opt.__eq__("--ignore-job-information"):
-                ignore_job_information = True
+            elif opt.__eq__("--ignore"):
+                for arg_s in arg.split():
+                    if arg_s in allowed_ignore_values:
+                        ignore_list.append(arg_s)
+                    else:
+                        raise_value_error(" Invalid argument '" + arg_s + "'\n"
+                                          "Valid arguments:\n" + ", ".join(allowed_ignore_values))
+                logging.debug("Ignore these information: " + ", ".join(ignore_list))
+
 
             # all tabulate variables
             elif opt.__eq__("--to-csv"):
@@ -734,13 +743,9 @@ def log_to_dataframe(file):
                 # "Allocated": allocated
             })
 
-            # if the user wants allocated resources then add it to the DataFrame as well
-            temp_index = 3
-            if not ignore_allocated_resources:
-                res_df.insert(temp_index, "Allocated", allocated)
-                temp_index += 1
+            res_df.insert(3, "Allocated", allocated)
             if gpu_found:
-                res_df.insert(temp_index, "Assigned", ["", "", "", gpu_name])
+                res_df.insert(4, "Assigned", ["", "", "", gpu_name])
 
         elif job_events[-1][0].__eq__("009"):  # job aborted
 
@@ -831,9 +836,9 @@ def smart_output_logs(file):
                 elif float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) < low_usage:
                     res_df.iloc[2, 1] = yellow+res_df.iloc[2, 1]+back_to_default  # changed color to yellow
 
-            if not ignore_job_information:
+            if not "execution-details" in ignore_list:
                 output_string += tabulate(job_df, tablefmt=table_format, showindex=False) + "\n"
-            if not ignore_resources:
+            if not "all-resources" in ignore_list:
                 output_string += tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False) + "\n"
 
     except NameError as err:
@@ -1226,18 +1231,15 @@ def load_config(config_file):
 
         # what information should to be ignored
         if 'ignore' in sections:
-            global ignore_resources, ignore_job_information, ignore_allocated_resources  # sources to ignore
+            global ignore_list  # sources to ignore
 
-            if 'ignore_resources' in config['ignore']:
-                ignore_resources = config['ignore']['ignore_resources'].lower() in accepted_states
-                logging.debug(f"Changed default ignore_resources to: {ignore_resources}")
-            if 'ignore_job_information' in config['ignore']:
-                ignore_job_information = config['ignore']['ignore_job_information'].lower() in accepted_states
-                logging.debug(f"Changed default ignore_job_information to: {ignore_job_information}")
-            if 'ignore_allocated_resources' in config['ignore']:
-                ignore_allocated_resources = config['ignore']['ignore_allocated_resources'].lower() \
-                                             in accepted_states
-                logging.debug(f"Changed default ignore_allocated_res to: {ignore_allocated_resources}")
+            if 'ignore_list' in config['ignore']:
+                for arg in config['ignore']['ignore_list'].split():
+                    if arg in allowed_ignore_values:
+                        ignore_list.append(arg)
+                    else:
+                        logging.debug("Don't know this ignore statement: "+ arg)
+                logging.debug(f"Changed default ignore statements to: {ignore_list}")
 
         if 'thresholds' in sections:
             global low_usage, bad_usage
@@ -1519,7 +1521,7 @@ def analyse_logs(log_files):
                 })
                 # if the user wants allocated resources then add it to the DataFrame as well
                 temp_index = 3
-                if not ignore_allocated_resources:
+                if not "allocated-resources" in ignore_list:
                     res_df.insert(temp_index, "Allocated", allocated)
                     temp_index += 1
                 if gpu_found:
@@ -1726,7 +1728,7 @@ def summarize_logs(log_files):
             total_disk_requested += int(log_resources.at[1, 'Requested'])
             total_memory_requested += int(log_resources.at[2, 'Requested'])
 
-            if not ignore_allocated_resources:
+            if not "allocated-resources" in ignore_list:
                 total_cpu_allocated += int(log_resources.at[0, 'Allocated'])
                 total_disk_allocated += int(log_resources.at[1, 'Allocated'])
                 total_memory_allocated += int(log_resources.at[2, 'Allocated'])
@@ -1735,7 +1737,7 @@ def summarize_logs(log_files):
                 gpu_found = True
                 total_gpu_usage += float(log_resources.at[3, 'Usage'])
                 total_gpu_requested += int(log_resources.at[3, 'Requested'])
-                if not ignore_allocated_resources:
+                if not "allocated-resources" in ignore_list:
                     total_gpu_allocated += int(log_resources.at[3, 'Allocated'])
                 if log_resources.at[3, 'Assigned'] not in list_of_gpu_names:  # append new gpus
                     list_of_gpu_names.append(log_resources.at[3, 'Assigned'])
@@ -1796,7 +1798,7 @@ def summarize_logs(log_files):
         })
         insert_index = 3  # for the row at the right place
 
-        if not ignore_allocated_resources:
+        if not "allocated-resources" in ignore_list:
             df_total.insert(insert_index, "Allocated", [total_cpu_allocated,
                                                         total_disk_allocated,
                                                         total_memory_allocated])
@@ -1816,7 +1818,7 @@ def summarize_logs(log_files):
                 "Usage": [round(total_gpu_usage / n, 2)],  # Todo: divide by gpu occurrence ????
                 "Requested": [round(total_gpu_requested / n, 2)]
             })
-            if not ignore_allocated_resources:
+            if not "allocated-resources" in ignore_list:
                 df_gpu_total.insert(insert_index, "Allocated", [total_gpu_allocated])
                 df_gpu_average.insert(insert_index, "Allocated", [round(total_gpu_allocated / n, 2)])
                 insert_index += 1
@@ -2036,7 +2038,7 @@ def analysed_summary(log_files):
                 })
                 # if the user wants allocated resources then add it to the DataFrame as well
                 temp_index = 3
-                if not ignore_allocated_resources:
+                if not "allocated-resources" in ignore_list:
                     res_df.insert(temp_index, "Allocated", allocated)
                     temp_index += 1
                 if gpu_found:
