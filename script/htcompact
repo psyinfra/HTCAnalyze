@@ -96,6 +96,7 @@ std_out = ""
 default_configfile = "htcompact.conf"
 table_format = "pretty"  # ascii by default
 
+
 # Todo: adjust this method to accept all values,
 #  that are related to an option and interpret
 #  the first one which does not as a file again
@@ -2036,13 +2037,10 @@ def analysed_summary(log_files):
                     "Requested": requested,
                     # "Allocated": allocated
                 })
-                # if the user wants allocated resources then add it to the DataFrame as well
-                temp_index = 3
-                if not "allocated-resources" in ignore_list:
-                    res_df.insert(temp_index, "Allocated", allocated)
-                    temp_index += 1
+
+                res_df.insert(3, "Allocated", allocated)
                 if gpu_found:
-                    res_df.insert(temp_index, "Assigned", ["", "", "", gpu_name])
+                    res_df.insert(4, "Assigned", ["", "", "", gpu_name])
                     if gpu_name not in list_of_gpu_names:  # append new gpus
                         list_of_gpu_names.append(gpu_name)
 
