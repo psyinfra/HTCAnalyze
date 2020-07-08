@@ -51,7 +51,7 @@ show_std_errors = False
 # ignore information
 ignore_list = list()
 allowed_ignore_values = ["execution-details", "times",
-                         "gpus", "cpu", "host-nodes"
+                         "gpu", "cpu", "host-nodes",
                          "used-resources", "requested-resources", "allocated-resources", "all-resources",
                          "errors", "warnings"]
 # Todo: used-resources, requested-resources, times, gpus, cpu, errors, warnings]
@@ -2351,7 +2351,8 @@ def validate_given_logs(file_list):
                                                f" it will be ignored[/yellow]")
 
                 valid_files.extend(valid_dir_files)
-                print(f"{green}Found {len(valid_dir_files)} valid log files out of {len(file_dir)} files{back_to_default}")
+                print(f"{green}Found {len(valid_dir_files)} valid log files out of "
+                      f"{len(file_dir)} files{back_to_default}\n")
             # else if path "might" be a valid HTCondor file
             elif working_file_path.__ne__(""):
                 progress.update(task, advance=1)
@@ -2422,22 +2423,25 @@ def customize_results():
     for i in range(len(work_with)):
         mystery = work_with[i]
 
-        if "execution-details" in ignore_list:
+        if "execution-details" in ignore_list and "execution-details" in mystery:
             del mystery["execution-details"]
-        elif "times" in ignore_list:
+        elif "times" in ignore_list and "times" in mystery:
             del mystery["times"]
 
-        if "all-resources" in ignore_list:
+        if "all-resources" in ignore_list and "all-resources" in mystery:
             del mystery["all-resources"]
-        elif "used-resources" in ignore_list:
+        elif "used-resources" in ignore_list and "used-resources" in mystery:
             del mystery["used-resources"]
-        elif "requested-resources" in ignore_list:
+        elif "requested-resources" in ignore_list and "requested-resources" in mystery:
             del mystery["requested-resources"]
-        elif "allocated-resources" in ignore_list:
+        elif "allocated-resources" in ignore_list and "allocated-resources" in mystery:
             del mystery["allocated-resouces"]
 
-        if "errors" in ignore_list:
+        if "errors" in ignore_list and "errors" in mystery:
             del mystery["errors"]
+
+        if "host-nodes" in ignore_list and "host-nodes" in mystery:
+            del mystery["host-nodes"]
 
         for _i in mystery:
             output_string += mystery[_i] + "\n"
@@ -2497,18 +2501,9 @@ if __name__ == "__main__":
 
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
-        # if filter_mode:
-        #     output_str = filter_for(files, filter_keywords, filter_extended)
-        # elif default_mode:
-        #     output_str = "\n" + output_given_logs(files)  # force default with -d
-        # elif summarizer_mode and analyser_mode:
-        #     output_str = analysed_summary(files)  # analysed summary ?
-        # elif summarizer_mode:
-        #     output_str = summarize_logs(files)  # summarize information
-        # elif analyser_mode:
-        #     output_str = analyse_logs(files)  # analyse the given files
-        # else:
-        #     output_str = "\n" + output_given_logs(files)  # anyways try to print default output
+        if len(files) == 0:
+            print(red+"No valid HTCondor log files found" + back_to_default)
+            sys.exit(1)
 
         output_str = customize_results()
 
