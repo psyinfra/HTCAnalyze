@@ -48,10 +48,10 @@ show_std_output = False
 show_std_warnings = False
 show_std_errors = False
 
-# ignore infromation
+# ignore information
 ignore_list = list()
 allowed_ignore_values = ["execution-details", "times",
-                         "gpus", "cpu"
+                         "gpus", "cpu", "host-nodes"
                          "used-resources", "requested-resources", "allocated-resources", "all-resources",
                          "errors", "warnings"]
 # Todo: used-resources, requested-resources, times, gpus, cpu, errors, warnings]
@@ -586,6 +586,9 @@ def log_to_dataframe(file):
     try:
         job_events, job_raw_information = read_condor_log(file)
 
+        job_df = pd.DataFrame({})
+        res_df = pd.DataFrame({})
+
         # submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
 
         if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
@@ -763,7 +766,6 @@ def log_to_dataframe(file):
                 "Description": ['Aborted by:', 'Runtime'],
                 "Values": [user, runtime]
             })
-            res_df = None
             logging.debug(f"{file}: Job arboted by {user}")
 
     except NameError as err:
@@ -813,17 +815,17 @@ def smart_output_logs(file):
 
         job_df, res_df = log_to_dataframe(file)
 
-        output_string = ""
+        result_dict = dict()
 
         # Todo: csv style one line
         if to_csv:
             pass
         else:
             global border_str
-            output_string += green + "The job procedure of : " + file + back_to_default + "\n"
-            border_str = "-" * len(output_string) + "\n"
+            result_dict["file-description"] = green + "The job procedure of : " + file + back_to_default
 
-            if not isinstance(res_df, type(None)):  # make sure res_df is not None
+            result_dict["execution-details"] = tabulate(job_df, tablefmt=table_format, showindex=False)
+            if not res_df.empty:  # make sure res_df is not None
 
                 # reuested vs used disk RAM
                 if float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) > bad_usage:
@@ -837,10 +839,7 @@ def smart_output_logs(file):
                 elif float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) < low_usage:
                     res_df.iloc[2, 1] = yellow+res_df.iloc[2, 1]+back_to_default  # changed color to yellow
 
-            if not "execution-details" in ignore_list:
-                output_string += tabulate(job_df, tablefmt=table_format, showindex=False) + "\n"
-            if not "all-resources" in ignore_list:
-                output_string += tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False) + "\n"
+                result_dict["all-resources"] = tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False)
 
     except NameError as err:
         logging.exception(err)
@@ -850,7 +849,7 @@ def smart_output_logs(file):
         print(red+str(err)+back_to_default)
     # finally
     else:
-        return output_string
+        return result_dict
 
 
 # Todo: maybe less information
@@ -978,7 +977,7 @@ def smart_output_output(file):
         return output_string
 
 
-def smart_manage_all(file):
+def match_logfile_prefix(file):
     """
     Combine all informations, that the user wants for a given job_spec_id like 398_31.
     -the first layer represents the HTCondor .log file
@@ -992,30 +991,24 @@ def smart_manage_all(file):
     :return: a string that combines HTCondor log/err and out files and returns it
     """
     try:
-        if std_log.__ne__(""):
+        if std_log.__ne__("") and file[:-len(std_log)].__eq__(std_log):
             job_spec_id = file[:-len(std_log)]
         else:
             job_spec_id = file
 
-        output_string = smart_output_logs(job_spec_id + std_log)  # normal smart_output of log files
-
-        if show_std_errors:  # show errors ?
-            output_string += smart_output_error(job_spec_id + std_err)
-
-        if show_std_output:  # show output content ?
-            output_string += smart_output_output(job_spec_id + std_out)
+        result_dict = smart_output_logs(job_spec_id + std_log)
     except Exception as err:
         logging.exception(err)
         print(red+str(err)+back_to_default)
         sys.exit(1)
     else:
-        return output_string
+        return result_dict
 
 
 # Todo: err and output not visible ???
 def output_given_logs(log_files):
 
-    output_string = ""
+    list_of_dicts = list()
     current_path = os.getcwd()
     # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
     for i, file in enumerate(log_files):
@@ -1026,36 +1019,28 @@ def output_given_logs(log_files):
 
         # else check if file is a valid file
         if os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
-            output_string += smart_manage_all(file)
+            list_of_dicts.append(match_logfile_prefix(file))
 
         # if that did not work try std_log at the end of that file
         elif not file.endswith(std_log):
             new_path = file + std_log
             # is this now a valid file ?
             if os.path.isfile(new_path) or os.path.isfile(current_path + "/" + new_path):
-                output_string += smart_manage_all(new_path)
+                list_of_dicts.append(match_logfile_prefix(new_path))
             # no file or directory found, even after manipulating the string
             else:
                 logging.error("No such file with that name or prefix: {0}".format(file))
-                output_string += red+"No such file with that name or prefix: {0}".format(file)+back_to_default
+                print(red+"No such file with that name or prefix: {0}".format(file)+back_to_default)
 
         # The given .log file was not found
         else:
-            output_string += red + "No such file: {0}".format(file) + back_to_default
             logging.error(f"No such file: {file}")
+            print(red + "No such file: {0}".format(file) + back_to_default)
 
-        # don't change output if csv style is wanted
-        # Todo:
-        if to_csv:
-            pass
-
-        elif not i == len(files)-1:
-            output_string += "\n" + border_str + "\n"  # if empty it still contains a newline
-
-    if output_string == "":
+    if len(list_of_dicts) == 0:
         print(yellow+"Nothing found, please use \"man htcompact\" or \"htcompact -h\" for help"+back_to_default, end="")
 
-    return output_string
+    return list_of_dicts
 
 
 def find_config():
@@ -1328,7 +1313,7 @@ def analyse_logs(log_files):
             if x != "y":
                 return "Process stoped"
 
-    output_string = ""
+    result_dict = dict()
 
     for file in log_files:
 
@@ -1345,7 +1330,7 @@ def analyse_logs(log_files):
         job_df, res_df = pd.DataFrame(columns=["Description", "Values"]), pd.DataFrame({})
 
         logging.debug(f"Analysing the HTCondor log file: {file}")
-        output_string += green + "Job analysis of: " + file + back_to_default + "\n"
+        result_dict["file-description"] = green + "Job analysis of: " + file + back_to_default
 
         for job, job_inf in zip(job_events, job_raw_information):
             job_id = job[0]
@@ -1580,16 +1565,13 @@ def analyse_logs(log_files):
             time_dict["Waiting time"] = waiting_time
 
         if len(time_dict) > 0:
-            output_string += magenta + "Dates and times" + back_to_default + '\n'
             time_df = pd.DataFrame(time_dict.values(), index=time_dict.keys())
-            output_string += tabulate(time_df) + "\n\n"
+            result_dict["times"] = tabulate(time_df)
 
         if not job_df.empty:
-            output_string += magenta + "Execution details" + back_to_default + '\n'
-            output_string += tabulate(job_df, showindex=False) + '\n\n'
+            result_dict["execution-details"] = tabulate(job_df, showindex=False)
         if not res_df.empty:
-            output_string += magenta + "Resource table" + back_to_default + '\n'
-            output_string += tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format) + '\n\n'
+            result_dict["all-resources"] = tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format)
 
         # show HTCondor errors
         if len(occurred_errors) > 0:
@@ -1618,12 +1600,10 @@ def analyse_logs(log_files):
                 "Reason": err_reason
             })
 
-            output_string += magenta + "Occurred HTCondor errors" + back_to_default + '\n'
-            output_string += tabulate(err_df, showindex=False, headers='keys') + '\n\n'
+            result_dict["errors"] = tabulate(err_df, showindex=False, headers='keys')
 
         # managing the ram history
         if len(ram_histroy) > 0:
-            output_string += magenta + "Memory usage over time in MB" + back_to_default + '\n'
             if len(ram_histroy) > 1:
                 np_ram = np.array(ram_histroy)
                 ram = np_ram[:, 2]  # second column which is memory usage
@@ -1643,18 +1623,16 @@ def analyse_logs(log_files):
                 fig.scatter(dates, ram, lc='red', label="Single Values")
 
                 if not sys.stdout.isatty():  # if redirected, the Legend is useless
-                    output_string += fig.show() + "\n"
+                    result_dict["ram-history"] = fig.show()
                 else:
-                    output_string += fig.show(legend=True) + "\n"
+                    result_dict["ram-history"] = fig.show(legend=True)
             else:
                 single_date = ram_histroy[0][0].strftime("%m/%d %H:%M:%S")
                 single_ram = ram_histroy[0][2]
-                output_string += f"Single memory update found:\n" \
-                    f"Memory usage on the {single_date} was updatet to {single_ram} MB\n"
+                result_dict["ram-history"] = f"Single memory update found:\n" \
+                    f"Memory usage on the {single_date} was updatet to {single_ram} MB"
 
-            output_string += "\n"
-
-    return output_string
+    return result_dict
 
 
 # Todo: what means sucessful executed ?
@@ -1673,12 +1651,12 @@ def summarize_logs(log_files):
         return "No files to summarize"
 
     # allocated all diffrent datatypes, easier to handle
-    output_string = ""
+    result_dict = dict()
 
     aborted_files = 0
     normal_runtime = datetime.timedelta()
     aborted_runtime = datetime.timedelta()
-    cpu_nodes = dict()
+    host_nodes = dict()
 
     total_cpu_usage = float(0)
     total_disk_usage = int(0)
@@ -1713,12 +1691,12 @@ def summarize_logs(log_files):
                 continue
 
             normal_runtime += log_description.at[2, 'Values']
-            cpu = log_description.at[0, 'Values']
-            if cpu in cpu_nodes:
-                cpu_nodes[cpu][0] += 1
-                cpu_nodes[cpu][1] += log_description.at[2, 'Values']
+            host = log_description.at[0, 'Values']
+            if host in host_nodes:
+                host_nodes[host][0] += 1
+                host_nodes[host][1] += log_description.at[2, 'Values']
             else:
-                cpu_nodes[cpu] = [1, log_description.at[2, 'Values']]
+                host_nodes[host] = [1, log_description.at[2, 'Values']]
 
             total_cpu_usage += float(log_resources.at[0, 'Usage']) \
                 if str(log_resources.at[0, 'Usage']).lower() != 'nan' else 0
@@ -1755,12 +1733,9 @@ def summarize_logs(log_files):
     average_runtime = datetime.timedelta(days=average_runtime.days, seconds=average_runtime.seconds)
     total_runtime = normal_runtime + aborted_runtime
 
-    output_string += "-"*75 + "\n"
+    result_dict["file-description"] = f"{valid_files} valid HTCondor job files found"
 
-    output_string += f"{valid_files} valid HTCondor job files found\n"
-    # it is more obvious, to see None when there was no time to detect
-    if aborted_files > 0:
-        output_string += f"{aborted_files} of the jobs were aborted\n\n"
+    # Todo: store number of successful, aborted, ect. (ERRORS)
 
     time_dict = dict()
 
@@ -1774,7 +1749,7 @@ def summarize_logs(log_files):
         time_dict["Average runtime per job\n(only successful executed jobs)"] = average_runtime
 
     runtime_df = pd.DataFrame(time_dict.items())
-    output_string += tabulate(runtime_df, showindex=False, tablefmt='simple') + "\n\n"
+    result_dict["times"] = tabulate(runtime_df, showindex=False, tablefmt='simple')
 
     if n != 0:  # do nothing, if all valid jobs were aborted
         df_total = pd.DataFrame({
@@ -1797,15 +1772,13 @@ def summarize_logs(log_files):
                           round(total_memory_requested / n, 2)]
 
         })
-        insert_index = 3  # for the row at the right place
 
-        if not "allocated-resources" in ignore_list:
-            df_total.insert(insert_index, "Allocated", [total_cpu_allocated,
-                                                        total_disk_allocated,
-                                                        total_memory_allocated])
-            df_average.insert(insert_index, "Allocated", [round(total_cpu_allocated / n, 2),
-                                                          round(total_disk_allocated / n, 2),
-                                                          round(total_memory_allocated / n, 2)])
+        df_total.insert(3, "Allocated", [total_cpu_allocated,
+                                                    total_disk_allocated,
+                                                    total_memory_allocated])
+        df_average.insert(3, "Allocated", [round(total_cpu_allocated / n, 2),
+                                                      round(total_disk_allocated / n, 2),
+                                                      round(total_memory_allocated / n, 2)])
 
         # if gpu information was found
         if gpu_found:
@@ -1819,45 +1792,43 @@ def summarize_logs(log_files):
                 "Usage": [round(total_gpu_usage / n, 2)],  # Todo: divide by gpu occurrence ????
                 "Requested": [round(total_gpu_requested / n, 2)]
             })
-            if not "allocated-resources" in ignore_list:
-                df_gpu_total.insert(insert_index, "Allocated", [total_gpu_allocated])
-                df_gpu_average.insert(insert_index, "Allocated", [round(total_gpu_allocated / n, 2)])
-                insert_index += 1
+
+            df_gpu_total.insert(3, "Allocated", [total_gpu_allocated])
+            df_gpu_average.insert(3, "Allocated", [round(total_gpu_allocated / n, 2)])
+
 
             df_total = df_total.append(df_gpu_total)
             df_average = df_average.append(df_gpu_average)
 
             # Todo: each gpu gets a single row
-            df_total.insert(insert_index, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
-            df_average.insert(insert_index, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
-            insert_index += 1
+            df_total.insert(4, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
+            df_average.insert(4, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
+
 
         # Todo: add later
-        #output_string += "Total used resources:\n"
-        #output_string += tabulate(df_total, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
+        # output_string += "Total used resources:\n"
+        # output_string += tabulate(df_total, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
 
-        output_string += "The following data only applies to successful executed jobs\n\n"
-        output_string += "Used resources in average:\n"
-        output_string += tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
+        result_dict["all-resources"] = tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format)
 
     # Todo: cpu nodes might change over lifetime of a job
-    if len(cpu_nodes) > 0:
+    if len(host_nodes) > 0:
 
         executed_jobs = list()
         runtime_per_node = list()
-        for val in cpu_nodes.values():
+        for val in host_nodes.values():
             executed_jobs.append(val[0])
             average_job_duration = val[1]/val[0]
             runtime_per_node.append(datetime.timedelta(average_job_duration.days, average_job_duration.seconds))
 
         df_cpu = pd.DataFrame({
-            "Cpu Nodes": list(cpu_nodes.keys()),
+            "Host Nodes": list(host_nodes.keys()),
             "Executed Jobs": executed_jobs,
             "Average job duration": runtime_per_node
         })
-        output_string += tabulate(df_cpu, showindex=False, headers='keys', tablefmt=table_format) + "\n"
-    output_string += "-"*75
-    return output_string
+        result_dict["host-nodes"] = tabulate(df_cpu, showindex=False, headers='keys', tablefmt=table_format)
+
+    return result_dict
 
 
 # Todo more specific control what to print out
@@ -1867,11 +1838,12 @@ def summarize_logs(log_files):
 def analysed_summary(log_files):
     """
         analyse the summarized log files,
-        this is ment to give the ultimate output about verey simgle log event in average etc.
+        this is meant to give the ultimate output
+        about every single log event in average etc.
 
         Runs through the log files via the log_to_dataframe function
 
-        :return:
+        :return: string
         """
 
     valid_files = len(log_files)
@@ -1880,7 +1852,7 @@ def analysed_summary(log_files):
         return "No files for the analysed summary"
 
     # allocated all diffrent datatypes, easier to handle
-    output_string = ""
+    result_list = list()
 
     all_files = dict()  # fill this dict with information, execution type,
     list_of_gpu_names = list()  # list of gpus found
@@ -2147,34 +2119,35 @@ def analysed_summary(log_files):
                     all_files[termination_type][5]['Aborted before submission'][0] += 1
                     all_files[termination_type][5]['Aborted before submission'][1] += total_time
             else:
-                count_cpus = dict()
-                count_cpus['Aborted before submission'] = [1, total_time]
-                all_files[termination_type][5] = count_cpus
+                count_host_nodes = dict()
+                count_host_nodes['Aborted before submission'] = [1, total_time]
+                all_files[termination_type][5] = count_host_nodes
 
         # else new entry
         else:
             # if host exists
             if to_host != "":
-                count_cpus = dict()
-                count_cpus[to_host] = [1, total_time]
-                all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_cpus]
+                count_host_nodes = dict()
+                count_host_nodes[to_host] = [1, total_time]
+                all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_host_nodes]
             else:
-                count_cpus = dict()
-                count_cpus['Aborted before submission'] = [1, total_time]
-                all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_cpus]
+                count_host_nodes = dict()
+                count_host_nodes['Aborted before submission'] = [1, total_time]
+                all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_host_nodes]
 
     # now print out the summary
     for term_state in all_files:
         term_info = all_files[term_state]
+        result_dict = dict()
 
-        output_string += f"\n{blue}All files summarized with the Termination State: {term_state}{back_to_default}\n"
+        result_dict["file-description"] = f"{blue}All files summarized with the Termination State: {term_state}{back_to_default}"
 
         desc_df = pd.DataFrame({
             "Description": ["Occurence", "Waiting Time", "Runtime", "Total"],
             "Values": [term_info[0], term_info[1], term_info[2], term_info[3]]
         })
 
-        output_string += tabulate(desc_df, showindex=False, headers='keys', tablefmt=table_format) + '\n'
+        result_dict["execution-details"] = tabulate(desc_df, showindex=False, headers='keys', tablefmt=table_format)
 
         if not term_info[4].empty:
             average_res_df = term_info[4]
@@ -2185,7 +2158,7 @@ def analysed_summary(log_files):
             if 'Assigned' in average_res_df.keys():
                 new_headers.append('Assigned')
                 average_res_df['Assigned'] = pd.Series(['', '', '', ", ".join(list_of_gpu_names)])
-            output_string += tabulate(average_res_df, showindex=False, headers=new_headers, tablefmt=table_format) + '\n'
+            result_dict["all-resources"] = tabulate(average_res_df, showindex=False, headers=new_headers, tablefmt=table_format)
 
         executed_jobs = list()
         runtime_per_node = list()
@@ -2193,15 +2166,17 @@ def analysed_summary(log_files):
             executed_jobs.append(val[0])
             average_job_duration = val[1] / val[0]
             runtime_per_node.append(datetime.timedelta(average_job_duration.days, average_job_duration.seconds))
-        cpu_df = pd.DataFrame({
-            "Cpu Nodes": list(term_info[5].keys()),
+        host_nodes_df = pd.DataFrame({
+            "Host Nodes": list(term_info[5].keys()),
             "Executed Jobs": executed_jobs,
             "Average job duration": runtime_per_node
         })
 
-        output_string += tabulate(cpu_df, showindex=False, headers='keys', tablefmt=table_format) + '\n'
+        result_dict["host-nodes"] = tabulate(host_nodes_df, showindex=False, headers='keys', tablefmt=table_format)
 
-    return output_string
+        result_list.append(result_dict)
+
+    return result_list
 
 
 # search in the files for the keywords
@@ -2420,6 +2395,59 @@ def escape_seq_when_redirect():
         back_to_default = ""
 
 
+# Todo: make the other functions return dictionaries,
+#   manage the ouptut after the users choices
+def customize_results():
+
+    output_string = ""
+
+    if filter_mode:
+        results = filter_for(files, filter_keywords, filter_extended)
+    elif default_mode:
+        results = output_given_logs(files)  # force default with -d
+    elif summarizer_mode and analyser_mode:
+        results = analysed_summary(files)  # analysed summary ?
+    elif summarizer_mode:
+        results = summarize_logs(files)  # summarize information
+    elif analyser_mode:
+        results = analyse_logs(files)  # analyse the given files
+    else:
+        results = output_given_logs(files)  # anyways try to print default output
+
+    work_with = results
+    # convert result to list, if given as dict
+    if type(results) == dict:
+        work_with = [results]
+
+    for i in range(len(work_with)):
+        mystery = work_with[i]
+
+        if "execution-details" in ignore_list:
+            del mystery["execution-details"]
+        elif "times" in ignore_list:
+            del mystery["times"]
+
+        if "all-resources" in ignore_list:
+            del mystery["all-resources"]
+        elif "used-resources" in ignore_list:
+            del mystery["used-resources"]
+        elif "requested-resources" in ignore_list:
+            del mystery["requested-resources"]
+        elif "allocated-resources" in ignore_list:
+            del mystery["allocated-resouces"]
+
+        if "errors" in ignore_list:
+            del mystery["errors"]
+
+        for _i in mystery:
+            output_string += mystery[_i] + "\n"
+
+    return output_string
+
+    # these might be added in future:
+    # Todo: gpus, cpu, errors, warnings
+
+
 if __name__ == "__main__":
     """
     This is the main function, which searchs first for a given config file.
@@ -2469,18 +2497,20 @@ if __name__ == "__main__":
 
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
-        if filter_mode:
-            output_str = filter_for(files, filter_keywords, filter_extended)
-        elif default_mode:
-            output_str = "\n" + output_given_logs(files)  # force default with -d
-        elif summarizer_mode and analyser_mode:
-            output_str = analysed_summary(files)  # analysed summary ?
-        elif summarizer_mode:
-            output_str = summarize_logs(files)  # summarize information
-        elif analyser_mode:
-            output_str = analyse_logs(files)  # analyse the given files
-        else:
-            output_str = "\n" + output_given_logs(files)  # anyways try to print default output
+        # if filter_mode:
+        #     output_str = filter_for(files, filter_keywords, filter_extended)
+        # elif default_mode:
+        #     output_str = "\n" + output_given_logs(files)  # force default with -d
+        # elif summarizer_mode and analyser_mode:
+        #     output_str = analysed_summary(files)  # analysed summary ?
+        # elif summarizer_mode:
+        #     output_str = summarize_logs(files)  # summarize information
+        # elif analyser_mode:
+        #     output_str = analyse_logs(files)  # analyse the given files
+        # else:
+        #     output_str = "\n" + output_given_logs(files)  # anyways try to print default output
+
+        output_str = customize_results()
 
         print(output_str)  # write it to the console
 
