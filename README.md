@@ -8,10 +8,6 @@ These are the packages you will need for manual installation
 - [plotille](https://pypi.org/project/plotille/)
 - [rich](https://pypi.org/project/rich/)
 - pandas (especially pandas.DataFrame)
-- regular expressions (Package re)
-- getopt
-- datetime
-- (logging)
 
 ### Installation:
     
