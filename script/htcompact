@@ -1647,7 +1647,7 @@ def analyse_logs(log_files):
                 fig.register_label_formatter(float, _int_formatter)
                 fig.plot(dates, ram, lc='green', label="Continuous Graph")  # Todo: implement a way to show thresholds
                 fig.scatter(dates, ram, lc='red', label="Single Values")
-
+                
                 if redirecting_output:  # if redirected, the Legend is useless
                     result_dict["ram-history"] = fig.show()
                 else:
@@ -2278,7 +2278,7 @@ def filter_for(log_files, keywords, extend=False):
         elif analyser_mode:
             rprint("[magenta]Try to analyse these files[/magenta]")
             output_string = analyse_logs(found_logs)
-        elif not reading_stdin and not redirecting_output:  # if not redirected
+        elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
             rprint("[blue]Want do do more?[/blue]")
             x = input("default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
             if x == "d":
@@ -2318,7 +2318,7 @@ def validate_given_logs(file_list):
     valid_files = list()
     total = len(file_list)
 
-    with Progress(transient=True, redirect_stdout=False) as progress:
+    with Progress(transient=True) as progress:
 
         task = progress.add_task("Validating...", total=total, start=False)
 
@@ -2530,6 +2530,8 @@ if __name__ == "__main__":
         log_file = sys.argv[0]+'.log'
         logging_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
         formatter = logging.Formatter(logging_format)
+
+        # if logging tool is set to use
         if not logging.getLogger().disabled:
             # I don't know why a handler is already set,
             # but we have to remove him in order to change the basicConfig
@@ -2542,9 +2544,9 @@ if __name__ == "__main__":
             handler = RotatingFileHandler(log_file, maxBytes=1024)
             handler.setLevel(logging.DEBUG)
             handler.setFormatter(formatter)
+
             log = logging.getLogger()
             log.setLevel(logging.DEBUG)
-
             log.addHandler(handler)
 
         # Todo:
@@ -2584,7 +2586,7 @@ if __name__ == "__main__":
 
         output_str = customize_results()
 
-        #print(output_str)  # write it to the console
+        print(output_str)  # write it to the console
 
         logging.debug("-------End of htcompact script-------")
 
