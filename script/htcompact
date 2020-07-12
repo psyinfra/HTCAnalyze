@@ -42,25 +42,22 @@ def initialize():
         to_csv, generate_log_file, filter_mode, filter_keywords, filter_extended, \
         colors, low_usage_threshold, bad_usage_threshold, std_log, std_err, std_out, \
         default_configfile, table_format, reading_stdin, redirecting_output,\
-        show_std_errors, show_std_output, show_std_warnings
+        showmore_list, allowed_showmore_values
 
     # global parameters, used for dynamical output of information
     accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
     files = list()
     option_shorts = "hsadv"
-    option_longs = ["help", "version", "verbose"
+    option_longs = ["help", "version", "verbose",
                     "std-log=", "std-err=", "std-out=",
-                    "show-errors", "show-output", "show-warnings",
-                    "ignore=", "no-config", "to-csv",
+                    "ignore=", "show-more=", "no-config", "to-csv",
                     "summarize", "analyse", "generate-log-file",
                     "filter=", "extend", "print-events-table",
                     "reverse-dns-lookup", "table-format="]
 
-    # variables for given parameters
-    # Todo: list, just like fopr ignore statements
-    show_std_output = False
-    show_std_warnings = False
-    show_std_errors = False
+    # show more information, mostly given by HTCompact .err and .out files
+    showmore_list = list()
+    allowed_showmore_values = ["errors", "warnings", "output"]
 
     # ignore information
     ignore_list = list()
@@ -99,7 +96,6 @@ def initialize():
         'light_grey': "\033[37m",
         'back_to_default': "\033[0;39m"
     }
-
 
     # thresholds for bad and low usage of resources
     low_usage_threshold = 0.75
@@ -223,7 +219,7 @@ def manage_params():
     """
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
-    global show_std_output, show_std_warnings, show_std_errors  # show more
+    global showmore_list  # show more
     global ignore_list  # ignore information variables
     global to_csv, summarizer_mode, analyser_mode, default_mode  # features
     global filter_mode, filter_keywords, filter_extended  # search features
@@ -264,28 +260,31 @@ def manage_params():
             elif opt in ["--extend"]:
                 filter_extended = True
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
-            elif opt == "--std-log":
+            elif opt.__eq__("--std-log"):
                 # to forget the . should not be painful
                 if arg[0] != '.':
                     arg = "."+arg
                 std_log = arg
-            elif opt == "--std-err":
+            elif opt.__eq__("--std-err"):
                 # to forget the . should not be painful
                 if arg[0] != '.':
                     arg = "."+arg
                 std_err = arg
-            elif opt == "--std-out":
+            elif opt.__eq__("--std-out"):
                 # to forget the . should not be painful
                 if arg[0] != '.':
                     arg = "."+arg
                 std_out = arg
-            # all variables, to show more specific information
-            elif opt.__eq__("--show-output"):
-                show_std_output = True
-            elif opt.__eq__("--show-warnings"):
-                show_std_warnings = True
-            elif opt.__eq__("--show-errors"):
-                show_std_errors = True
+
+            # show more specific information
+            elif opt.__eq__("--show-more"):
+                for arg_s in arg.split():
+                    if arg_s in allowed_showmore_values:
+                        showmore_list.append(arg_s)
+                    else:
+                        raise_value_error("Invalid argument '" + arg_s + "'\n"
+                                          "Valid arguments:\n" + ", ".join(allowed_showmore_values))
+                logging.debug("Show these information: " + ", ".join(ignore_list))
 
             # all variables to ignore unwanted information
             elif opt.__eq__("--ignore"):
@@ -293,7 +292,7 @@ def manage_params():
                     if arg_s in allowed_ignore_values:
                         ignore_list.append(arg_s)
                     else:
-                        raise_value_error(" Invalid argument '" + arg_s + "'\n"
+                        raise_value_error("Invalid argument '" + arg_s + "'\n"
                                           "Valid arguments:\n" + ", ".join(allowed_ignore_values))
                 logging.debug("Ignore these information: " + ", ".join(ignore_list))
 
@@ -542,62 +541,6 @@ Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with t
     return ["This event number does not exist", "Valid event numbers range from 000 to 034"]
 
 
-# reads all information, but returns them in two lists
-def read_condor_log(file):
-    """
-
-    reads a given HTCondor std_log file and separates the information in two lists,
-    for further and easier access
-
-    :param file:    a HTCondor std_log file
-
-    :raises: :class:'FileNotFoundError': if open does not work
-
-    :return:    (job_event, job_event_information)
-                a list of job_events and a list of job_event-relevant information
-                these are related by the same index like:
-                job_event[1]-> relevant information: job_event_information[1]
-    """
-
-    log_job_events = list()  # saves the job_events
-    job_event_information = list()  # saves the information for each job event, if there are any
-    temp_job_event_list = list()  # just a temporary list, gets inserted into job_event_information
-
-    with open(file) as log_file:
-        # for every line in the log_file
-        for line in log_file:
-
-            line = line.rstrip("\n")  # remove newlines
-            match_log\
-                = re.match(r"([0-9]{3})"  # matches event number
-                           r" (\([0-9]+.[0-9]+.[0-9]{3}\))"  # matches clusterid and process id
-                           r" ([0-9]{2}/[0-9]{2})"  # matches date
-                           r" ([0-9]{2}:[0-9]{2}:[0-9]{2})"  # matches time
-                           r"((?: \w+)*)."  # matches the job event name
-                           r"(.*)", line)  # matches further information
-            if match_log:
-                job_event_number = match_log[1]  # job event number, can be found in job_description.txt
-                clusterid_procid_inf = match_log[2]  # same numbers, that make the name of the file
-                date = match_log[3]  # filter the date in the form Month/Day in numbers
-                time = match_log[4]  # filter the time
-                job_event_name = match_log[5]  # filter the job event name
-                job_relevant_inf = match_log[6]  # filter the job relevant information
-                log_job_events.append([job_event_number, clusterid_procid_inf,
-                                       date, time, job_event_name, job_relevant_inf])
-                # print(job_event_number, clusterid_procid_inf, date, time, job_event_name, job_relevant_inf)
-            else:
-                # end of job event
-                if "..." in line:
-                    job_event_information.append(temp_job_event_list)
-                    temp_job_event_list = list()  # clear list
-                    continue
-                # else
-                #if re.match("[\t ]+", line):
-                else:
-                    temp_job_event_list.append(line)
-    return log_job_events, job_event_information
-
-
 def raise_value_error(message):
     raise ValueError(message)
 
@@ -807,74 +750,60 @@ def log_to_dataframe(file):
         return job_df, res_df
 
 
-def smart_output_logs(file):
-    """
-    reads a given HTCondor .log file with the read_condor_logs() function
-
-    :param file:    a HTCondor .log file
-    :param header:  Shows the header of the columns
-    :param index:   Shows the index of the rows
-
-    :return:        (output_string)
-                    an output string that shows information like:
-                    The job procedure of : ../logs/454_199.log
-                    +-------------------+--------------------+
-                    | Executing on Host |      10.0.9.1      |
-                    |       Port        |        9618        |
-                    |      Runtime      |      1:12:20       |
-                    | Termination State | Normal termination |
-                    |   Return Value    |         0          |
-                    +-------------------+--------------------+
-                    +--------+-------+-----------+-----------+
-                    |        | Usage | Requested | Allocated |
-                    +--------+-------+-----------+-----------+
-                    |  Cpu   | 0.30  |     1     |     1     |
-                    |  Disk  |  200  |    200    |  3770656  |
-                    | Memory |   3   |     1     |    128    |
-                    +--------+-------+-----------+-----------+
-
+# reads all information, but returns them in two lists
+def read_condor_log(file):
     """
 
-    logging.info('Starting the default mode')
+    reads a given HTCondor std_log file and separates the information in two lists,
+    for further and easier access
 
-    try:
+    :param file:    a HTCondor std_log file
 
-        job_df, res_df = log_to_dataframe(file)
+    :raises: :class:'FileNotFoundError': if open does not work
 
-        result_dict = dict()
+    :return:    (job_event, job_event_information)
+                a list of job_events and a list of job_event-relevant information
+                these are related by the same index like:
+                job_event[1]-> relevant information: job_event_information[1]
+    """
 
-        # Todo: csv style one line
-        if to_csv:
-            pass
-        else:
-            result_dict["file-description"] = f"{colors['green']}The job procedure of : {file}{colors['back_to_default']}"
+    log_job_events = list()  # saves the job_events
+    job_event_information = list()  # saves the information for each job event, if there are any
+    temp_job_event_list = list()  # just a temporary list, gets inserted into job_event_information
 
-            result_dict["execution-details"] = tabulate(job_df, tablefmt=table_format, showindex=False)
-            if not res_df.empty:  # make sure res_df is not None
+    with open(file) as log_file:
+        # for every line in the log_file
+        for line in log_file:
 
-                # reuested vs used disk RAM
-                if float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) > bad_usage_threshold:
-                    res_df.iloc[1, 1] = colors["red"]+res_df.iloc[1, 1]+colors["back_to_default"]  # changed color to red
-                elif float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) < low_usage_threshold:
-                    res_df.iloc[1, 1] = colors["yellow"]+res_df.iloc[1, 1]+colors["back_to_default"]  # changed color to yellow
-
-                # requested vs used Memory
-                if float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) > bad_usage_threshold:
-                    res_df.iloc[2, 1] = colors["red"]+res_df.iloc[2, 1]+colors["back_to_default"]  # changed color to red
-                elif float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) < low_usage_threshold:
-                    res_df.iloc[2, 1] = colors["yellow"]+res_df.iloc[2, 1]+colors["back_to_default"]  # changed color to yellow
-
-                result_dict["all-resources"] = tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False)
-
-    except NameError as err:
-        logging.exception(err)
-        rprint(f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
-    except Exception as err:
-        logging.exception(err)
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-    # finally
-    else:
-        return result_dict
+            line = line.rstrip("\n")  # remove newlines
+            match_log\
+                = re.match(r"([0-9]{3})"  # matches event number
+                           r" (\([0-9]+.[0-9]+.[0-9]{3}\))"  # matches clusterid and process id
+                           r" ([0-9]{2}/[0-9]{2})"  # matches date
+                           r" ([0-9]{2}:[0-9]{2}:[0-9]{2})"  # matches time
+                           r"((?: \w+)*)."  # matches the job event name
+                           r"(.*)", line)  # matches further information
+            if match_log:
+                job_event_number = match_log[1]  # job event number, can be found in job_description.txt
+                clusterid_procid_inf = match_log[2]  # same numbers, that make the name of the file
+                date = match_log[3]  # filter the date in the form Month/Day in numbers
+                time = match_log[4]  # filter the time
+                job_event_name = match_log[5]  # filter the job event name
+                job_relevant_inf = match_log[6]  # filter the job relevant information
+                log_job_events.append([job_event_number, clusterid_procid_inf,
+                                       date, time, job_event_name, job_relevant_inf])
+                # print(job_event_number, clusterid_procid_inf, date, time, job_event_name, job_relevant_inf)
+            else:
+                # end of job event
+                if "..." in line:
+                    job_event_information.append(temp_job_event_list)
+                    temp_job_event_list = list()  # clear list
+                    continue
+                # else
+                #if re.match("[\t ]+", line):
+                else:
+                    temp_job_event_list.append(line)
+    return log_job_events, job_event_information
 
 
 # Todo: maybe less information
@@ -940,6 +869,80 @@ def gethostbyaddr(ip):
         return ip
 
 
+def log_to_dict(file):
+    """
+    reads a given HTCondor .log file with the read_condor_logs() function
+
+    :param file:    a HTCondor .log file
+    :param header:  Shows the header of the columns
+    :param index:   Shows the index of the rows
+
+    :return:        (output_string)
+                    an output string that shows information like:
+                    The job procedure of : ../logs/454_199.log
+                    +-------------------+--------------------+
+                    | Executing on Host |      10.0.9.1      |
+                    |       Port        |        9618        |
+                    |      Runtime      |      1:12:20       |
+                    | Termination State | Normal termination |
+                    |   Return Value    |         0          |
+                    +-------------------+--------------------+
+                    +--------+-------+-----------+-----------+
+                    |        | Usage | Requested | Allocated |
+                    +--------+-------+-----------+-----------+
+                    |  Cpu   | 0.30  |     1     |     1     |
+                    |  Disk  |  200  |    200    |  3770656  |
+                    | Memory |   3   |     1     |    128    |
+                    +--------+-------+-----------+-----------+
+
+    """
+
+    try:
+
+        # accept files without the std_log suffix
+        if std_log.__ne__("") and file[-len(std_log):].__eq__(std_log):
+            job_spec_id = file[:-len(std_log)]
+        else:
+            job_spec_id = file
+
+        job_df, res_df = log_to_dataframe(job_spec_id + std_log)
+
+        result_dict = dict()
+
+        # Todo: csv style one line
+        if to_csv:
+            pass
+        else:
+            result_dict["file-description"] = f"{colors['green']}The job procedure of : {file}{colors['back_to_default']}"
+
+            result_dict["execution-details"] = tabulate(job_df, tablefmt=table_format, showindex=False)
+            if not res_df.empty:  # make sure res_df is not None
+
+                # reuested vs used disk RAM
+                if float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) > bad_usage_threshold:
+                    res_df.iloc[1, 1] = colors["red"]+res_df.iloc[1, 1]+colors["back_to_default"]  # changed color to red
+                elif float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) < low_usage_threshold:
+                    res_df.iloc[1, 1] = colors["yellow"]+res_df.iloc[1, 1]+colors["back_to_default"]  # changed color to yellow
+
+                # requested vs used Memory
+                if float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) > bad_usage_threshold:
+                    res_df.iloc[2, 1] = colors["red"]+res_df.iloc[2, 1]+colors["back_to_default"]  # changed color to red
+                elif float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) < low_usage_threshold:
+                    res_df.iloc[2, 1] = colors["yellow"]+res_df.iloc[2, 1]+colors["back_to_default"]  # changed color to yellow
+
+                result_dict["all-resources"] = tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False)
+
+    except NameError as err:
+        logging.exception(err)
+        rprint(f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
+    except Exception as err:
+        logging.exception(err)
+        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+    # finally
+    else:
+        return result_dict
+
+
 def smart_output_error(file):
     """
 
@@ -955,7 +958,14 @@ def smart_output_error(file):
 
     output_string = ""
     try:
-        error_content = read_condor_error(file)
+
+        # accept files without the std_err suffix
+        if std_err.__ne__("") and file[-len(std_err):].__eq__(std_err):
+            job_spec_id = file[:-len(std_err)]
+        else:
+            job_spec_id = file
+
+        error_content = read_condor_error(job_spec_id + std_err)
         for line in error_content.split("\n"):
             if "err" in line.lower() and show_std_errors:
                 output_string += colors['red'] + line + colors['back_to_default'] + "\n"
@@ -986,7 +996,14 @@ def smart_output_output(file):
 
     output_string = ""
     try:
-        output_string = read_condor_output(file)
+
+        # accept files without the std_out suffix
+        if std_out.__ne__("") and file[-len(std_out):].__eq__(std_out):
+            job_spec_id = file[:-len(std_out)]
+        else:
+            job_spec_id = file
+
+        output_string = read_condor_output(job_spec_id + std_out)
     except NameError as err:
         logging.exception(err)
         rprint("[red]The smart_output_output method requires a "+std_out+" file as parameter[/red]")
@@ -1001,72 +1018,6 @@ def smart_output_output(file):
 
     finally:
         return output_string
-
-
-def match_logfile_prefix(file):
-    """
-    Combine all informations, that the user wants for a given job_spec_id like 398_31.
-    -the first layer represents the HTCondor .log file
-    -the second layer represents the HTCondor .err file
-    -the third layer represents the HTCondor .out file
-
-    information will be put together regarding the global booleans set by the user.
-    job_spec_id, is the ClusterID_ProcessID of a job executed by HTCondor like job_4323_21 or 231_0
-
-    :param file: file name without endling like job4323_1, job4323_1.<err|out|log> will cut the end off
-    :return: a string that combines HTCondor log/err and out files and returns it
-    """
-    try:
-        if std_log.__ne__("") and file[:-len(std_log)].__eq__(std_log):
-            job_spec_id = file[:-len(std_log)]
-        else:
-            job_spec_id = file
-
-        result_dict = smart_output_logs(job_spec_id + std_log)
-    except Exception as err:
-        logging.exception(err)
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        sys.exit(1)
-    else:
-        return result_dict
-
-
-# Todo: err and output not visible ???
-def output_given_logs(log_files):
-
-    list_of_dicts = list()
-    current_path = os.getcwd()
-    # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
-    for i, file in enumerate(log_files):
-
-        # for the * operation it should skip std_err and std_out files
-        if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
-            continue
-
-        # else check if file is a valid file
-        if os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
-            list_of_dicts.append(match_logfile_prefix(file))
-
-        # if that did not work try std_log at the end of that file
-        elif not file.endswith(std_log):
-            new_path = file + std_log
-            # is this now a valid file ?
-            if os.path.isfile(new_path) or os.path.isfile(current_path + "/" + new_path):
-                list_of_dicts.append(match_logfile_prefix(new_path))
-            # no file or directory found, even after manipulating the string
-            else:
-                logging.error(f"No such file with that name or prefix: {file}")
-                rprint(f"[red]No such file with that name or prefix: {file}[/red]")
-
-        # The given .log file was not found
-        else:
-            logging.error(f"No such file: {file}")
-            rprint(f"[red]No such file: {file}[/red]")
-
-    if len(list_of_dicts) == 0:
-        rprint("[yellow]Nothing found, please use \"man htcompact\" or \"htcompact -h\" for help[/yellow]", end="")
-
-    return list_of_dicts
 
 
 def find_config():
@@ -1322,9 +1273,49 @@ def _int_formatter(val, chars, delta, left=False):
     return '{:{}{}d}'.format(int(val), align, chars)
 
 
+# Todo: err and output not visible ???
+def default(log_files):
+
+    logging.info('Starting the default mode')
+
+    list_of_dicts = list()
+    current_path = os.getcwd()
+    # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
+    for i, file in enumerate(log_files):
+
+        # for the * operation it should skip std_err and std_out files
+        if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
+            continue
+
+        # else check if file is a valid file
+        if os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
+            list_of_dicts.append(log_to_dict(file))
+
+        # if that did not work try std_log at the end of that file
+        elif not file.endswith(std_log):
+            new_path = file + std_log
+            # is this now a valid file ?
+            if os.path.isfile(new_path) or os.path.isfile(current_path + "/" + new_path):
+                list_of_dicts.append(log_to_dict(new_path))
+            # no file or directory found, even after manipulating the string
+            else:
+                logging.error(f"No such file with that name or prefix: {file}")
+                rprint(f"[red]No such file with that name or prefix: {file}[/red]")
+
+        # The given .log file was not found
+        else:
+            logging.error(f"No such file: {file}")
+            rprint(f"[red]No such file: {file}[/red]")
+
+    if len(list_of_dicts) == 0:
+        rprint("[yellow]Nothing found, please use \"man htcompact\" or \"htcompact -h\" for help[/yellow]", end="")
+
+    return list_of_dicts
+
+
 # Todo: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
 #       until now there is not the need for other filters but it might be needed to extend this fucntion
-def analyse_logs(log_files):
+def analyse(log_files):
 
     logging.info('Starting the analyser mode')
 
@@ -1665,7 +1656,7 @@ def analyse_logs(log_files):
 
 
 # Todo: what means sucessful executed ?
-def summarize_logs(log_files):
+def summarize(log_files):
     """
     Summarises all used resources and the runtime in total and average
 
@@ -2275,25 +2266,25 @@ def filter_for(log_files, keywords, extend=False):
     else:
         print(f"Total count: {len(found_logs)}")
         if default_mode:
-            output_string = output_given_logs(found_logs)
+            output_string = default(found_logs)
         elif analyser_mode and summarizer_mode:
             rprint("[magenta]Try to give an analysed summary for these files[/magenta]")
             output_string = analysed_summary(found_logs)
         elif summarizer_mode:
             rprint("[magenta]Try to summarize these files[/magenta]")
-            output_string = summarize_logs(found_logs)
+            output_string = summarize(found_logs)
         elif analyser_mode:
             rprint("[magenta]Try to analyse these files[/magenta]")
-            output_string = analyse_logs(found_logs)
+            output_string = analyse(found_logs)
         elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
             rprint("[blue]Want do do more?[/blue]")
             x = input("default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
             if x == "d":
-                output_string = output_given_logs(found_logs)
+                output_string = default(found_logs)
             elif x == "s":
-                output_string = summarize_logs(found_logs)
+                output_string = summarize(found_logs)
             elif x == "a":
-                output_string = analyse_logs(found_logs)
+                output_string = analyse(found_logs)
             elif x == "as":
                 output_string = analysed_summary(found_logs)
 
@@ -2407,7 +2398,7 @@ def validate_given_logs(file_list):
                                                f"is not a valid HTCondor log file[/yellow]",)
             else:
                 logging.error(f"The given file: {arg} does not exist")
-                rprint(f"[red]The given file: {arg} does not exist[/red")
+                rprint(f"[red]The given file: {arg} does not exist[/red]")
 
     return valid_files
 
@@ -2512,15 +2503,15 @@ def customize_results():
     if filter_mode:
         results = filter_for(files, filter_keywords, filter_extended)
     elif default_mode:
-        results = output_given_logs(files)  # force default with -d
+        results = default(files)  # force default with -d
     elif summarizer_mode and analyser_mode:
         results = analysed_summary(files)  # analysed summary ?
     elif summarizer_mode:
-        results = summarize_logs(files)  # summarize information
+        results = summarize(files)  # summarize information
     elif analyser_mode:
-        results = analyse_logs(files)  # analyse the given files
+        results = analyse(files)  # analyse the given files
     else:
-        results = output_given_logs(files)  # anyways try to print default output
+        results = default(files)  # anyways try to print default output
 
     work_with = results
     # convert result to list, if given as dict
