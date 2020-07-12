@@ -113,14 +113,17 @@ if for whatever reason the format is not
 .Qq .out,
 then you can change it with this argument.
 .
-.It Fl Fl show-errors
-This will show all occurred errors inside the standard-error files
-.
-.It Fl Fl show-output
-This will show the content of a standard-output file
-.
-.It Fl Fl show-warnings
-This will show all occurred warnings inside the standard-error files
+.It Fl Fl show-more Ar keywords
+show information inside the (if generated) stdout and stderr files,
+related to the current log file.
+.Bd -literal
+Valid arguments are:
+
+[errors, warnings, output]
+
+errors and warnings regarding a stderr file (.err)
+output to get every line of the stdout file (.out)
+.Ed
 .
 .It Fl Fl ignore Ar keywords
 ignore a given set of information

@@ -823,8 +823,13 @@ def read_condor_error(file):
     if not file.endswith(std_err):
         raise NameError("The read_condor_error method is only for "+std_err+" files")
 
-    err_file = open(file)
-    return "".join(err_file.readlines())
+    try:
+        err_file = open(file)
+    except FileNotFoundError as err:
+        logging.exception(err)
+        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+    else:
+        return "".join(err_file.readlines())
 
 
 # just read .out files content and return it as a string
@@ -842,9 +847,13 @@ def read_condor_output(file):
         """
     if not file.endswith(std_out):
         raise NameError("The read_condor_output method is only for "+std_out+" files")
-
-    out_file = open(file)
-    return "".join(out_file.readlines())
+    try:
+        out_file = open(file)
+    except FileNotFoundError as err:
+        logging.exception(err)
+        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+    else:
+        return "".join(out_file.readlines())
 
 
 def gethostbyaddr(ip):
@@ -867,6 +876,88 @@ def gethostbyaddr(ip):
         # also store
         store_dns_lookups[ip] = ip
         return ip
+
+
+def show_htcondor_stderr(file):
+    """
+
+    :param file: a HTCondor .err file
+    :return: the content of the given file as a string
+    """
+
+    # Todo:
+    # - errors from htcondor are more important (std.err output)
+    # - are there errors ? true or false -> maybe print those in any kind of fromat
+    # - maybe check for file size !!!
+    # - is the file size the same ? what is normal / different errors (feature -> for  -> later)
+
+    # accept files without the std_err suffix
+    if std_err.__ne__("") and file[-len(std_err):].__eq__(std_err):
+        job_spec_id = file[:-len(std_err)]
+    elif std_err.__ne__(""):
+        job_spec_id = file
+    else:
+        raise_value_error("Missing specification for the std_err")
+
+    output_string = ""
+    try:
+
+        error_content = read_condor_error(job_spec_id + std_err)
+        for line in error_content.split("\n"):
+            if "err" in line.lower() and 'errors' in showmore_list:
+                output_string += colors['red'] + line + colors['back_to_default'] + "\n"
+            elif "warn" in line.lower() and 'warnings' in showmore_list:
+                output_string += colors['yellow'] + line + colors['back_to_default'] + "\n"
+
+    except NameError as err:
+        logging.exception(err)
+        rprint("[red]The smart_output_error method requires a "+std_err+" file as parameter[/red]")
+    except FileNotFoundError:
+        relevant = file.split("/")[-2:]
+        match = re.match(r".*?([0-9]{3,}_[0-9]+)"+std_err, relevant[1])
+        rprint(f"[yellow]There is no related {std_err} file: {relevant[1]} in the directory:\n[/yellow]"
+               f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
+    except TypeError as err:
+        logging.exception(err)
+        # rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+    finally:
+        return output_string
+
+
+def show_htcondor_stdout(file):
+    """
+    Todo: filter the output ?
+    :param file: a HTCondor .out file
+    :return: the content of that file as a string
+    """
+
+    # accept files without the std_out suffix
+    if std_out.__ne__("") and file[-len(std_out):].__eq__(std_out):
+        job_spec_id = file[:-len(std_out)]
+    elif std_out.__ne__(""):
+        job_spec_id = file
+    else:
+        raise_value_error("Missing specification for the std_out file")
+
+    output_string = ""
+    try:
+
+        output_content = read_condor_output(job_spec_id + std_out)
+        output_string += output_content
+    except NameError as err:
+        logging.exception(err)
+        rprint("[red]The smart_output_output method requires a "+std_out+" file as parameter[/red]")
+    except FileNotFoundError:
+        relevant = file.split("/")[-2:]
+        match = re.match(r".*?([0-9]{3,}_[0-9]+)"+std_out, relevant[1])
+        rprint(f"[yellow]There is no related {std_out} file: {relevant[1]} in the directory:\n[/yellow]"
+               f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
+    except TypeError as err:
+        logging.exception(err)
+        # rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+    finally:
+
+        return output_string
 
 
 def log_to_dict(file):
@@ -896,18 +987,17 @@ def log_to_dict(file):
                     +--------+-------+-----------+-----------+
 
     """
+    # accept files without the std_log suffix
+    if std_log.__ne__("") and file[-len(std_log):].__eq__(std_log):
+        job_spec_id = file[:-len(std_log)]
+    else:
+        job_spec_id = file
+
+    result_dict = dict()
 
     try:
 
-        # accept files without the std_log suffix
-        if std_log.__ne__("") and file[-len(std_log):].__eq__(std_log):
-            job_spec_id = file[:-len(std_log)]
-        else:
-            job_spec_id = file
-
         job_df, res_df = log_to_dataframe(job_spec_id + std_log)
-
-        result_dict = dict()
 
         # Todo: csv style one line
         if to_csv:
@@ -932,92 +1022,22 @@ def log_to_dict(file):
 
                 result_dict["all-resources"] = tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False)
 
+        if 'errors' in showmore_list or 'warnings' in showmore_list:
+            result_dict['stderr'] = show_htcondor_stderr(job_spec_id + std_err)
+        if 'output' in showmore_list:
+            result_dict['stdout'] = show_htcondor_stdout(job_spec_id + std_out)
+
     except NameError as err:
         logging.exception(err)
         rprint(f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
+    except ValueError as err:
+        logging.exception(err)
+        rprint(f"[red]{err}[/red]")
     except Exception as err:
         logging.exception(err)
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-    # finally
-    else:
-        return result_dict
 
-
-def smart_output_error(file):
-    """
-
-    :param file: a HTCondor .err file
-    :return: the content of the given file as a string
-    """
-
-    # Todo:
-    # - errors from htcondor are more important (std.err output)
-    # - are there errors ? true or false -> maybe print those in any kind of fromat
-    # - maybe check for file size !!!
-    # - is the file size the same ? what is normal / different errors (feature -> for  -> later)
-
-    output_string = ""
-    try:
-
-        # accept files without the std_err suffix
-        if std_err.__ne__("") and file[-len(std_err):].__eq__(std_err):
-            job_spec_id = file[:-len(std_err)]
-        else:
-            job_spec_id = file
-
-        error_content = read_condor_error(job_spec_id + std_err)
-        for line in error_content.split("\n"):
-            if "err" in line.lower() and show_std_errors:
-                output_string += colors['red'] + line + colors['back_to_default'] + "\n"
-            elif "warn" in line.lower() and show_std_warnings:
-                output_string += colors['yellow'] + line + colors['back_to_default'] + "\n"
-
-    except NameError as err:
-        logging.exception(err)
-        rprint("[red]The smart_output_error method requires a "+std_err+" file as parameter[/red]")
-    except FileNotFoundError:
-        relevant = file.split("/")[-2:]
-        match = re.match(r".*?([0-9]{3,}_[0-9]+)"+std_err, relevant[1])
-        rprint(f"[yellow]There is no related {std_err} file: {relevant[1]} in the directory:\n[/yellow]"
-               f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
-    except TypeError as err:
-        logging.exception(err)
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-    finally:
-        return output_string
-
-
-def smart_output_output(file):
-    """
-    Todo: filter the output ?
-    :param file: a HTCondor .out file
-    :return: the content of that file as a string
-    """
-
-    output_string = ""
-    try:
-
-        # accept files without the std_out suffix
-        if std_out.__ne__("") and file[-len(std_out):].__eq__(std_out):
-            job_spec_id = file[:-len(std_out)]
-        else:
-            job_spec_id = file
-
-        output_string = read_condor_output(job_spec_id + std_out)
-    except NameError as err:
-        logging.exception(err)
-        rprint("[red]The smart_output_output method requires a "+std_out+" file as parameter[/red]")
-    except FileNotFoundError:
-        relevant = file.split("/")[-2:]
-        match = re.match(r".*?([0-9]{3,}_[0-9]+)"+std_out, relevant[1])
-        rprint(f"[yellow]There is no related {std_out} file: {relevant[1]} in the directory:\n[/yellow]"
-               f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
-    except TypeError as err:
-        logging.exception(err)
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-
-    finally:
-        return output_string
+    return result_dict
 
 
 def find_config():
@@ -1175,19 +1195,15 @@ def load_config(config_file):
 
         # if show variables are set for further output
         if 'show-more' in sections:
-            global show_std_output, show_std_warnings, show_std_errors  # sources to show
+            global showmore_list
 
-            if 'show_std_errors' in config['show-more']:
-                show_std_errors = config['show-more']['show_std_errors'].lower() in accepted_states
-                logging.debug(f"Changed default show_std_errors to: {show_std_errors}")
-
-            if 'show_std_output' in config['show-more']:
-                show_std_output = config['show-more']['show_std_output'].lower() in accepted_states
-                logging.debug(f"Changed default show_std_output to: {show_std_output}")
-
-            if 'show_std_warnings' in config['show-more']:
-                show_std_warnings = config['show-more']['show_std_warnings'].lower() in accepted_states
-                logging.debug(f"Changed default show_std_warnings to: {show_std_warnings}")
+            if 'showmore_list' in config['show-more']:
+                for arg in config['show-more']['showmore_list'].split():
+                    if arg in allowed_showmore_values:
+                        showmore_list.append(arg)
+                    else:
+                        logging.debug("Don't know this ignore statement: "+ arg)
+                logging.debug(f"Changed default ignore statements to: {showmore_list}")
 
         # what information should to be ignored
         if 'ignore' in sections:
@@ -1198,8 +1214,8 @@ def load_config(config_file):
                     if arg in allowed_ignore_values:
                         ignore_list.append(arg)
                     else:
-                        logging.debug("Don't know this ignore statement: "+ arg)
-                logging.debug(f"Changed default ignore statements to: {ignore_list}")
+                        logging.debug("Don't know this show statement: "+ arg)
+                logging.debug(f"Changed default show-more statements to: {ignore_list}")
 
         if 'thresholds' in sections:
             global low_usage_threshold, bad_usage_threshold
@@ -2542,7 +2558,10 @@ def customize_results():
             del mystery["host-nodes"]
 
         for _i in mystery:
-            output_string += mystery[_i] + "\n"
+            if mystery[_i] is not None:
+                output_string += mystery[_i] + "\n"
+            else:
+                rprint("[red]NoneType object found, this should not happen[/red]")
 
     return output_string
 
