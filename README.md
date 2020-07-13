@@ -73,8 +73,6 @@ a default setup.conf should already exist inside the project folder
 
 possible configurations could be reduced to something like:
 ```
-htcompact ( will search for setup.conf)
-or
 htcompact setup.conf
 or
 htcompact [files/directories] setup.conf (ignores files/directories set inside the config file)
