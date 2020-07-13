@@ -102,9 +102,9 @@ def initialize():
     bad_usage_threshold = 1.2
 
     # global variables with default values for err/log/out files
-    std_log = ""
-    std_err = ""
-    std_out = ""
+    std_log = ".log"
+    std_err = ".err"
+    std_out = ".out"
 
     # global defaults
     default_configfile = "htcompact.conf"
@@ -1762,7 +1762,7 @@ def summarize(log_files):
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
             logging.exception(err)
-            rprint(f"[red]Summarisation error with {file}[/red]")
+            rprint(f"[red]Error with summarizing: {file}[/red]")
             continue
 
     n = valid_files - aborted_files  # calc diffrenc of successful executed jobs
@@ -2400,6 +2400,12 @@ def validate_given_logs(file_list):
             # else if path "might" be a valid HTCondor file
             elif working_file_path.__ne__(""):
                 progress.update(task, advance=1)
+
+                if std_err.__ne__("") and working_file_path.endswith(std_err) or \
+                        std_out.__ne__("") and working_file_path.endswith(std_out):
+                    logging.debug(f"Only log files are accepted, this file will be ignored:\n {working_file_path}")
+                    break
+
                 with open(working_file_path, "r") as read_file:
 
                     if os.path.getsize(working_file_path) == 0:  # file is empty
@@ -2510,8 +2516,7 @@ def escape_seq_when_redirect():
         # back_to_default = ""
 
 
-# Todo: make the other functions return dictionaries,
-#   manage the ouptut after the users choices
+# Todo: a lot of information can still not be ignored
 def customize_results():
 
     output_string = ""
@@ -2562,6 +2567,8 @@ def customize_results():
                 output_string += mystery[_i] + "\n"
             else:
                 rprint("[red]NoneType object found, this should not happen[/red]")
+
+        output_string += "\n"
 
     return output_string
 
