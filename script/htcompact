@@ -42,7 +42,7 @@ def initialize():
         to_csv, generate_log_file, filter_mode, filter_keywords, filter_extended, \
         colors, low_usage_threshold, bad_usage_threshold, std_log, std_err, std_out, \
         default_configfile, table_format, reading_stdin, redirecting_output,\
-        showmore_list, allowed_showmore_values
+        show_list, allowed_show_values
 
     # global parameters, used for dynamical output of information
     accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
@@ -56,8 +56,8 @@ def initialize():
                     "reverse-dns-lookup", "table-format="]
 
     # show more information, mostly given by HTCompact .err and .out files
-    showmore_list = list()
-    allowed_showmore_values = ["errors", "warnings", "output"]
+    show_list = list()
+    allowed_show_values = ["errors", "warnings", "output"]
 
     # ignore information
     ignore_list = list()
@@ -219,7 +219,7 @@ def manage_params():
     """
     global files  # list of files and directories
     global std_log, std_err, std_out  # all default values for the HTCondor files
-    global showmore_list  # show more
+    global show_list  # show more
     global ignore_list  # ignore information variables
     global to_csv, summarizer_mode, analyser_mode, default_mode  # features
     global filter_mode, filter_keywords, filter_extended  # search features
@@ -279,11 +279,11 @@ def manage_params():
             # show more specific information
             elif opt.__eq__("--show-more"):
                 for arg_s in arg.split():
-                    if arg_s in allowed_showmore_values:
-                        showmore_list.append(arg_s)
+                    if arg_s in allowed_show_values:
+                        show_list.append(arg_s)
                     else:
                         raise_value_error("Invalid argument '" + arg_s + "'\n"
-                                          "Valid arguments:\n" + ", ".join(allowed_showmore_values))
+                                          "Valid arguments:\n" + ", ".join(allowed_show_values))
                 logging.debug("Show these information: " + ", ".join(ignore_list))
 
             # all variables to ignore unwanted information
@@ -904,9 +904,9 @@ def show_htcondor_stderr(file):
 
         error_content = read_condor_error(job_spec_id + std_err)
         for line in error_content.split("\n"):
-            if "err" in line.lower() and 'errors' in showmore_list:
+            if "err" in line.lower() and 'errors' in show_list:
                 output_string += colors['red'] + line + colors['back_to_default'] + "\n"
-            elif "warn" in line.lower() and 'warnings' in showmore_list:
+            elif "warn" in line.lower() and 'warnings' in show_list:
                 output_string += colors['yellow'] + line + colors['back_to_default'] + "\n"
 
     except NameError as err:
@@ -1022,9 +1022,9 @@ def log_to_dict(file):
 
                 result_dict["all-resources"] = tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False)
 
-        if 'errors' in showmore_list or 'warnings' in showmore_list:
+        if 'errors' in show_list or 'warnings' in show_list:
             result_dict['stderr'] = show_htcondor_stderr(job_spec_id + std_err)
-        if 'output' in showmore_list:
+        if 'output' in show_list:
             result_dict['stdout'] = show_htcondor_stdout(job_spec_id + std_out)
 
     except NameError as err:
@@ -1195,15 +1195,15 @@ def load_config(config_file):
 
         # if show variables are set for further output
         if 'show-more' in sections:
-            global showmore_list
+            global show_list
 
-            if 'showmore_list' in config['show-more']:
-                for arg in config['show-more']['showmore_list'].split():
-                    if arg in allowed_showmore_values:
-                        showmore_list.append(arg)
+            if 'show_list' in config['show-more']:
+                for arg in config['show-more']['show_list'].split():
+                    if arg in allowed_show_values:
+                        show_list.append(arg)
                     else:
                         logging.debug("Don't know this ignore statement: "+ arg)
-                logging.debug(f"Changed default ignore statements to: {showmore_list}")
+                logging.debug(f"Changed default ignore statements to: {show_list}")
 
         # what information should to be ignored
         if 'ignore' in sections:
