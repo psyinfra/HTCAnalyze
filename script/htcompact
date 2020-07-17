@@ -1085,25 +1085,31 @@ def find_config():
                 else:
                     found_config_file = file
                     found_default_in_cwd = True
+
             # try to find the config file in the current environment hierarchy
             elif os.path.isfile(f"{sys.prefix}/config/{file}") and config.read(f"{sys.prefix}/config/{file}"):
                 found_config = True
                 arguments.remove(file)
+                found_config_file = f"{sys.prefix}/config/{file}"  # remember the file
+
             # try to find config file in ~/.config/script_name/
             elif os.path.isfile(f"~/.config/{script_name}/{file}") \
                     and config.read(f"~/.config/{script_name}/{file}"):
                 found_config = True
                 arguments.remove(file)
+                found_config_file = f"~/.config/{script_name}/{file}"  # remember the file
+
             # try to find config file in /etc
             elif os.path.isfile(f"/etc/{file}") and config.read(f"/etc/{file}"):
                 found_config = True
                 arguments.remove(file)
+                found_config_file = f"/etc/{file}"  # remember the file
 
             else:
                 logging.debug(f"{file} not found or is not a valid config file")
 
+            # do not search any longer if found
             if found_config:
-                found_config_file = file  # remember the file
                 break
 
         # File has no readable format for the configparser, probably because it's not a config file
