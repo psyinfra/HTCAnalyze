@@ -2467,14 +2467,10 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
         log = logging.getLogger()
         log.setLevel(logging.DEBUG)
         log.addHandler(handler)
-        # os.system("tail -n 10 htcompact.log > htcompact_tmp.log")
-        # os.system("cat htcompact_tmp.log > htcompact.log")
-        # os.system("rm htcompact_tmp.log")
 
     if verbose_mode:
         # activate logger if not already activated
         logging.getLogger().disabled = False
-
         # I don't know why a root handler is already set,
         # but we have to remove him in order to change the basicConfig
         # if len(logging.root.handlers) == 1:
@@ -2565,7 +2561,7 @@ def customize_results():
         elif "requested-resources" in ignore_list and "requested-resources" in mystery:
             del mystery["requested-resources"]
         elif "allocated-resources" in ignore_list and "allocated-resources" in mystery:
-            del mystery["allocated-resouces"]
+            del mystery["allocated-resources"]
 
         if "errors" in ignore_list and "errors" in mystery:
             del mystery["errors"]
