@@ -2435,6 +2435,9 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
     :return:
     """
 
+    # disable the loggeing tool by default
+    logging.getLogger().disabled = True
+
     # if logging tool is set to use
     if generate_log_file:
         logging.getLogger().disabled = False
@@ -2451,13 +2454,16 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
         logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
         file_formatter = logging.Formatter(logging_file_format)
 
-        handler = RotatingFileHandler(log_file, maxBytes=1024)
+        handler = RotatingFileHandler(log_file, maxBytes=1000000, backupCount=1)
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(file_formatter)
 
         log = logging.getLogger()
         log.setLevel(logging.DEBUG)
         log.addHandler(handler)
+        # os.system("tail -n 10 htcompact.log > htcompact_tmp.log")
+        # os.system("cat htcompact_tmp.log > htcompact.log")
+        # os.system("rm htcompact_tmp.log")
 
     if verbose_mode:
         # activate logger if not already activated
@@ -2586,8 +2592,6 @@ if __name__ == "__main__":
     :return:
     """
     try:
-        # disable the loggeing tool by default
-        logging.getLogger().disabled = True
 
         initialize()
 
