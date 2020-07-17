@@ -1083,8 +1083,9 @@ def find_config():
                     found_config = True
                     arguments.remove(file)
                 else:
-                    found_config_file = file
                     found_default_in_cwd = True
+                    
+                found_config_file = file
 
             # try to find the config file in the current environment hierarchy
             elif os.path.isfile(f"{sys.prefix}/config/{file}") and config.read(f"{sys.prefix}/config/{file}"):
