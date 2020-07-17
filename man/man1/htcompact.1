@@ -114,24 +114,31 @@ if for whatever reason the format is not
 .Qq .out,
 then you can change it with this argument.
 .
-.It Fl Fl show-errors
-This will show all occurred errors inside the standard-error files
+.It Fl Fl show-more Ar keywords
+show information inside the (if generated) stdout and stderr files,
+related to the current log file.
+.Bd -literal
+Valid arguments are:
+
+[errors, warnings, output]
+
+errors and warnings regarding a stderr file (.err)
+output to get every line of the stdout file (.out)
+.Ed
 .
-.It Fl Fl show-output
-This will show the content of a standard-output file
-.
-.It Fl Fl show-warnings
-This will show all occurred warnings inside the standard-error files
-.
-.It Fl Fl ignore-resources
-Ignore the resources of a HTCondor job
-.
-.It Fl Fl ignore-job-information
-Ignore all the information like executing time, host, runtime, etc.
-this is usually set to just have the resource table
-.
-.It Fl Fl ignore-allocated-resources
-Ignore allocated resources in the resource table
+.It Fl Fl ignore Ar keywords
+ignore a given set of information
+.Bd -literal
+Valid arguments are:
+
+[execution-details, times, gpu,
+cpu, errors, warnings, host-nodes,
+used-resources, requested-resources,
+allocated-resources, all-resources]
+
+if you want to ignore multiple information,
+use the string notation "keyword1 keyword2 ..."
+.Ed
 .
 .It Fl Fl no-config
 Do not search for a config file
@@ -144,12 +151,15 @@ Resolve the host the job was running on by it's ip address
 to a related domain name, if possible.
 Else, go with the ip address.
 .
+.It Fl v | Fl Fl verbose
+Start the script in verbose mode, this will generate more detailed output,
+about what the script is doing
+but printing it to stdout
 .It Fl Fl generate-log-file
-This will generate a log file named htcompact.log
+Related to the verbose mode,
+this will generate the same output and generate
+a log file named htcompact.log
 or append output if already existing.
-This tool is mainly for development purposes,
-but if something is not working properly,
-it's the best way to figure out why.
 .
 .It Fl Fl table-format Ar format
 the table format for the output
@@ -192,10 +202,10 @@ Priority[5] run with default settings
 .Sh EXAMPLES
 .Bd -literal
 htcompact -a 398_440.log
-htcompact -s log_directory --ignore-job-information --no-config
+htcompact -s log_directory --ignore execution-details --no-config
 htcompact -as log_directory
 htcompact -e 005
-htcompact --filter "" --extend -s --ignore-resources log_directory
+htcompact --filter "" --extend -s --ignore all-resources log_directory
 htcompact htcompact.conf 394_440 -a --show-output --table-format simple
 htcompact --filter "aborted" -as ~/logs
 OR
