@@ -1291,6 +1291,15 @@ def _int_formatter(val, chars, delta, left=False):
 
 # Todo: err and output not visible ???
 def default(log_files):
+    """
+    Print the default output for a given list of log files
+
+    This mode is just an easy view,
+     on what the script is actually doing.
+
+    :param log_files:
+    :return: list of dicts
+    """
 
     logging.info('Starting the default mode')
 
@@ -2517,6 +2526,7 @@ def escape_seq_when_redirect():
 
 
 # Todo: a lot of information can still not be ignored
+# Todo: a function to format the output
 def customize_results():
 
     output_string = ""
