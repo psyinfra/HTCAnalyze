@@ -29,7 +29,7 @@ just pass any log files, config files or directories, you just need to separate 
 This will print a small help function, just like this.
 .
 .It Fl Fl print-events-table
-Print all 34 HTCondor events, with description, know at this time (29.06.2020)
+Print all 34 HTCondor events, with description, known at this time (29.06.2020)
 .
 .It Fl d | Fl Fl default
 turns on the default output mode which is usually already true.
@@ -155,11 +155,13 @@ Else, go with the ip address.
 Start the script in verbose mode, this will generate more detailed output,
 about what the script is doing
 but printing it to stdout
+.
 .It Fl Fl generate-log-file
 Related to the verbose mode,
-this will generate the same output and generate
-a log file named htcompact.log
-or append output if already existing.
+this will generate the same output but not onto the terminal.
+This will create a log rotation file: htcompact.log or append output to it.
+The maximum size is limited by 1 MB,
+which means the output starts to rollover on a backup file: htcompact.log.1
 .
 .It Fl Fl table-format Ar format
 the table format for the output
@@ -187,8 +189,8 @@ The script is also checking for other config files in other places:
 with different priorities from 1 (high) to 5 (low):
 Priority[1] find config_file directly
 Priority[2] search for config_file in project_directory/config
-Priority[3] search for config_file in /etc
-Priority[4] search for config_file in ~/.config/htcompact
+Priority[3] search for config_file in ~/.config/htcompact
+Priority[4] search for config_file in /etc
 Priority[5] run with default settings
 .Ed
 .

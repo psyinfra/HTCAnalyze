@@ -112,8 +112,8 @@ but all the other arguments stay defined by the config file.
 For example your config file sits in one of these directories:
 1. current_working_directory
 2. project_directory/config
-3. /etc
-4. ~/.config/htcompact
+3. ~/.config/htcompact
+4. /etc
 
 <details>
 <summary>
