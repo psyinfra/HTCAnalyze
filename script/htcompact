@@ -1084,7 +1084,7 @@ def find_config():
                     arguments.remove(file)
                 else:
                     found_default_in_cwd = True
-                    
+
                 found_config_file = file
 
             # try to find the config file in the current environment hierarchy
@@ -2450,10 +2450,9 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
         logging.getLogger().disabled = False
         # I don't know why a root handler is already set,
         # but we have to remove him in order to change the basicConfig
-        if len(logging.root.handlers) == 1:
-            default_handler = logging.root.handlers[0]
-            logging.root.removeHandler(default_handler)
-
+        # if len(logging.root.handlers) == 1:
+        #     default_handler = logging.root.handlers[0]
+        #     logging.root.removeHandler(default_handler)
         # logging.basicConfig(filename=log_file,
         #                     level=logging.DEBUG,
         #                     format=logging_format)
@@ -2478,10 +2477,9 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
 
         # I don't know why a root handler is already set,
         # but we have to remove him in order to change the basicConfig
-        if len(logging.root.handlers) == 1:
-            default_handler = logging.root.handlers[0]
-            logging.root.removeHandler(default_handler)
-
+        # if len(logging.root.handlers) == 1:
+        #     default_handler = logging.root.handlers[0]
+        #     logging.root.removeHandler(default_handler)
         # logging.basicConfig(stream=sys.stdout,
         #                     level=logging.DEBUG,
         #                     format=logging_stdout_format)
