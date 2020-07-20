@@ -15,7 +15,10 @@
 The
 .Nm
 script takes files and directories as input with given flags and
-prints out a readable result of found HTCondor log files
+prints out a readable result of found HTCondor log files.
+The default and analyser mode can also show a look inside a running process,
+however it's not meaningful for summation purposes,
+so that all summation modes will only focus on terminated jobs.
 .Pp
 Its arguments are as follows:
 .Bl -tag -width Ds
