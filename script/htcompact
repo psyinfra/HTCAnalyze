@@ -36,6 +36,7 @@ to see for ex. the average runtime and usage of all the logs
 # Todo: summary mode remake
 # Todo: an extra mode for running progresses ???
 # Todo: pytest
+# Todo: script is not accepting IPv6 yet
 
 
 def initialize():
@@ -76,7 +77,8 @@ def initialize():
     ignore_list = list()
     allowed_ignore_values = ["execution-details", "times",
                              "gpu", "cpu", "host-nodes",
-                             "used-resources", "requested-resources", "allocated-resources", "all-resources",
+                             "used-resources", "requested-resources",
+                             "allocated-resources", "all-resources",
                              "errors", "warnings"]
     # Todo: used-resources, requested-resources, times, gpus, cpu, errors, warnings]
 
@@ -261,8 +263,10 @@ def manage_params():
 
             # catch unusual but not wrong parameters starting with -
             if arg.startswith("-"):
-                rprint("[yellow]The argument for {0} is {1}, is that wanted?[/yellow]".format(opt, arg))
-                logging.warning("The argument for {0} is {1}, is that wanted?".format(opt, arg))
+                rprint("[yellow]The argument for {0} is {1}, "
+                       "is that wanted?[/yellow]".format(opt, arg))
+                logging.warning("The argument for {0} is {1}, "
+                                "is that wanted?".format(opt, arg))
 
             elif opt in ["-m", "--mode"]:
 
@@ -600,11 +604,14 @@ def log_to_dataframe(file):
         job_df = pd.DataFrame({})
         res_df = pd.DataFrame({})
 
-        if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
+        # if the last job event is : Job terminated
+        if job_events[-1][0].__eq__("005"):
 
             # calculate the runtime for the job
-            executed_date = datetime.datetime.strptime(job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-            terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
+            executed_date = datetime.datetime.strptime(
+                job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
+            terminating_date = datetime.datetime.strptime(
+                job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
             runtime = terminating_date - executed_date  # calculation of the time runtime
 
             match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
@@ -616,7 +623,7 @@ def log_to_dataframe(file):
                 port = match_host[2]
             else:
                 logging.exception("Host and port haven't been matched correctly")
-                rprint("[red]your log file has faulty values for the host ip make sure it's a valid IPv4[/red]")
+                rprint("[red]faulty values for the host ip make sure it's a valid IPv4[/red]")
 
             # make a fancy design for the job_information
             job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
@@ -632,7 +639,8 @@ def log_to_dataframe(file):
 
                     if "Normal termination" in match_termination_state[1]:
                         job_information.insert(0, match_termination_state[1])
-                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
+                                                      termination_state_inf)
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
                             logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
@@ -643,7 +651,8 @@ def log_to_dataframe(file):
                     elif "Abnormal termination" in match_termination_state[1]:
                         job_information.insert(0, "[red]"+match_termination_state[1]+"[/red]")
 
-                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
+                                                      termination_state_inf)
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
                             logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
@@ -696,14 +705,16 @@ def log_to_dataframe(file):
                 # done, partitionable_resources contain now only information about used resources
 
             # match all resources
-            # ****************************************************************************************************
-            match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
+            # ***************************************************************************************
+            match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)",
+                             partitionable_res[0])
             if match:
                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
             else:
                 raise_value_error("Something went wrong reading the cpu information")
 
-            match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
+            match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)",
+                             partitionable_res[1])
             if match:
                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
             else:
@@ -719,7 +730,8 @@ def log_to_dataframe(file):
                 gpu_match_index += 1
                 gpu_found = True
 
-            match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[gpu_match_index])
+            match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)",
+                             partitionable_res[gpu_match_index])
             if match:
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
             else:
@@ -789,8 +801,10 @@ def log_to_dataframe(file):
 
                 # calculate the runtime for the job
                 if job_events[-1].__ne__(job_events[0]):
-                    executed_date = datetime.datetime.strptime(job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-                    terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
+                    executed_date = datetime.datetime.strptime(
+                        job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
+                    terminating_date = datetime.datetime.strptime(
+                        job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
 
                     waiting_time = executed_date - submitted_date  # calculate the waiting time
                     today = datetime.datetime.now()  # get todays date
@@ -818,7 +832,8 @@ def log_to_dataframe(file):
 
                 if job_events[-1].__ne__(job_events[0]):
 
-                    executed_date = datetime.datetime.strptime(job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
+                    executed_date = datetime.datetime.strptime(
+                        job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
 
                     waiting_time = executed_date - submitted_date  # calculate the waiting time
                     today = datetime.datetime.now()
