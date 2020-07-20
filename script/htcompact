@@ -2558,11 +2558,12 @@ def validate_given_logs(file_list):
             # else if path "might" be a valid HTCondor file
             elif working_file_path.__ne__(""):
                 progress.update(task, advance=1)
+                #print(working_file_path)
 
                 if std_err.__ne__("") and working_file_path.endswith(std_err) or \
                         std_out.__ne__("") and working_file_path.endswith(std_out):
-                    logging.debug(f"Only log files are accepted, this file will be ignored:\n {working_file_path}")
-                    break
+                    logging.debug(f"Only log files accepted, ignored this file: {working_file_path}")
+                    continue
 
                 with open(working_file_path, "r") as read_file:
 
