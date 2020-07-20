@@ -12,6 +12,7 @@ import configparser
 import pandas as pd
 import numpy as np
 from rich import print as rprint
+from rich import logging as rlog
 from rich.progress import track, Progress
 from tabulate import tabulate
 from plotille import Figure
@@ -29,6 +30,12 @@ but also it's possible to summarize a whole directory with logs
 to see for ex. the average runtime and usage of all the logs
 
 """
+
+# Todos:
+# Todo: rich progress bar collision with verbose mode looks ugly
+# Todo: summary mode remake
+# Todo: an extra mode for running progresses ???
+# Todo: pytest
 
 
 def initialize():
@@ -374,23 +381,19 @@ Usage: htcompact (log_files|config_file) [ Arguments ]
 
 ----------------------------Main features:---------------------------------
 
- -s | --summarize
+ --mode summary
          summarizes all given HTCondor log files and return a result
          regarding the averange usages and runtimes, this only makes
          sense, if multiple log files are given
 
- -a | --analyse
-         analyses a specific file, for occurred errors, ram history ->
-         histogram, execution status, runtime and much more
+ --mode analyse
+        analyses a specific file, for occurred errors, ram history ->
+        histogram, execution status, runtime and much more
 
- --search keywords
-         search inside the given files or directories
-         for the given keywords,
-         if you want to give more than one keyword,
-         use the string notation "keyword1 keyword2 ...",
+ --mode analysed-summary
+        A combination of both modes, which gives a more detailed overview
 
-
-More detailed descriptions and help on other options with:
+ More detailed descriptions and help on other options with:
  "man htcompact" or "htcompact -h"
     """
     # returns this docstring
@@ -2558,7 +2561,6 @@ def validate_given_logs(file_list):
             # else if path "might" be a valid HTCondor file
             elif working_file_path.__ne__(""):
                 progress.update(task, advance=1)
-                #print(working_file_path)
 
                 if std_err.__ne__("") and working_file_path.endswith(std_err) or \
                         std_out.__ne__("") and working_file_path.endswith(std_out):
@@ -2634,6 +2636,7 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
         stdout_formatter = logging.Formatter(logging_stdout_format)
 
         stdout_handler = logging.StreamHandler(sys.stdout)
+        #stdout_handler = rlog.RichHandler(logging.DEBUG, console=sys.stdout)
         stdout_handler.setLevel(logging.DEBUG)
         stdout_handler.setFormatter(stdout_formatter)
         log = logging.getLogger()
