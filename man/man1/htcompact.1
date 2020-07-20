@@ -31,37 +31,39 @@ This will print a small help function, just like this.
 .It Fl Fl print-events-table
 Print all 34 HTCondor events, with description, known at this time (29.06.2020)
 .
-.It Fl d | Fl Fl default
-turns on the default output mode which is usually already true.
-This is only necessary, if for example the analyser mode is turned on
-(set by the config file) and should be ignored for a single run.
-An other usage is related to the --filter option,
-see the --filter section below.
+.It Fl m Ar mode | Fl Fl mode Ar mode
+Specify the mode, to interpret HTCondor log files,
+.Bd -literal
+Valid arguments:
+ ['a' or 'analyse', 's' or 'summarize',
+ 'as' or 'analysed-summary', 'd' or 'default']
+.Ed
+.Bd -literal
+the standard mode of the script is 'default'
+.Ed
 .
-.It Fl s | Fl Fl summarize
-summarizes all given HTCondor log files and return a result regarding the
-average usages and runtimes, this only makes sense, if multiple log files are
-given
+.Bd -literal
+.It Fl s
+Short for '--mode summarize'
+In combination with -a, it's the same as --mode analysed-summary
+.Ed
 .
-.It Fl a | Fl Fl analyse
-analyses a specific file, for occurred errors, ram history -> histogram,
-execution status, runtime and much more
+.Bd -literal
+.It Fl a
+Short for '--mode analyse'.
+In combination with -s, it's the same as --mode analysed-summary
+.Ed
 .
 .It Fl Fl filter Ar keywords Op OPTIONS
 Its options are as follows:
 .Bl -tag -width Ds
 .It Ar OPTIONS
-.Op Fl d | Fl Fl default
-.Op Fl s | Fl Fl summarize
-.Op Fl a | Fl Fl analyse
+.Op Fl m Ar mode | Fl Fl mode Ar mode
 .Op Fl Fl extend
 .
-.It Fl d | Fl Fl default
-Print the default output with the returned files
-.It Fl s | Fl Fl summarize
-Summarise the returned files
-.It Fl a | Fl Fl analyse
-Analyse the returned files
+.It Fl m Ar mode | Fl Fl mode Ar mode
+Forward the results, to be processed.
+Example: analyse the results
 .It Fl Fl extend
 will include these keywords:
 .Bd -literal

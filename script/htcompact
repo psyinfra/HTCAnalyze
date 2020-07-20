@@ -38,17 +38,17 @@ def initialize():
     """
     global accepted_states, files, option_shorts, option_longs, \
         ignore_list, allowed_ignore_values, no_config, reverse_dns_lookup, \
-        store_dns_lookups, default_mode, summarizer_mode, analyser_mode, verbose_mode, \
+        store_dns_lookups, verbose_mode, \
         to_csv, generate_log_file, filter_mode, filter_keywords, filter_extended, \
         colors, low_usage_threshold, bad_usage_threshold, std_log, std_err, std_out, \
         default_configfile, table_format, reading_stdin, redirecting_output,\
-        show_list, allowed_show_values
+        show_list, allowed_show_values, mode, allowed_modes
 
     # global parameters, used for dynamical output of information
     accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
     files = list()
-    option_shorts = "hsadv"
-    option_longs = ["help", "version", "verbose",
+    option_shorts = "hsadvm:"
+    option_longs = ["help", "version", "verbose", "mode=",
                     "std-log=", "std-err=", "std-out=",
                     "ignore=", "show-more=", "no-config", "to-csv",
                     "summarize", "analyse", "generate-log-file",
@@ -56,6 +56,12 @@ def initialize():
                     "reverse-dns-lookup", "table-format="]
 
     # show more information, mostly given by HTCompact .err and .out files
+    mode = None
+    allowed_modes = {"a": "analyse",
+                     "s": "summarize",
+                     "as": "analysed-summary",
+                     "d": "default"}
+
     show_list = list()
     allowed_show_values = ["errors", "warnings", "output"]
 
@@ -73,14 +79,13 @@ def initialize():
     # Features:
     reverse_dns_lookup = False
     store_dns_lookups = dict()
-    default_mode = False  # just for the search function to determine if default output should be printed
-    summarizer_mode = False
-    analyser_mode = False
-    verbose_mode = False
     to_csv = False
+
     # logging tool
     generate_log_file = False
+    verbose_mode = False
 
+    # filter mode
     filter_mode = False
     filter_keywords = ""
     filter_extended = False
@@ -218,15 +223,19 @@ def manage_params():
 
     """
     global files  # list of files and directories
+    global mode  # what mode are we on
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_list  # show more
     global ignore_list  # ignore information variables
-    global to_csv, summarizer_mode, analyser_mode, default_mode  # features
+    global to_csv
     global filter_mode, filter_keywords, filter_extended  # search features
     global table_format  # table_format can be changed
     global reverse_dns_lookup  # if set host ip's will be looked up in dns server
 
     global option_shorts, option_longs
+
+    summarizer_mode = False
+    analyser_mode = False
 
     all_args = sys.argv[1:]
 
@@ -248,12 +257,24 @@ def manage_params():
                 rprint("[yellow]The argument for {0} is {1}, is that wanted?[/yellow]".format(opt, arg))
                 logging.warning("The argument for {0} is {1}, is that wanted?".format(opt, arg))
 
-            elif opt in ["-s", "--summarize"]:
+            elif opt in ["-m", "--mode"]:
+
+                if arg in allowed_modes.keys():
+                    mode = allowed_modes.get(arg)
+                elif arg in allowed_modes.values():
+                    mode = arg
+                else:
+                    raise_value_error("Invalid argument '" + arg + "'\n"
+                                      "Valid arguments:\n" +
+                                      ", ".join("'{}' or '{}'".format(key, value)
+                                                for key, value in allowed_modes.items()))
+
+                logging.debug("Starting the: "+mode+" mode")
+
+            elif opt.__eq__("-s"):
                 summarizer_mode = True
-            elif opt in ["-a", "--analyse"]:
+            elif opt.__eq__("-a"):
                 analyser_mode = True
-            elif opt in ["-d", "--default"]:
-                default_mode = True
             elif opt in ["--filter"]:
                 filter_mode = True
                 filter_keywords = arg
@@ -332,6 +353,13 @@ def manage_params():
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
         print(small_help())
         sys.exit(1)
+
+    if summarizer_mode and analyser_mode:
+        mode = "analysed-summary"
+    elif summarizer_mode:
+        mode = "summarize"
+    elif analyser_mode:
+        mode = "analyse"
 
     if len(files) == 0:
         logging.debug("No files given")
@@ -1234,22 +1262,20 @@ def load_config(config_file):
                 logging.debug(f"Changed default bad_usage to: {bad_usage_threshold}")
 
         if "modes" in sections:
-            global filter_mode, default_mode, summarizer_mode, analyser_mode
+            global filter_mode, mode
             if 'filter_mode' in config['modes']:
                 filter_mode = config['modes']['filter_mode'].lower() in accepted_states
                 logging.debug(f"Changed filter_mode to: {filter_mode}")
 
-            # if 'default_mode' in config['modes']:
-            #     default_mode = config['modes']['default_mode'].lower() in accepted_states
-            #     logging.debug(f"Changed default_mode to: {default_mode}")
-
-            if 'summarizer_mode' in config['modes']:
-                summarizer_mode = config['modes']['summarizer_mode'].lower() in accepted_states
-                logging.debug(f"Changed summarizer_mode to: {summarizer_mode}")
-
-            if 'analyser_mode' in config['modes']:
-                analyser_mode = config['modes']['analyser_mode'].lower() in accepted_states
-                logging.debug(f"Changed analyser_mode to: {analyser_mode}")
+            if 'mode' in config['modes']:
+                mode_tmp = config['modes']['mode'].lower()
+                if mode_tmp in allowed_modes.values():
+                    mode = mode_tmp
+                elif mode_tmp in allowed_modes.keys():
+                    mode = allowed_modes.get(mode_tmp)
+                else:
+                    mode = None
+                logging.debug(f"Changed mode to: {mode}")
 
         if "filter" in sections:
             global filter_keywords, filter_extended
@@ -1298,6 +1324,15 @@ def _int_formatter(val, chars, delta, left=False):
 
 # Todo: err and output not visible ???
 def default(log_files):
+    """
+    Print the default output for a given list of log files
+
+    This mode is just an easy view,
+     on what the script is actually doing.
+
+    :param log_files:
+    :return: list of dicts
+    """
 
     logging.info('Starting the default mode')
 
@@ -2288,15 +2323,15 @@ def filter_for(log_files, keywords, extend=False):
 
     else:
         print(f"Total count: {len(found_logs)}")
-        if default_mode:
+        if mode.__eq__("default"):
             output_string = default(found_logs)
-        elif analyser_mode and summarizer_mode:
+        elif mode.__eq__("analysed-summary"):
             rprint("[magenta]Try to give an analysed summary for these files[/magenta]")
             output_string = analysed_summary(found_logs)
-        elif summarizer_mode:
+        elif mode.__eq__("summarize"):
             rprint("[magenta]Try to summarize these files[/magenta]")
             output_string = summarize(found_logs)
-        elif analyser_mode:
+        elif mode.__eq__("analyse"):
             rprint("[magenta]Try to analyse these files[/magenta]")
             output_string = analyse(found_logs)
         elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
@@ -2445,14 +2480,17 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
     # disable the loggeing tool by default
     logging.getLogger().disabled = True
 
+    # I don't know why a root handler is already set,
+    # but we have to remove him in order
+    # to get just the output of our own handler
+    if len(logging.root.handlers) == 1:
+        default_handler = logging.root.handlers[0]
+        logging.root.removeHandler(default_handler)
+
     # if logging tool is set to use
     if generate_log_file:
+        # activate logger if not already activated
         logging.getLogger().disabled = False
-        # I don't know why a root handler is already set,
-        # but we have to remove him in order to change the basicConfig
-        # if len(logging.root.handlers) == 1:
-        #     default_handler = logging.root.handlers[0]
-        #     logging.root.removeHandler(default_handler)
         # logging.basicConfig(filename=log_file,
         #                     level=logging.DEBUG,
         #                     format=logging_format)
@@ -2471,11 +2509,6 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
     if verbose_mode:
         # activate logger if not already activated
         logging.getLogger().disabled = False
-        # I don't know why a root handler is already set,
-        # but we have to remove him in order to change the basicConfig
-        # if len(logging.root.handlers) == 1:
-        #     default_handler = logging.root.handlers[0]
-        #     logging.root.removeHandler(default_handler)
         # logging.basicConfig(stream=sys.stdout,
         #                     level=logging.DEBUG,
         #                     format=logging_stdout_format)
@@ -2524,19 +2557,20 @@ def escape_seq_when_redirect():
 
 
 # Todo: a lot of information can still not be ignored
+# Todo: a function to format the output
 def customize_results():
 
     output_string = ""
 
     if filter_mode:
         results = filter_for(files, filter_keywords, filter_extended)
-    elif default_mode:
+    elif mode.__eq__("default"):
         results = default(files)  # force default with -d
-    elif summarizer_mode and analyser_mode:
+    elif mode.__eq__("analysed-summary"):
         results = analysed_summary(files)  # analysed summary ?
-    elif summarizer_mode:
+    elif mode.__eq__("summarize"):
         results = summarize(files)  # summarize information
-    elif analyser_mode:
+    elif mode.__eq__("analyse"):
         results = analyse(files)  # analyse the given files
     else:
         results = default(files)  # anyways try to print default output
@@ -2580,7 +2614,7 @@ def customize_results():
     return output_string
 
     # these might be added in future:
-    # Todo: gpus, cpu, errors, warnings
+    # Todo: gpus, cpu, warnings
 
 
 if __name__ == "__main__":
