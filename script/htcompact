@@ -576,7 +576,7 @@ Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with t
     return ["This event number does not exist", "Valid event numbers range from 000 to 034"]
 
 
-def raise_value_error(message):
+def raise_value_error(message: str) -> ValueError:
     raise ValueError(message)
 
 
@@ -584,11 +584,12 @@ def raise_value_error(message):
 # Todo: Read HTCondor Errors that occurred
 # Todo: for loop instead of single run
 # Todo: termination types are dynamical
-def log_to_dataframe(file):
+def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
     """
         Read the log file and filter useful information.
         Structur it in a way, that later two different dataframes will be retuned.
 
+    :type file: str
     :param file: HTCondor log file
     :return: job_df, res_df
 
@@ -889,12 +890,13 @@ def log_to_dataframe(file):
 
 
 # reads all information, but returns them in two lists
-def read_condor_log(file):
+def read_condor_log(file: str) -> (list, list):
     """
 
     reads a given HTCondor std_log file and separates the information in two lists,
     for further and easier access
 
+    :type file: str
     :param file:    a HTCondor std_log file
 
     :raises: :class:'FileNotFoundError': if open does not work
@@ -1182,7 +1184,7 @@ def log_to_dict(file):
     return result_dict
 
 
-def find_config():
+def find_config() -> 'configfile':
     """
 
         Try to find a config file in the given arguments.
@@ -1297,7 +1299,7 @@ def find_config():
 
 
 # search for config file ( UNIX BASED )
-def load_config(config_file):
+def load_config(config_file: 'file'):
 
     config = configparser.ConfigParser()
 
@@ -1437,7 +1439,7 @@ def _int_formatter(val, chars, delta, left=False):
 
 
 # Todo: err and output not visible ???
-def default(log_files):
+def default(log_files: 'file') -> 'list_with_dicts':
     """
     Print the default output for a given list of log files
 
@@ -1487,7 +1489,7 @@ def default(log_files):
 
 # Todo: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
 #       until now there is not the need for other filters but it might be needed to extend this fucntion
-def analyse(log_files):
+def analyse(log_files: 'file') -> 'list_with_dicts':
 
     logging.info('Starting the analyser mode')
 
@@ -1829,7 +1831,7 @@ def analyse(log_files):
 
 # Todo: what means sucessful executed ?
 # Todo: remake
-def summarize(log_files):
+def summarize(log_files: 'file') -> 'list_with_dicts':
     """
     Summarises all used resources and the runtime in total and average
 
@@ -2035,14 +2037,14 @@ def summarize(log_files):
         })
         result_dict["host-nodes"] = tabulate(df_cpu, showindex=False, headers='keys', tablefmt=table_format)
 
-    return result_dict
+    return [result_dict]
 
 
 # Todo more specific control what to print out
 # Todo ram histogram, BUT HOW
 # Todo get files for which the specific termination state appeared ( if not nomral ???)
 # Todo: separate Gpus from another
-def analysed_summary(log_files):
+def analysed_summary(log_files: 'file') -> 'list_with_dicts':
     """
         analyse the summarized log files,
         this is meant to give the ultimate output
@@ -2399,8 +2401,21 @@ def analysed_summary(log_files):
 # search in the files for the keywords
 # Todo: show which keywords have been found and which not
 # Todo: AND option, ONLY option
-def filter_for(log_files, keywords, extend=False):
+def filter_for(log_files: 'file', keywords: 'list', extend=False) -> 'list_with_dicts':
+    """
+    Filter for a list of keywords, which can be extended
+    and print out every file which matches the pattern (not case sensitive)
+    The filtered files can be analysed summarise, etc afterwards,
+    else this function will return None
 
+    :param log_files:
+    :param keywords:
+    :param extend:
+    :return:
+        list with dicts depending on the used mode, to forward the filtered files,
+
+        None if no forwarding is set
+    """
     logging.info('Starting the filter mode')
 
     keyword_list = keywords.split()
@@ -2450,40 +2465,45 @@ def filter_for(log_files, keywords, extend=False):
                     found_logs.append(file)
                     break
 
-    output_string = ""
+    return_dicts = None
     if not found_at_least_one:
         rprint(f"[red]Unable to find these keywords:[/red]", keyword_list)
         rprint(f"[red]maybe try again with similar expressions[/red]")
 
-    else:
+    elif mode is not None:
         print(f"Total count: {len(found_logs)}")
         if mode.__eq__("default"):
-            output_string = default(found_logs)
+            return_dicts = default(found_logs)
         elif mode.__eq__("analysed-summary"):
             rprint("[magenta]Try to give an analysed summary for these files[/magenta]")
-            output_string = analysed_summary(found_logs)
+            return_dicts = analysed_summary(found_logs)
         elif mode.__eq__("summarize"):
             rprint("[magenta]Try to summarize these files[/magenta]")
-            output_string = summarize(found_logs)
+            return_dicts = summarize(found_logs)
         elif mode.__eq__("analyse"):
             rprint("[magenta]Try to analyse these files[/magenta]")
-            output_string = analyse(found_logs)
+            return_dicts = analyse(found_logs)
         elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
             rprint("[blue]Want do do more?[/blue]")
             x = input("default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
             if x == "d":
-                output_string = default(found_logs)
+                return_dicts = default(found_logs)
             elif x == "s":
-                output_string = summarize(found_logs)
+                return_dicts = summarize(found_logs)
             elif x == "a":
-                output_string = analyse(found_logs)
+                return_dicts = analyse(found_logs)
             elif x == "as":
-                output_string = analysed_summary(found_logs)
+                return_dicts = analysed_summary(found_logs)
+            elif x== "e":
+                sys.exit(0)
+            else:
+                print('Not a valid argument, quitting ...')
+                sys.exit(0)
 
-    return output_string
+    return return_dicts
 
 
-def validate_given_logs(file_list):
+def validate_given_logs(file_list: 'list_of_files'):
     """
     This method is supposed to take the given log files (by config or command line argument)
     and tries to determine if these are valid log files, ignoring the std_log specification, if std_log = "".
@@ -2709,6 +2729,10 @@ def customize_results():
         results = analyse(files)  # analyse the given files
     else:
         results = default(files)  # anyways try to print default output
+
+    # This can happen, when for example the filter mode is not forwarded
+    if results is None:
+        sys.exit(0)
 
     work_with = results
     # convert result to list, if given as dict
