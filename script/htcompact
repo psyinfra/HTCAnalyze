@@ -55,12 +55,11 @@ def initialize():
     # global parameters, used for dynamical output of information
     accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
     files = list()
-    option_shorts = "hsadvm:"
+    option_shorts = "hsavm:"
     option_longs = ["help", "version", "verbose", "mode=",
                     "std-log=", "std-err=", "std-out=",
                     "ignore=", "show-more=", "no-config", "to-csv",
-                    "summarize", "analyse", "generate-log-file",
-                    "filter=", "extend", "print-events-table",
+                    "generate-log-file", "filter=", "extend", "print-event-table",
                     "reverse-dns-lookup", "table-format="]
 
     # show more information, mostly given by HTCompact .err and .out files
@@ -128,6 +127,34 @@ def initialize():
     redirecting_output = False
 
 
+def check_for_redirection():
+    """
+    This method should be activated first, when output is generated
+    it does nothing, if output is printed to the terminal.
+    If output gets redirected with > or | or other redirection tools, ignore escape sequences
+    by setting them to ""
+    :return:
+    """
+    # if output gets redirected with > or | or other redirection tools, ignore escape sequences
+    global reading_stdin, redirecting_output  # it is easier to save this globaly, because if whe change
+
+    reading_stdin = not sys.stdin.isatty()
+    redirecting_output = not sys.stdout.isatty()
+
+    if redirecting_output:
+        global colors
+        colors = {
+            'red': "",
+            'green': "",
+            'yellow': "",
+            'magenta': "",
+            'cyan': "",
+            'blue': "",
+            'light_grey': "",
+            'back_to_default': ""
+        }
+
+
 # Todo: adjust this method to accept all values,
 #  that are related to an option and interpret
 #  the first one which does not as a file again
@@ -149,6 +176,9 @@ def remove_files_from_args(args, short_opts, long_opts):
     :param long_opts: the long getopt options
     :return: list of getopt arguments
     """
+    if type(args) != list:
+        raise_value_error("Expecting a list as argument")
+
     new_args = args.copy()
     generate_files = list()
     index = 0
@@ -185,13 +215,16 @@ def remove_files_from_args(args, short_opts, long_opts):
     return new_args
 
 
-def manage_prioritized_params():
+def manage_prioritized_params(args):
+
+    if type(args) != list:
+        raise_value_error("Expecting a list as argument")
 
     global option_shorts, option_longs
     global no_config, generate_log_file, verbose_mode
 
     # if for whatever reasons files were given
-    better_args = remove_files_from_args(sys.argv[1:], option_shorts, option_longs)
+    better_args = remove_files_from_args(args, option_shorts, option_longs)
 
     try:
         opts, args = getopt.getopt(better_args, option_shorts, option_longs)
@@ -205,7 +238,7 @@ def manage_prioritized_params():
             if opt.__eq__("--version"):
                 # Todo:
                 sys.exit(0)
-            if opt.__eq__("--print-events-table"):
+            if opt.__eq__("--print-event-table"):
                 print(get_event_information())
                 sys.exit(0)
 
@@ -226,7 +259,7 @@ def manage_prioritized_params():
 
 
 # Todo: thresholds by command line
-def manage_params():
+def manage_params(args):
     """
     Interprets the given command line arguments and changes the global variables in this scrips
 
@@ -246,7 +279,7 @@ def manage_params():
     summarizer_mode = False
     analyser_mode = False
 
-    all_args = sys.argv[1:]
+    all_args = args
 
     # listen to stdin and add these files
     if reading_stdin:  # else the script will be waiting fro stdin
@@ -2679,38 +2712,6 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
         log.addHandler(stdout_handler)
 
 
-def escape_seq_when_redirect():
-    """
-    This method should be activated first, when output is generated
-    it does nothing, if output is printed to the terminal.
-    If output gets redirected with > or | or other redirection tools, ignore escape sequences
-    by setting them to ""
-    :return:
-    """
-    # if output gets redirected with > or | or other redirection tools, ignore escape sequences
-    if redirecting_output:
-        global colors
-        colors = {
-            'red': "",
-            'green': "",
-            'yellow': "",
-            'magenta': "",
-            'cyan': "",
-            'blue': "",
-            'light_grey': "",
-            'back_to_default': ""
-        }
-        # global red, green, yellow, magenta, cyan, blue, lightgrey, back_to_default
-        # red = ""
-        # green = ""
-        # yellow = ""
-        # magenta = ""
-        # cyan = ""
-        # blue = ""
-        # lightgrey = ""
-        # back_to_default = ""
-
-
 # Todo: a lot of information can still not be ignored
 # Todo: a function to format the output
 def customize_results():
@@ -2787,18 +2788,15 @@ if __name__ == "__main__":
     """
     try:
 
-        initialize()
+        initialize()  # initialize global parameters
 
-        global reading_stdin, redirecting_output  # it is easier to save this globaly, because if whe change
+        check_for_redirection()  # set the color sequenzes to ""
 
-        reading_stdin = not sys.stdin.isatty()
-        redirecting_output = not sys.stdout.isatty()
-
-        escape_seq_when_redirect()  # set the color sequenzes to ""
+        commandline_args = sys.argv[1:]
 
         # if exit parameters are given that will interrupt this script, like --help,
         # catch them here so the config won't be unnecessary loaded
-        manage_prioritized_params()
+        manage_prioritized_params(commandline_args)
 
         # if not --no-config is set:
         # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
@@ -2825,7 +2823,7 @@ if __name__ == "__main__":
 
         # after that, interpret the command line arguments, these will have a higher priority, than the config setup
         # and by that arguments set in the config file, will be ignored
-        manage_params()
+        manage_params(commandline_args)
 
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
