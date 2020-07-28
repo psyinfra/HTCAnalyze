@@ -2451,7 +2451,7 @@ def filter_for(log_files: 'file', keywords: 'list', extend=False) -> 'list_with_
     """
     logging.info('Starting the filter mode')
 
-    keyword_list = keywords.split()
+    keyword_list = " ".join(re.split(',| ', keywords)).split()  # remove spaces and commas from string
 
     # if extend is set, keywords like err will also look for keywords like warn exception, aborted, etc.
     if extend:  # apply some rules

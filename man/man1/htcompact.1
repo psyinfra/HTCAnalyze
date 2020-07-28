@@ -78,7 +78,8 @@ will include these keywords:
 search inside the given files or directories
 for the given keywords,
 if you want to give more than one keyword,
-use the string notation "keyword1 keyword2 ...",
+use the string notation: "keyword1 keyword2 ...",
+or the comma notation:    keyword1,keyword2,...
 .Ed
 .Bd -literal
 you can forward the result to be processed
@@ -94,8 +95,7 @@ that is not normal, use --extend:
 .Bd -literal
 Small example:
 --filter "exception gpu" -s
--> this will summarize all matched files,
-having "exception" OR "gpu" inside
+--filter error,warnings --mode analyse
 .Ed
 .
 .It Fl Fl std-log Ar standard-log
