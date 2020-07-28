@@ -343,21 +343,23 @@ def manage_params(args):
 
             # show more specific information
             elif opt.__eq__("--show-more"):
-                for arg_s in arg.split():
-                    if arg_s in allowed_show_values:
-                        show_list.append(arg_s)
+                keywords = " ".join(re.split(',| ', arg)).split()
+                for keyword in keywords:
+                    if keyword in allowed_show_values:
+                        show_list.append(keyword)
                     else:
-                        raise_value_error("Invalid argument '" + arg_s + "'\n"
+                        raise_value_error("Invalid argument '" + keyword + "'\n"
                                           "Valid arguments:\n" + ", ".join(allowed_show_values))
-                logging.debug("Show these information: " + ", ".join(ignore_list))
+                logging.debug("Show these information: " + ", ".join(show_list))
 
             # all variables to ignore unwanted information
             elif opt.__eq__("--ignore"):
-                for arg_s in arg.split():
-                    if arg_s in allowed_ignore_values:
-                        ignore_list.append(arg_s)
+                keywords = " ".join(re.split(',| ', arg)).split()
+                for keyword in keywords:
+                    if keyword in allowed_ignore_values:
+                        ignore_list.append(keyword)
                     else:
-                        raise_value_error("Invalid argument '" + arg_s + "'\n"
+                        raise_value_error("Invalid argument '" + keyword + "'\n"
                                           "Valid arguments:\n" + ", ".join(allowed_ignore_values))
                 logging.debug("Ignore these information: " + ", ".join(ignore_list))
 
