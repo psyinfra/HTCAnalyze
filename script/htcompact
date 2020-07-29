@@ -2718,7 +2718,7 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
 
 # Todo: a lot of information can still not be ignored
 # Todo: a function to format the output
-def customize_results():
+def customize_results(files):
 
     output_string = ""
 
@@ -2784,6 +2784,13 @@ def customize_results():
 def run(commandline_args):
     """
     Run this script
+
+    This searches first for a given config file.
+    After that, given parameters in the terminal will be interpreted, so they have a higher priority
+    given files will be validated and the logging tool will be managed
+    After that the user input will be used to process the output to the terminal,
+    which will contain information about the given log files
+
     :return:
     """
     try:
@@ -2824,13 +2831,13 @@ def run(commandline_args):
         manage_params(commandline_args)
 
         global files
-        files = validate_given_logs(files)  # validate the files, make a list of all valid config files
+        valid_files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
         if len(files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(1)
 
-        output_str = customize_results()
+        output_str = customize_results(valid_files)
 
         print(output_str)  # write it to the console
 
@@ -2843,14 +2850,12 @@ def run(commandline_args):
 
 if __name__ == "__main__":
     """
-    This is the main function, which searchs first for a given config file.
-    After that, given parameters in the terminal will be interpreted, so they have a higher priority
-
-    Then it will summarize all given log files together and print the output
+    This is the main function, which runs the script, if not imported as a module
 
     :return:
     """
     run(sys.argv[1:])
+    sys.exit(0)
 
 
 
