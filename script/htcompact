@@ -147,9 +147,11 @@ def check_for_redirection():
     # if output gets redirected with > or | or other redirection tools, ignore escape sequences
     global reading_stdin, redirecting_output, stdin_input  # it is easier to save this globaly, because if whe change
 
-    stdin_input = [line.strip() for line in sys.stdin.readlines()]
     reading_stdin = not sys.stdin.isatty()
     redirecting_output = not sys.stdout.isatty()
+
+    if reading_stdin:
+        stdin_input = sys.stdin.readlines()
 
     if redirecting_output:
         global colors
