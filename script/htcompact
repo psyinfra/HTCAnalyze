@@ -773,7 +773,7 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
             # check if the log has gpu information in between
             gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
             gpu_found = False  # easier to check to add information in the DataFrame
-            match = re.match(r"[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) \"(.*)\"",
+            match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
                              partitionable_res[gpu_match_index])
             if match:
                 gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
@@ -1704,7 +1704,7 @@ def analyse(log_files: 'file') -> 'list_with_dicts':
                 # check if the log has gpu information in between
                 gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
                 gpu_found = False  # easier to check to add information in the DataFrame
-                match = re.match(r"[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) \"(.*)\"",
+                match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
                                  partitionable_res[gpu_match_index])
                 if match:
                     gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
@@ -2228,7 +2228,7 @@ def analysed_summary(log_files: 'file') -> 'list_with_dicts':
                 # check if the log has gpu information in between
                 gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
                 gpu_found = False  # easier to check to add information in the DataFrame
-                match = re.match(r"[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) \"(.*)\"",
+                match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
                                  partitionable_res[gpu_match_index])
                 if match:
                     gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
