@@ -7,15 +7,34 @@
 .
 .Sh SYNOPSIS
 .Nm
-.Op FILES
-.Ar ...
-.Op OPTIONS
+.Op Ar
+.Op Fl hsav
+.Op Fl m Ar mode
+.Op Fl Fl help
+.Op Fl Fl version
+.Op Fl Fl verbose
+.Op Fl Fl mode Ar mode
+.Op Fl Fl std-log Ar suffix
+.Op Fl Fl std-out Ar suffix
+.Op Fl Fl std-err Ar suffix
+.Op Fl Fl ignore Ar keywords
+.Op Fl Fl show-more Ar keywords
+.Op Fl Fl no-config
+.Op Fl Fl to-csv
+.Op Fl Fl generate-log-file
+.Op Fl Fl filter Ar keywords Op Fl Fl extend
+.Op Fl Fl print-event-table
+.Op Fl Fl reverse-dns-lookup
+.Op Fl Fl table-format Ar tablefmt
 .
 .Sh DESCRIPTION
 The
 .Nm
 script takes files and directories as input with given flags and
-prints out a readable result of found HTCondor log files
+prints out a readable result of found HTCondor log files.
+The default and analyser mode can also show a look inside a running process,
+however it's not meaningful for summation purposes,
+so that all summation modes will only focus on terminated jobs.
 .Pp
 Its arguments are as follows:
 .Bl -tag -width Ds
@@ -31,37 +50,39 @@ This will print a small help function, just like this.
 .It Fl Fl print-events-table
 Print all 34 HTCondor events, with description, known at this time (29.06.2020)
 .
-.It Fl d | Fl Fl default
-turns on the default output mode which is usually already true.
-This is only necessary, if for example the analyser mode is turned on
-(set by the config file) and should be ignored for a single run.
-An other usage is related to the --filter option,
-see the --filter section below.
+.It Fl m Ar mode | Fl Fl mode Ar mode
+Specify the mode, to interpret HTCondor log files,
+.Bd -literal
+Valid arguments:
+ ['a' or 'analyse', 's' or 'summarize',
+ 'as' or 'analysed-summary', 'd' or 'default']
+.Ed
+.Bd -literal
+the standard mode of the script is 'default'
+.Ed
 .
-.It Fl s | Fl Fl summarize
-summarizes all given HTCondor log files and return a result regarding the
-average usages and runtimes, this only makes sense, if multiple log files are
-given
+.Bd -literal
+.It Fl s
+Short for '--mode summarize'
+In combination with -a, it's the same as --mode analysed-summary
+.Ed
 .
-.It Fl a | Fl Fl analyse
-analyses a specific file, for occurred errors, ram history -> histogram,
-execution status, runtime and much more
+.Bd -literal
+.It Fl a
+Short for '--mode analyse'.
+In combination with -s, it's the same as --mode analysed-summary
+.Ed
 .
 .It Fl Fl filter Ar keywords Op OPTIONS
 Its options are as follows:
 .Bl -tag -width Ds
 .It Ar OPTIONS
-.Op Fl d | Fl Fl default
-.Op Fl s | Fl Fl summarize
-.Op Fl a | Fl Fl analyse
+.Op Fl m Ar mode | Fl Fl mode Ar mode
 .Op Fl Fl extend
 .
-.It Fl d | Fl Fl default
-Print the default output with the returned files
-.It Fl s | Fl Fl summarize
-Summarise the returned files
-.It Fl a | Fl Fl analyse
-Analyse the returned files
+.It Fl m Ar mode | Fl Fl mode Ar mode
+Forward the results, to be processed.
+Example: analyse the results
 .It Fl Fl extend
 will include these keywords:
 .Bd -literal
@@ -73,7 +94,8 @@ will include these keywords:
 search inside the given files or directories
 for the given keywords,
 if you want to give more than one keyword,
-use the string notation "keyword1 keyword2 ...",
+use the string notation: "keyword1 keyword2 ...",
+or the comma notation:    keyword1,keyword2,...
 .Ed
 .Bd -literal
 you can forward the result to be processed
@@ -89,8 +111,7 @@ that is not normal, use --extend:
 .Bd -literal
 Small example:
 --filter "exception gpu" -s
--> this will summarize all matched files,
-having "exception" OR "gpu" inside
+--filter error,warnings --mode analyse
 .Ed
 .
 .It Fl Fl std-log Ar standard-log
@@ -124,6 +145,10 @@ Valid arguments are:
 
 errors and warnings regarding a stderr file (.err)
 output to get every line of the stdout file (.out)
+
+if you want to show multiple information,
+use the string notation: "keyword1 keyword2 ...",
+or the comma notation:    keyword1,keyword2,...
 .Ed
 .
 .It Fl Fl ignore Ar keywords
@@ -137,7 +162,8 @@ used-resources, requested-resources,
 allocated-resources, all-resources]
 
 if you want to ignore multiple information,
-use the string notation "keyword1 keyword2 ..."
+use the string notation: "keyword1 keyword2 ...",
+or the comma notation:    keyword1,keyword2,...
 .Ed
 .
 .It Fl Fl no-config

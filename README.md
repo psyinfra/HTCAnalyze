@@ -30,7 +30,7 @@ following dependencies are required:
 - [tabulate](https://pypi.org/project/tabulate/)
 - [plotille](https://pypi.org/project/plotille/)
 - [rich](https://pypi.org/project/rich/)
-- pandas (especially pandas.DataFrame)
+- [pandas](https://pypi.org/project/pandas/) (especially pandas.DataFrame)
 
 ## Getting Started
 - *htcompact --help* for detailed description
