@@ -31,6 +31,14 @@ to see for ex. the average runtime and usage of all the logs
 
 """
 
+# Exit Codes
+"""
+ Normal Termination: 0
+ Wrong Options or Arguments: 1
+ No given files: 2
+ Type Error within summation: 3
+"""
+
 # Todos:
 # Todo: rich progress bar collision with verbose mode looks ugly
 # Todo: summary mode remake
@@ -1971,7 +1979,7 @@ def summarize(log_files: 'file') -> 'list_with_dicts':
         except TypeError as err:
             logging.exception(err)
             rprint(f"[red] {err}[/red]")
-            sys.exit(2)
+            sys.exit(3)
 
     n = valid_files - aborted_files  # calc diffrenc of successful executed jobs
 
@@ -2345,50 +2353,62 @@ def analysed_summary(log_files: 'file') -> 'list_with_dicts':
             continue
 
         # now insert into all_files dictionary
-        if termination_type in all_files:
-            all_files[termination_type][0] += 1  # count number
-            all_files[termination_type][1] += waiting_time
-            all_files[termination_type][2] += runtime
-            all_files[termination_type][3] += total_time
-            if not all_files[termination_type][4].empty:
-                # add usages
-                all_files[termination_type][4]["Usage"] = pd.Series(
-                    all_files[termination_type][4]["Usage"].values +
-                    res_df["Usage"].values)
-                # add requested
-                all_files[termination_type][4]["Requested"] = pd.Series(
-                    all_files[termination_type][4]["Requested"].values +
-                    res_df["Requested"].values)
-                # allocated
-                all_files[termination_type][4]["Allocated"] = pd.Series(
-                    all_files[termination_type][4]["Allocated"].values + res_df["Allocated"].values)
+        try:
+            if termination_type in all_files:
+                all_files[termination_type][0] += 1  # count number
+                all_files[termination_type][1] += waiting_time
+                all_files[termination_type][2] += runtime
+                all_files[termination_type][3] += total_time
+                if not all_files[termination_type][4].empty:
+                    # add usages
+                    all_files[termination_type][4]["Usage"] = pd.Series(
+                        all_files[termination_type][4]["Usage"].values +
+                        res_df["Usage"].values)
+                    # add requested
+                    all_files[termination_type][4]["Requested"] = pd.Series(
+                        all_files[termination_type][4]["Requested"].values +
+                        res_df["Requested"].values)
+                    # allocated
+                    all_files[termination_type][4]["Allocated"] = pd.Series(
+                        all_files[termination_type][4]["Allocated"].values + res_df["Allocated"].values)
 
-            # add cpu
-            if to_host != "":
-                if to_host in all_files[termination_type][5].keys():
-                    all_files[termination_type][5][to_host][0] += 1
-                    all_files[termination_type][5][to_host][1] += total_time
+                # add cpu
+                if to_host != "":
+                    if to_host in all_files[termination_type][5].keys():
+                        all_files[termination_type][5][to_host][0] += 1
+                        all_files[termination_type][5][to_host][1] += total_time
+                    else:
+                        all_files[termination_type][5][to_host] = [1, total_time]
+                elif 'Aborted before submission' in all_files[termination_type][5].keys():
+                        all_files[termination_type][5]['Aborted before submission'][0] += 1
+                        all_files[termination_type][5]['Aborted before submission'][1] += total_time
                 else:
-                    all_files[termination_type][5][to_host] = [1, total_time]
-            elif 'Aborted before submission' in all_files[termination_type][5].keys():
-                    all_files[termination_type][5]['Aborted before submission'][0] += 1
-                    all_files[termination_type][5]['Aborted before submission'][1] += total_time
-            else:
-                count_host_nodes = dict()
-                count_host_nodes['Aborted before submission'] = [1, total_time]
-                all_files[termination_type][5] = count_host_nodes
+                    count_host_nodes = dict()
+                    count_host_nodes['Aborted before submission'] = [1, total_time]
+                    all_files[termination_type][5] = count_host_nodes
 
-        # else new entry
-        else:
-            # if host exists
-            if to_host != "":
-                count_host_nodes = dict()
-                count_host_nodes[to_host] = [1, total_time]
-                all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_host_nodes]
+            # else new entry
             else:
-                count_host_nodes = dict()
-                count_host_nodes['Aborted before submission'] = [1, total_time]
-                all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_host_nodes]
+                # if host exists
+                if to_host != "":
+                    count_host_nodes = dict()
+                    count_host_nodes[to_host] = [1, total_time]
+                    all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_host_nodes]
+                else:
+                    count_host_nodes = dict()
+                    count_host_nodes['Aborted before submission'] = [1, total_time]
+                    all_files[termination_type] = [1, waiting_time, runtime, total_time, res_df, count_host_nodes]
+
+        # Todo: test if valid here
+        # Error ocurres when Job was aborted
+        except ValueError or KeyError as err:
+            logging.exception(err)
+            rprint(f"[red]Error with summarizing: {file}[/red]")
+            continue
+        except TypeError as err:
+            logging.exception(err)
+            rprint(f"[red] {err}[/red]")
+            sys.exit(3)
 
     # now print out the summary
     for term_state in all_files:
@@ -2835,7 +2855,7 @@ def run(commandline_args):
 
         if len(files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
-            sys.exit(1)
+            sys.exit(2)
 
         output_str = customize_results(valid_files)
 
