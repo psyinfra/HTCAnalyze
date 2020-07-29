@@ -4,7 +4,7 @@ import pytest
 import mock
 import io
 import imp
-ht = imp.load_source('htcompact', '../script/htcompact')
+ht = imp.load_source('htcompact', 'script/htcompact')
 
 
 # To make a copy of stdin and stdout
@@ -223,3 +223,4 @@ def test_manage_prioritized_params():
         ht.manage_prioritized_params(test_error)
 
 
+# Todo: other methods test
