@@ -7,9 +7,25 @@
 .
 .Sh SYNOPSIS
 .Nm
-.Op FILES
-.Ar ...
-.Op OPTIONS
+.Op Ar
+.Op Fl hsav
+.Op Fl m Ar mode
+.Op Fl Fl help
+.Op Fl Fl version
+.Op Fl Fl verbose
+.Op Fl Fl mode Ar mode
+.Op Fl Fl std-log Ar suffix
+.Op Fl Fl std-out Ar suffix
+.Op Fl Fl std-err Ar suffix
+.Op Fl Fl ignore Ar keywords
+.Op Fl Fl show-more Ar keywords
+.Op Fl Fl no-config
+.Op Fl Fl to-csv
+.Op Fl Fl generate-log-file
+.Op Fl Fl filter Ar keywords Op Fl Fl extend
+.Op Fl Fl print-event-table
+.Op Fl Fl reverse-dns-lookup
+.Op Fl Fl table-format Ar tablefmt
 .
 .Sh DESCRIPTION
 The
@@ -78,7 +94,8 @@ will include these keywords:
 search inside the given files or directories
 for the given keywords,
 if you want to give more than one keyword,
-use the string notation "keyword1 keyword2 ...",
+use the string notation: "keyword1 keyword2 ...",
+or the comma notation:    keyword1,keyword2,...
 .Ed
 .Bd -literal
 you can forward the result to be processed
@@ -94,8 +111,7 @@ that is not normal, use --extend:
 .Bd -literal
 Small example:
 --filter "exception gpu" -s
--> this will summarize all matched files,
-having "exception" OR "gpu" inside
+--filter error,warnings --mode analyse
 .Ed
 .
 .It Fl Fl std-log Ar standard-log
@@ -129,6 +145,10 @@ Valid arguments are:
 
 errors and warnings regarding a stderr file (.err)
 output to get every line of the stdout file (.out)
+
+if you want to show multiple information,
+use the string notation: "keyword1 keyword2 ...",
+or the comma notation:    keyword1,keyword2,...
 .Ed
 .
 .It Fl Fl ignore Ar keywords
@@ -142,7 +162,8 @@ used-resources, requested-resources,
 allocated-resources, all-resources]
 
 if you want to ignore multiple information,
-use the string notation "keyword1 keyword2 ..."
+use the string notation: "keyword1 keyword2 ...",
+or the comma notation:    keyword1,keyword2,...
 .Ed
 .
 .It Fl Fl no-config
