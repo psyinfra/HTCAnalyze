@@ -2718,7 +2718,7 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
 
 # Todo: a lot of information can still not be ignored
 # Todo: a function to format the output
-def customize_results():
+def customize_results(files):
 
     output_string = ""
 
@@ -2781,12 +2781,15 @@ def customize_results():
     # Todo: gpus, cpu, warnings
 
 
-if __name__ == "__main__":
+def run(commandline_args):
     """
-    This is the main function, which searchs first for a given config file.
-    After that, given parameters in the terminal will be interpreted, so they have a higher priority
+    Run this script
 
-    Then it will summarize all given log files together and print the output
+    This searches first for a given config file.
+    After that, given parameters in the terminal will be interpreted, so they have a higher priority
+    given files will be validated and the logging tool will be managed
+    After that the user input will be used to process the output to the terminal,
+    which will contain information about the given log files
 
     :return:
     """
@@ -2795,8 +2798,6 @@ if __name__ == "__main__":
         initialize()  # initialize global parameters
 
         check_for_redirection()  # set the color sequenzes to ""
-
-        commandline_args = sys.argv[1:]
 
         # if exit parameters are given that will interrupt this script, like --help,
         # catch them here so the config won't be unnecessary loaded
@@ -2829,13 +2830,14 @@ if __name__ == "__main__":
         # and by that arguments set in the config file, will be ignored
         manage_params(commandline_args)
 
-        files = validate_given_logs(files)  # validate the files, make a list of all valid config files
+        global files
+        valid_files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
         if len(files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(1)
 
-        output_str = customize_results()
+        output_str = customize_results(valid_files)
 
         print(output_str)  # write it to the console
 
@@ -2844,5 +2846,16 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logging.info("Script was interrupted by the user")
         print("Script was interrupted")
+
+
+if __name__ == "__main__":
+    """
+    This is the main function, which runs the script, if not imported as a module
+
+    :return:
+    """
+    run(sys.argv[1:])
+    sys.exit(0)
+
 
 
