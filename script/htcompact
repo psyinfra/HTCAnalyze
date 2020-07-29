@@ -37,6 +37,7 @@ to see for ex. the average runtime and usage of all the logs
  Wrong Options or Arguments: 1
  No given files: 2
  Type Error within summation: 3
+ Keyboard interruption: 4
 """
 
 # Todos:
@@ -144,8 +145,9 @@ def check_for_redirection():
     :return:
     """
     # if output gets redirected with > or | or other redirection tools, ignore escape sequences
-    global reading_stdin, redirecting_output  # it is easier to save this globaly, because if whe change
+    global reading_stdin, redirecting_output, stdin_input  # it is easier to save this globaly, because if whe change
 
+    stdin_input = [line.strip() for line in sys.stdin.readlines()]
     reading_stdin = not sys.stdin.isatty()
     redirecting_output = not sys.stdout.isatty()
 
@@ -292,7 +294,7 @@ def manage_params(args):
     # listen to stdin and add these files
     if reading_stdin:  # else the script will be waiting fro stdin
         logging.debug("Listening to arguments from stdin")
-        for line in sys.stdin:
+        for line in stdin_input:
             all_args.append(line.rstrip('\n'))
 
     better_args = remove_files_from_args(all_args, option_shorts, option_longs)
@@ -2853,7 +2855,7 @@ def run(commandline_args):
         global files
         valid_files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
-        if len(files) == 0:
+        if len(valid_files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(2)
 
@@ -2863,9 +2865,12 @@ def run(commandline_args):
 
         logging.debug("-------End of htcompact script-------")
 
+        sys.exit(0)
+
     except KeyboardInterrupt:
         logging.info("Script was interrupted by the user")
         print("Script was interrupted")
+        sys.exit(4)
 
 
 if __name__ == "__main__":
@@ -2875,7 +2880,6 @@ if __name__ == "__main__":
     :return:
     """
     run(sys.argv[1:])
-    sys.exit(0)
 
 
 
