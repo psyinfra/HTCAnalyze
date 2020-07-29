@@ -12,6 +12,7 @@ import configparser
 import pandas as pd
 import numpy as np
 from rich import print as rprint
+from rich import logging as rlog
 from rich.progress import track, Progress
 from tabulate import tabulate
 from plotille import Figure
@@ -30,6 +31,13 @@ to see for ex. the average runtime and usage of all the logs
 
 """
 
+# Todos:
+# Todo: rich progress bar collision with verbose mode looks ugly
+# Todo: summary mode remake
+# Todo: an extra mode for running progresses ???
+# Todo: pytest
+# Todo: script is not accepting IPv6 yet
+
 
 def initialize():
     """
@@ -38,24 +46,29 @@ def initialize():
     """
     global accepted_states, files, option_shorts, option_longs, \
         ignore_list, allowed_ignore_values, no_config, reverse_dns_lookup, \
-        store_dns_lookups, default_mode, summarizer_mode, analyser_mode, verbose_mode, \
+        store_dns_lookups, verbose_mode, \
         to_csv, generate_log_file, filter_mode, filter_keywords, filter_extended, \
         colors, low_usage_threshold, bad_usage_threshold, std_log, std_err, std_out, \
         default_configfile, table_format, reading_stdin, redirecting_output,\
-        show_list, allowed_show_values
+        show_list, allowed_show_values, mode, allowed_modes
 
     # global parameters, used for dynamical output of information
     accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
     files = list()
-    option_shorts = "hsadv"
-    option_longs = ["help", "version", "verbose",
+    option_shorts = "hsavm:"
+    option_longs = ["help", "version", "verbose", "mode=",
                     "std-log=", "std-err=", "std-out=",
                     "ignore=", "show-more=", "no-config", "to-csv",
-                    "summarize", "analyse", "generate-log-file",
-                    "filter=", "extend", "print-events-table",
+                    "generate-log-file", "filter=", "extend", "print-event-table",
                     "reverse-dns-lookup", "table-format="]
 
     # show more information, mostly given by HTCompact .err and .out files
+    mode = None
+    allowed_modes = {"a": "analyse",
+                     "s": "summarize",
+                     "as": "analysed-summary",
+                     "d": "default"}
+
     show_list = list()
     allowed_show_values = ["errors", "warnings", "output"]
 
@@ -63,7 +76,8 @@ def initialize():
     ignore_list = list()
     allowed_ignore_values = ["execution-details", "times",
                              "gpu", "cpu", "host-nodes",
-                             "used-resources", "requested-resources", "allocated-resources", "all-resources",
+                             "used-resources", "requested-resources",
+                             "allocated-resources", "all-resources",
                              "errors", "warnings"]
     # Todo: used-resources, requested-resources, times, gpus, cpu, errors, warnings]
 
@@ -73,14 +87,13 @@ def initialize():
     # Features:
     reverse_dns_lookup = False
     store_dns_lookups = dict()
-    default_mode = False  # just for the search function to determine if default output should be printed
-    summarizer_mode = False
-    analyser_mode = False
-    verbose_mode = False
     to_csv = False
+
     # logging tool
     generate_log_file = False
+    verbose_mode = False
 
+    # filter mode
     filter_mode = False
     filter_keywords = ""
     filter_extended = False
@@ -114,6 +127,34 @@ def initialize():
     redirecting_output = False
 
 
+def check_for_redirection():
+    """
+    This method should be activated first, when output is generated
+    it does nothing, if output is printed to the terminal.
+    If output gets redirected with > or | or other redirection tools, ignore escape sequences
+    by setting them to ""
+    :return:
+    """
+    # if output gets redirected with > or | or other redirection tools, ignore escape sequences
+    global reading_stdin, redirecting_output  # it is easier to save this globaly, because if whe change
+
+    reading_stdin = not sys.stdin.isatty()
+    redirecting_output = not sys.stdout.isatty()
+
+    if redirecting_output:
+        global colors
+        colors = {
+            'red': "",
+            'green': "",
+            'yellow': "",
+            'magenta': "",
+            'cyan': "",
+            'blue': "",
+            'light_grey': "",
+            'back_to_default': ""
+        }
+
+
 # Todo: adjust this method to accept all values,
 #  that are related to an option and interpret
 #  the first one which does not as a file again
@@ -135,6 +176,9 @@ def remove_files_from_args(args, short_opts, long_opts):
     :param long_opts: the long getopt options
     :return: list of getopt arguments
     """
+    if type(args) != list:
+        raise_value_error("Expecting a list as argument")
+
     new_args = args.copy()
     generate_files = list()
     index = 0
@@ -171,13 +215,16 @@ def remove_files_from_args(args, short_opts, long_opts):
     return new_args
 
 
-def manage_prioritized_params():
+def manage_prioritized_params(args):
+
+    if type(args) != list:
+        raise_value_error("Expecting a list as argument")
 
     global option_shorts, option_longs
     global no_config, generate_log_file, verbose_mode
 
     # if for whatever reasons files were given
-    better_args = remove_files_from_args(sys.argv[1:], option_shorts, option_longs)
+    better_args = remove_files_from_args(args, option_shorts, option_longs)
 
     try:
         opts, args = getopt.getopt(better_args, option_shorts, option_longs)
@@ -191,7 +238,7 @@ def manage_prioritized_params():
             if opt.__eq__("--version"):
                 # Todo:
                 sys.exit(0)
-            if opt.__eq__("--print-events-table"):
+            if opt.__eq__("--print-event-table"):
                 print(get_event_information())
                 sys.exit(0)
 
@@ -212,23 +259,27 @@ def manage_prioritized_params():
 
 
 # Todo: thresholds by command line
-def manage_params():
+def manage_params(args):
     """
     Interprets the given command line arguments and changes the global variables in this scrips
 
     """
     global files  # list of files and directories
+    global mode  # what mode are we on
     global std_log, std_err, std_out  # all default values for the HTCondor files
     global show_list  # show more
     global ignore_list  # ignore information variables
-    global to_csv, summarizer_mode, analyser_mode, default_mode  # features
+    global to_csv
     global filter_mode, filter_keywords, filter_extended  # search features
     global table_format  # table_format can be changed
     global reverse_dns_lookup  # if set host ip's will be looked up in dns server
 
     global option_shorts, option_longs
 
-    all_args = sys.argv[1:]
+    summarizer_mode = False
+    analyser_mode = False
+
+    all_args = args
 
     # listen to stdin and add these files
     if reading_stdin:  # else the script will be waiting fro stdin
@@ -245,15 +296,29 @@ def manage_params():
 
             # catch unusual but not wrong parameters starting with -
             if arg.startswith("-"):
-                rprint("[yellow]The argument for {0} is {1}, is that wanted?[/yellow]".format(opt, arg))
-                logging.warning("The argument for {0} is {1}, is that wanted?".format(opt, arg))
+                rprint("[yellow]The argument for {0} is {1}, "
+                       "is that wanted?[/yellow]".format(opt, arg))
+                logging.warning("The argument for {0} is {1}, "
+                                "is that wanted?".format(opt, arg))
 
-            elif opt in ["-s", "--summarize"]:
+            elif opt in ["-m", "--mode"]:
+
+                if arg in allowed_modes.keys():
+                    mode = allowed_modes.get(arg)
+                elif arg in allowed_modes.values():
+                    mode = arg
+                else:
+                    raise_value_error("Invalid argument '" + arg + "'\n"
+                                      "Valid arguments:\n" +
+                                      ", ".join("'{}' or '{}'".format(key, value)
+                                                for key, value in allowed_modes.items()))
+
+                logging.debug("Starting the: "+mode+" mode")
+
+            elif opt.__eq__("-s"):
                 summarizer_mode = True
-            elif opt in ["-a", "--analyse"]:
+            elif opt.__eq__("-a"):
                 analyser_mode = True
-            elif opt in ["-d", "--default"]:
-                default_mode = True
             elif opt in ["--filter"]:
                 filter_mode = True
                 filter_keywords = arg
@@ -278,27 +343,31 @@ def manage_params():
 
             # show more specific information
             elif opt.__eq__("--show-more"):
-                for arg_s in arg.split():
-                    if arg_s in allowed_show_values:
-                        show_list.append(arg_s)
+                keywords = " ".join(re.split(',| ', arg)).split()
+                for keyword in keywords:
+                    if keyword in allowed_show_values:
+                        show_list.append(keyword)
                     else:
-                        raise_value_error("Invalid argument '" + arg_s + "'\n"
+                        raise_value_error("Invalid argument '" + keyword + "'\n"
                                           "Valid arguments:\n" + ", ".join(allowed_show_values))
-                logging.debug("Show these information: " + ", ".join(ignore_list))
+                logging.debug("Show these information: " + ", ".join(show_list))
 
             # all variables to ignore unwanted information
             elif opt.__eq__("--ignore"):
-                for arg_s in arg.split():
-                    if arg_s in allowed_ignore_values:
-                        ignore_list.append(arg_s)
+                keywords = " ".join(re.split(',| ', arg)).split()
+                for keyword in keywords:
+                    if keyword in allowed_ignore_values:
+                        ignore_list.append(keyword)
                     else:
-                        raise_value_error("Invalid argument '" + arg_s + "'\n"
+                        raise_value_error("Invalid argument '" + keyword + "'\n"
                                           "Valid arguments:\n" + ", ".join(allowed_ignore_values))
                 logging.debug("Ignore these information: " + ", ".join(ignore_list))
 
             # all tabulate variables
             elif opt.__eq__("--to-csv"):
                 to_csv = True
+                rprint("[red]--to-csv not handled yet[/red]")
+                sys.exit(0)
 
             elif opt.__eq__("--table-format"):
                 types = "plain,simple,github,grid,fancy_grid,pipe," \
@@ -333,6 +402,13 @@ def manage_params():
         print(small_help())
         sys.exit(1)
 
+    if summarizer_mode and analyser_mode:
+        mode = "analysed-summary"
+    elif summarizer_mode:
+        mode = "summarize"
+    elif analyser_mode:
+        mode = "analyse"
+
     if len(files) == 0:
         logging.debug("No files given")
         rprint("[red]No files given[/red]")
@@ -346,23 +422,19 @@ Usage: htcompact (log_files|config_file) [ Arguments ]
 
 ----------------------------Main features:---------------------------------
 
- -s | --summarize
+ --mode summary
          summarizes all given HTCondor log files and return a result
          regarding the averange usages and runtimes, this only makes
          sense, if multiple log files are given
 
- -a | --analyse
-         analyses a specific file, for occurred errors, ram history ->
-         histogram, execution status, runtime and much more
+ --mode analyse
+        analyses a specific file, for occurred errors, ram history ->
+        histogram, execution status, runtime and much more
 
- --search keywords
-         search inside the given files or directories
-         for the given keywords,
-         if you want to give more than one keyword,
-         use the string notation "keyword1 keyword2 ...",
+ --mode analysed-summary
+        A combination of both modes, which gives a more detailed overview
 
-
-More detailed descriptions and help on other options with:
+ More detailed descriptions and help on other options with:
  "man htcompact" or "htcompact -h"
     """
     # returns this docstring
@@ -541,7 +613,7 @@ Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with t
     return ["This event number does not exist", "Valid event numbers range from 000 to 034"]
 
 
-def raise_value_error(message):
+def raise_value_error(message: str) -> ValueError:
     raise ValueError(message)
 
 
@@ -549,20 +621,35 @@ def raise_value_error(message):
 # Todo: Read HTCondor Errors that occurred
 # Todo: for loop instead of single run
 # Todo: termination types are dynamical
-def log_to_dataframe(file):
+def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
+    """
+        Read the log file and filter useful information.
+        Structur it in a way, that later two different dataframes will be retuned.
+
+    :type file: str
+    :param file: HTCondor log file
+    :return: job_df, res_df
+
+            job_df should never be empty,
+            it holds information like runtime, return state, host, etc.
+
+            res_df can be empty, it holds all the
+            used, requested and allocated resources
+    """
     try:
         job_events, job_raw_information = read_condor_log(file)
 
         job_df = pd.DataFrame({})
         res_df = pd.DataFrame({})
 
-        # submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
-
-        if job_events[-1][0].__eq__("005"):  # if the last job event is : Job terminated
+        # if the last job event is : Job terminated
+        if job_events[-1][0].__eq__("005"):
 
             # calculate the runtime for the job
-            executed_date = datetime.datetime.strptime(job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-            terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
+            executed_date = datetime.datetime.strptime(
+                job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
+            terminating_date = datetime.datetime.strptime(
+                job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
             runtime = terminating_date - executed_date  # calculation of the time runtime
 
             match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
@@ -574,7 +661,7 @@ def log_to_dataframe(file):
                 port = match_host[2]
             else:
                 logging.exception("Host and port haven't been matched correctly")
-                rprint("[red]your log file has faulty values for the host ip make sure it's a valid IPv4[/red]")
+                rprint("[red]faulty values for the host ip make sure it's a valid IPv4[/red]")
 
             # make a fancy design for the job_information
             job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
@@ -586,11 +673,12 @@ def log_to_dataframe(file):
                 termination_state_inf = job_raw_information[-1][0]
                 match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", termination_state_inf)
                 if match_termination_state:
-                    job_labels.append("Termination State")
+                    job_labels.insert(0, "Termination State")
 
                     if "Normal termination" in match_termination_state[1]:
-                        job_information.append(match_termination_state[1])
-                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        job_information.insert(0, match_termination_state[1])
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
+                                                      termination_state_inf)
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
                             logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
@@ -599,9 +687,10 @@ def log_to_dataframe(file):
                             job_labels.append("Return Value")
                             job_information.append(return_value)
                     elif "Abnormal termination" in match_termination_state[1]:
-                        job_information.append("[red]"+match_termination_state[1]+"[/red]")
+                        job_information.insert(0, "[red]"+match_termination_state[1]+"[/red]")
 
-                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", termination_state_inf)
+                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
+                                                      termination_state_inf)
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
                             logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
@@ -625,7 +714,7 @@ def log_to_dataframe(file):
                             logging.debug(f"No termination description for {file} found")
 
                     else:
-                        job_information.append(match_termination_state[1])
+                        job_information.insert(0, match_termination_state[1])
                         logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
 
                 else:
@@ -654,14 +743,16 @@ def log_to_dataframe(file):
                 # done, partitionable_resources contain now only information about used resources
 
             # match all resources
-            # ****************************************************************************************************
-            match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
+            # ***************************************************************************************
+            match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)",
+                             partitionable_res[0])
             if match:
                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
             else:
                 raise_value_error("Something went wrong reading the cpu information")
 
-            match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
+            match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)",
+                             partitionable_res[1])
             if match:
                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
             else:
@@ -677,7 +768,8 @@ def log_to_dataframe(file):
                 gpu_match_index += 1
                 gpu_found = True
 
-            match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[gpu_match_index])
+            match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)",
+                             partitionable_res[gpu_match_index])
             if match:
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
             else:
@@ -717,22 +809,105 @@ def log_to_dataframe(file):
             if gpu_found:
                 res_df.insert(4, "Assigned", ["", "", "", gpu_name])
 
-        elif job_events[-1][0].__eq__("009"):  # job aborted
+        # Todo: check this section
+        # This means the job was terminated, is still running or some other cases
+        # In this case I want to give the user more information about the process
+        else:
 
-            # calculate the runtime for the job
-            if job_events[-1].__ne__(job_events[0]):
-                executed_date = datetime.datetime.strptime(job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-                terminating_date = datetime.datetime.strptime(job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-                runtime = terminating_date - executed_date  # calculation of the time runtime
+            waiting_time = None
+            runtime = None
+            desc_list = list()  # append to this list for further details
+            value_list = list()  # append the related values to this list
+
+            # first job event was submitted
+            if job_events[0][0].__eq__("000"):
+                submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
+
+                match_from_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[0][5])
+                if match_from_host:
+                    from_host = match_from_host[1]
+                    desc_list.append('Send from IP')
+                    value_list.append(from_host)
+
+                desc_list.append('Submission date')
+                value_list.append(submitted_date.strftime("%m/%d %H:%M:%S"))
+
+            if job_events[-1][0].__eq__("009"):  # job aborted
+
+                desc_list.insert(0, "Process was")
+                value_list.insert(0, colors['yellow']+"aborted"+ colors['back_to_default'])
+
+                # calculate the runtime for the job
+                if job_events[-1].__ne__(job_events[0]):
+                    executed_date = datetime.datetime.strptime(
+                        job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
+                    terminating_date = datetime.datetime.strptime(
+                        job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
+
+                    waiting_time = executed_date - submitted_date  # calculate the waiting time
+                    today = datetime.datetime.now()  # get todays date
+                    today = today.replace(year=1900, microsecond=0)  # format the date
+                    runtime = today - executed_date  # calculate the runtime
+
+                    desc_list.append('Executing since')
+                    value_list.append(executed_date.strftime("%m/%d %H:%M:%S"))
+                    desc_list.append('Total waiting time')
+                    value_list.append(waiting_time)
+                    desc_list.append('Total runtime')
+                    value_list.append(runtime)
+                    desc_list.append('Termination date')
+                    value_list.append(terminating_date.strftime("%m/%d %H:%M:%S"))
+
+                user = ((job_raw_information[-1][0]).split(" ")[-1])[:-1]
+                logging.debug(f"{file}: Job arboted by {user}")
+
+                desc_list.append('Aborted by user:')
+                value_list.append(colors['yellow']+user+colors['back_to_default'])
+
+            # Todo: prove this section
+            # This usally means the job is still running
             else:
-                runtime = datetime.timedelta(0)
 
-            user = ((job_raw_information[-1][0]).split(" ")[-1])[:-1]
-            job_df = pd.DataFrame({
-                "Description": ['Aborted by:', 'Runtime'],
-                "Values": [user, runtime]
+                if job_events[-1].__ne__(job_events[0]):
+
+                    executed_date = datetime.datetime.strptime(
+                        job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
+
+                    waiting_time = executed_date - submitted_date  # calculate the waiting time
+                    today = datetime.datetime.now()
+                    today = today.replace(year=1900, microsecond=0)
+                    runtime = today - executed_date  # calculate the runtime
+
+                    desc_list.append('Executing since')
+                    value_list.append(executed_date.strftime("%m/%d %H:%M:%S"))
+                else:
+                    today = datetime.datetime.now()
+                    today = today.replace(year=1900, microsecond=0)
+                    waiting_time = today - submitted_date
+
+                if job_events[-1][0].__eq__("000"):
+                    state = "Waiting"
+                else:
+                    state = "Executing"
+
+                desc_list.insert(0, "Process is")
+                value_list.insert(0, state)
+
+                if waiting_time is not None:
+                    if runtime is None:
+                        desc_list.append('Still waiting since')
+                    else:
+                        desc_list.append('Total waiting time')
+                    value_list.append(waiting_time)
+
+                if runtime is not None:
+                    desc_list.append('Already running since')
+                    value_list.append(runtime)
+
+            job_df = job_df = pd.DataFrame({
+                "Description": desc_list,
+                "Values": value_list
             })
-            logging.debug(f"{file}: Job arboted by {user}")
 
     except NameError as err:
         logging.exception(err)
@@ -747,16 +922,18 @@ def log_to_dataframe(file):
         logging.debug(err)
     # finally
     else:
+
         return job_df, res_df
 
 
 # reads all information, but returns them in two lists
-def read_condor_log(file):
+def read_condor_log(file: str) -> (list, list):
     """
 
     reads a given HTCondor std_log file and separates the information in two lists,
     for further and easier access
 
+    :type file: str
     :param file:    a HTCondor std_log file
 
     :raises: :class:'FileNotFoundError': if open does not work
@@ -765,6 +942,10 @@ def read_condor_log(file):
                 a list of job_events and a list of job_event-relevant information
                 these are related by the same index like:
                 job_event[1]-> relevant information: job_event_information[1]
+
+                job_event looks like:
+                [event_number, job_id, date, time, description, additional information]
+
     """
 
     log_job_events = list()  # saves the job_events
@@ -1040,7 +1221,7 @@ def log_to_dict(file):
     return result_dict
 
 
-def find_config():
+def find_config() -> 'configfile':
     """
 
         Try to find a config file in the given arguments.
@@ -1155,7 +1336,7 @@ def find_config():
 
 
 # search for config file ( UNIX BASED )
-def load_config(config_file):
+def load_config(config_file: 'file'):
 
     config = configparser.ConfigParser()
 
@@ -1234,22 +1415,20 @@ def load_config(config_file):
                 logging.debug(f"Changed default bad_usage to: {bad_usage_threshold}")
 
         if "modes" in sections:
-            global filter_mode, default_mode, summarizer_mode, analyser_mode
+            global filter_mode, mode
             if 'filter_mode' in config['modes']:
                 filter_mode = config['modes']['filter_mode'].lower() in accepted_states
                 logging.debug(f"Changed filter_mode to: {filter_mode}")
 
-            # if 'default_mode' in config['modes']:
-            #     default_mode = config['modes']['default_mode'].lower() in accepted_states
-            #     logging.debug(f"Changed default_mode to: {default_mode}")
-
-            if 'summarizer_mode' in config['modes']:
-                summarizer_mode = config['modes']['summarizer_mode'].lower() in accepted_states
-                logging.debug(f"Changed summarizer_mode to: {summarizer_mode}")
-
-            if 'analyser_mode' in config['modes']:
-                analyser_mode = config['modes']['analyser_mode'].lower() in accepted_states
-                logging.debug(f"Changed analyser_mode to: {analyser_mode}")
+            if 'mode' in config['modes']:
+                mode_tmp = config['modes']['mode'].lower()
+                if mode_tmp in allowed_modes.values():
+                    mode = mode_tmp
+                elif mode_tmp in allowed_modes.keys():
+                    mode = allowed_modes.get(mode_tmp)
+                else:
+                    mode = None
+                logging.debug(f"Changed mode to: {mode}")
 
         if "filter" in sections:
             global filter_keywords, filter_extended
@@ -1297,7 +1476,16 @@ def _int_formatter(val, chars, delta, left=False):
 
 
 # Todo: err and output not visible ???
-def default(log_files):
+def default(log_files: 'file') -> 'list_with_dicts':
+    """
+    Print the default output for a given list of log files
+
+    This mode is just an easy view,
+     on what the script is actually doing.
+
+    :param log_files:
+    :return: list of dicts
+    """
 
     logging.info('Starting the default mode')
 
@@ -1338,7 +1526,7 @@ def default(log_files):
 
 # Todo: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
 #       until now there is not the need for other filters but it might be needed to extend this fucntion
-def analyse(log_files):
+def analyse(log_files: 'file') -> 'list_with_dicts':
 
     logging.info('Starting the analyser mode')
 
@@ -1602,7 +1790,7 @@ def analyse(log_files):
                 total_time = terminated_date - submitted_date
                 time_dict["Total runtime"] = total_time
         elif waiting_time:
-            time_dict["Termination date"] = "No valid termination occurred"
+            time_dict["Termination date"] = "Process still running"
             time_dict["Waiting time"] = waiting_time
 
         if len(time_dict) > 0:
@@ -1679,7 +1867,8 @@ def analyse(log_files):
 
 
 # Todo: what means sucessful executed ?
-def summarize(log_files):
+# Todo: remake
+def summarize(log_files: 'file') -> 'list_with_dicts':
     """
     Summarises all used resources and the runtime in total and average
 
@@ -1699,6 +1888,7 @@ def summarize(log_files):
     result_dict = dict()
 
     aborted_files = 0
+    still_running = 0
     normal_runtime = datetime.timedelta()
     aborted_runtime = datetime.timedelta()
     host_nodes = dict()
@@ -1728,20 +1918,27 @@ def summarize(log_files):
 
             log_description, log_resources = log[0], log[1]
 
+            # continue if Process is still running
+            if log_description.at[0, 'Description'].__eq__("Process is"):
+                still_running += 1
+                rprint(f"[yellow]Process of {file} is still running, \n"
+                       f"it will be ignored for this summation[/yellow]")
+                continue
+
             # if the Job was aborted, it still might have a runtime
-            if log_description.at[0, 'Description'].__eq__("Aborted by:"):
+            elif log_description.at[0, 'Description'].__eq__("Process was"):
                 # print(f"The job described in {file} was aborted")
-                aborted_runtime += log_description.at[1, 'Values']
+                #aborted_runtime += log_description.at[1, 'Values']
                 aborted_files += 1
                 continue
 
-            normal_runtime += log_description.at[2, 'Values']
+            normal_runtime += log_description.at[3, 'Values']
             host = log_description.at[0, 'Values']
             if host in host_nodes:
                 host_nodes[host][0] += 1
-                host_nodes[host][1] += log_description.at[2, 'Values']
+                host_nodes[host][1] += log_description.at[3, 'Values']
             else:
-                host_nodes[host] = [1, log_description.at[2, 'Values']]
+                host_nodes[host] = [1, log_description.at[3, 'Values']]
 
             total_cpu_usage += float(log_resources.at[0, 'Usage']) \
                 if str(log_resources.at[0, 'Usage']).lower() != 'nan' else 0
@@ -1771,6 +1968,10 @@ def summarize(log_files):
             logging.exception(err)
             rprint(f"[red]Error with summarizing: {file}[/red]")
             continue
+        except TypeError as err:
+            logging.exception(err)
+            rprint(f"[red] {err}[/red]")
+            sys.exit(2)
 
     n = valid_files - aborted_files  # calc diffrenc of successful executed jobs
 
@@ -1873,14 +2074,14 @@ def summarize(log_files):
         })
         result_dict["host-nodes"] = tabulate(df_cpu, showindex=False, headers='keys', tablefmt=table_format)
 
-    return result_dict
+    return [result_dict]
 
 
 # Todo more specific control what to print out
 # Todo ram histogram, BUT HOW
 # Todo get files for which the specific termination state appeared ( if not nomral ???)
 # Todo: separate Gpus from another
-def analysed_summary(log_files):
+def analysed_summary(log_files: 'file') -> 'list_with_dicts':
     """
         analyse the summarized log files,
         this is meant to give the ultimate output
@@ -1904,6 +2105,7 @@ def analysed_summary(log_files):
     all_files = dict()  # fill this dict with information, execution type,
     list_of_gpu_names = list()  # list of gpus found
 
+    # Todo: rich logging handler
     for file in track(log_files, transient=True, description="Summarizing..."):
 
         try:
@@ -2131,10 +2333,16 @@ def analysed_summary(log_files):
             # })
 
         # if last termination was not 005, get last occurred error
-        if event_number_order[-1].__ne__("005"):
+        if event_number_order[-1] in ["002", "003", "004", "007", "009",
+                                      "010", "018", "021", "022", "026", "029"]:
             termination_type = err_keyword[-1]
-        else:
+        elif event_number_order[-1].__eq__("005"):
             termination_type = termination_state
+        else:
+            logging.debug("Process still running described in: " + file)
+            rprint(f"[yellow]Process of {file} is still running, \n"
+                   f"it will be ignored for this analysed summation[/yellow]")
+            continue
 
         # now insert into all_files dictionary
         if termination_type in all_files:
@@ -2230,11 +2438,24 @@ def analysed_summary(log_files):
 # search in the files for the keywords
 # Todo: show which keywords have been found and which not
 # Todo: AND option, ONLY option
-def filter_for(log_files, keywords, extend=False):
+def filter_for(log_files: 'file', keywords: 'list', extend=False) -> 'list_with_dicts':
+    """
+    Filter for a list of keywords, which can be extended
+    and print out every file which matches the pattern (not case sensitive)
+    The filtered files can be analysed summarise, etc afterwards,
+    else this function will return None
 
+    :param log_files:
+    :param keywords:
+    :param extend:
+    :return:
+        list with dicts depending on the used mode, to forward the filtered files,
+
+        None if no forwarding is set
+    """
     logging.info('Starting the filter mode')
 
-    keyword_list = keywords.split()
+    keyword_list = " ".join(re.split(',| ', keywords)).split()  # remove spaces and commas from string
 
     # if extend is set, keywords like err will also look for keywords like warn exception, aborted, etc.
     if extend:  # apply some rules
@@ -2281,40 +2502,45 @@ def filter_for(log_files, keywords, extend=False):
                     found_logs.append(file)
                     break
 
-    output_string = ""
+    return_dicts = None
     if not found_at_least_one:
         rprint(f"[red]Unable to find these keywords:[/red]", keyword_list)
         rprint(f"[red]maybe try again with similar expressions[/red]")
 
-    else:
+    elif mode is not None:
         print(f"Total count: {len(found_logs)}")
-        if default_mode:
-            output_string = default(found_logs)
-        elif analyser_mode and summarizer_mode:
+        if mode.__eq__("default"):
+            return_dicts = default(found_logs)
+        elif mode.__eq__("analysed-summary"):
             rprint("[magenta]Try to give an analysed summary for these files[/magenta]")
-            output_string = analysed_summary(found_logs)
-        elif summarizer_mode:
+            return_dicts = analysed_summary(found_logs)
+        elif mode.__eq__("summarize"):
             rprint("[magenta]Try to summarize these files[/magenta]")
-            output_string = summarize(found_logs)
-        elif analyser_mode:
+            return_dicts = summarize(found_logs)
+        elif mode.__eq__("analyse"):
             rprint("[magenta]Try to analyse these files[/magenta]")
-            output_string = analyse(found_logs)
+            return_dicts = analyse(found_logs)
         elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
             rprint("[blue]Want do do more?[/blue]")
             x = input("default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
             if x == "d":
-                output_string = default(found_logs)
+                return_dicts = default(found_logs)
             elif x == "s":
-                output_string = summarize(found_logs)
+                return_dicts = summarize(found_logs)
             elif x == "a":
-                output_string = analyse(found_logs)
+                return_dicts = analyse(found_logs)
             elif x == "as":
-                output_string = analysed_summary(found_logs)
+                return_dicts = analysed_summary(found_logs)
+            elif x== "e":
+                sys.exit(0)
+            else:
+                print('Not a valid argument, quitting ...')
+                sys.exit(0)
 
-    return output_string
+    return return_dicts
 
 
-def validate_given_logs(file_list):
+def validate_given_logs(file_list: 'list_of_files'):
     """
     This method is supposed to take the given log files (by config or command line argument)
     and tries to determine if these are valid log files, ignoring the std_log specification, if std_log = "".
@@ -2410,8 +2636,8 @@ def validate_given_logs(file_list):
 
                 if std_err.__ne__("") and working_file_path.endswith(std_err) or \
                         std_out.__ne__("") and working_file_path.endswith(std_out):
-                    logging.debug(f"Only log files are accepted, this file will be ignored:\n {working_file_path}")
-                    break
+                    logging.debug(f"Only log files accepted, ignored this file: {working_file_path}")
+                    continue
 
                 with open(working_file_path, "r") as read_file:
 
@@ -2445,14 +2671,17 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
     # disable the loggeing tool by default
     logging.getLogger().disabled = True
 
+    # I don't know why a root handler is already set,
+    # but we have to remove him in order
+    # to get just the output of our own handler
+    if len(logging.root.handlers) == 1:
+        default_handler = logging.root.handlers[0]
+        logging.root.removeHandler(default_handler)
+
     # if logging tool is set to use
     if generate_log_file:
+        # activate logger if not already activated
         logging.getLogger().disabled = False
-        # I don't know why a root handler is already set,
-        # but we have to remove him in order to change the basicConfig
-        # if len(logging.root.handlers) == 1:
-        #     default_handler = logging.root.handlers[0]
-        #     logging.root.removeHandler(default_handler)
         # logging.basicConfig(filename=log_file,
         #                     level=logging.DEBUG,
         #                     format=logging_format)
@@ -2471,11 +2700,6 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
     if verbose_mode:
         # activate logger if not already activated
         logging.getLogger().disabled = False
-        # I don't know why a root handler is already set,
-        # but we have to remove him in order to change the basicConfig
-        # if len(logging.root.handlers) == 1:
-        #     default_handler = logging.root.handlers[0]
-        #     logging.root.removeHandler(default_handler)
         # logging.basicConfig(stream=sys.stdout,
         #                     level=logging.DEBUG,
         #                     format=logging_stdout_format)
@@ -2484,6 +2708,7 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
         stdout_formatter = logging.Formatter(logging_stdout_format)
 
         stdout_handler = logging.StreamHandler(sys.stdout)
+        #stdout_handler = rlog.RichHandler(logging.DEBUG, console=sys.stdout)
         stdout_handler.setLevel(logging.DEBUG)
         stdout_handler.setFormatter(stdout_formatter)
         log = logging.getLogger()
@@ -2491,55 +2716,28 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
         log.addHandler(stdout_handler)
 
 
-def escape_seq_when_redirect():
-    """
-    This method should be activated first, when output is generated
-    it does nothing, if output is printed to the terminal.
-    If output gets redirected with > or | or other redirection tools, ignore escape sequences
-    by setting them to ""
-    :return:
-    """
-    # if output gets redirected with > or | or other redirection tools, ignore escape sequences
-    if redirecting_output:
-        global colors
-        colors = {
-            'red': "",
-            'green': "",
-            'yellow': "",
-            'magenta': "",
-            'cyan': "",
-            'blue': "",
-            'light_grey': "",
-            'back_to_default': ""
-        }
-        # global red, green, yellow, magenta, cyan, blue, lightgrey, back_to_default
-        # red = ""
-        # green = ""
-        # yellow = ""
-        # magenta = ""
-        # cyan = ""
-        # blue = ""
-        # lightgrey = ""
-        # back_to_default = ""
-
-
 # Todo: a lot of information can still not be ignored
+# Todo: a function to format the output
 def customize_results():
 
     output_string = ""
 
     if filter_mode:
         results = filter_for(files, filter_keywords, filter_extended)
-    elif default_mode:
+    elif mode.__eq__("default"):
         results = default(files)  # force default with -d
-    elif summarizer_mode and analyser_mode:
+    elif mode.__eq__("analysed-summary"):
         results = analysed_summary(files)  # analysed summary ?
-    elif summarizer_mode:
+    elif mode.__eq__("summarize"):
         results = summarize(files)  # summarize information
-    elif analyser_mode:
+    elif mode.__eq__("analyse"):
         results = analyse(files)  # analyse the given files
     else:
         results = default(files)  # anyways try to print default output
+
+    # This can happen, when for example the filter mode is not forwarded
+    if results is None:
+        sys.exit(0)
 
     work_with = results
     # convert result to list, if given as dict
@@ -2580,32 +2778,23 @@ def customize_results():
     return output_string
 
     # these might be added in future:
-    # Todo: gpus, cpu, errors, warnings
+    # Todo: gpus, cpu, warnings
 
 
-if __name__ == "__main__":
+def run(commandline_args):
     """
-    This is the main function, which searchs first for a given config file.
-    After that, given parameters in the terminal will be interpreted, so they have a higher priority
-
-    Then it will summarize all given log files together and print the output
-
+    Run this script
     :return:
     """
     try:
 
-        initialize()
+        initialize()  # initialize global parameters
 
-        global reading_stdin, redirecting_output  # it is easier to save this globaly, because if whe change
-
-        reading_stdin = not sys.stdin.isatty()
-        redirecting_output = not sys.stdout.isatty()
-
-        escape_seq_when_redirect()  # set the color sequenzes to ""
+        check_for_redirection()  # set the color sequenzes to ""
 
         # if exit parameters are given that will interrupt this script, like --help,
         # catch them here so the config won't be unnecessary loaded
-        manage_prioritized_params()
+        manage_prioritized_params(commandline_args)
 
         # if not --no-config is set:
         # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
@@ -2632,8 +2821,9 @@ if __name__ == "__main__":
 
         # after that, interpret the command line arguments, these will have a higher priority, than the config setup
         # and by that arguments set in the config file, will be ignored
-        manage_params()
+        manage_params(commandline_args)
 
+        global files
         files = validate_given_logs(files)  # validate the files, make a list of all valid config files
 
         if len(files) == 0:
@@ -2649,5 +2839,18 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logging.info("Script was interrupted by the user")
         print("Script was interrupted")
+
+
+if __name__ == "__main__":
+    """
+    This is the main function, which searchs first for a given config file.
+    After that, given parameters in the terminal will be interpreted, so they have a higher priority
+
+    Then it will summarize all given log files together and print the output
+
+    :return:
+    """
+    run(sys.argv[1:])
+
 
 
