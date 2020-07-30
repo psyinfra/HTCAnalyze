@@ -1,5 +1,5 @@
 import imp
-ht = imp.load_source('htcompact', '../script/htcompact')
+ht = imp.load_source('htcompact', 'script/htcompact')
 
 """
     Test valid log files
