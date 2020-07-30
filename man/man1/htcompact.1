@@ -32,10 +32,14 @@
 The
 .Nm
 script takes files and directories as input with given flags and prints out a
-readable result of found HTCondor log files.
-The default and analyser mode can also show a look inside a running process,
-however it's not meaningful for summation purposes, so that all summation modes
-will only focus on terminated jobs.
+readable result of valid HTCondor log files.
+There are 4 main modes to work with this facility.
+The default and analyser mode are made for single log analytics
+and can also show a look inside a running process.
+The summariser and analysed-summary mode,
+are made to summarise huge collections of log files,
+to give a view on the average used resources and occurred errors.
+More details about the different modes below.
 .Pp
 Its arguments are as follows:
 .Bl -tag -width Ds
@@ -62,6 +66,33 @@ Valid arguments:
 .Ed
 .Bd -literal
 the standard mode of the script is 'default'
+
+default mode:
+    just gain a feeling about the process py passing a log file.
+    This is just a simple "Look at" mode.
+
+analyse mode:
+    For more detailed output, use the analyser mode.
+    Features:
+    - if more then one image size update is found -> provides ram histogram
+    - shows HTCondor errors
+    - more details in general
+    - have a look in running processes
+
+summarize mode:
+    summarise a collection of log files,
+    Features:
+    - average usages of all collected log files
+    - average usage and durations on each host node
+    NOTE: this will ignore running processes and other kind of processes,
+          that do not contain details about the resource usages
+
+analysed-summary mode:
+    This mode is a combination of the summariser and analyser mode.
+    This will as well mostly focus on finished jobs,
+    but it will also differentiate between the different termination types
+    Different to the summariser mode this will leave no files untouched.
+
 .Ed
 .
 .It Fl s
@@ -105,8 +136,8 @@ use the string notation: "keyword1 keyword2 ...",
 or the comma notation:    keyword1,keyword2,...
 .Ed
 .Bd -literal
-you can forward the result to be processed
-even without flags after the search process
+you can forward the result to be processed by a mode
+directly with the additional --mode flag
 .Ed
 .Bd -literal
 Note: This option is NOT case sensitive
@@ -116,7 +147,7 @@ if you want to find any kind of termination,
 that is not normal, use --extend:
 .Ed
 .Bd -literal
-Small example:
+Examples:
 --filter "exception gpu" -s
 --filter error,warnings --mode analyse
 .Ed

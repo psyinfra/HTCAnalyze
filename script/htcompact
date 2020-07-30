@@ -705,7 +705,7 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
                             job_labels.append("Return Value")
                             job_information.append(return_value)
                     elif "Abnormal termination" in match_termination_state[1]:
-                        job_information.insert(0, "[red]"+match_termination_state[1]+"[/red]")
+                        job_information.insert(0, colors['red']+match_termination_state[1]+colors['back_to_default'])
 
                         match_signal = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
                                                       termination_state_inf)
@@ -1651,7 +1651,7 @@ def analyse(log_files: 'file') -> 'list_with_dicts':
 
                     # Abnormal Termination
                     elif "Abnormal termination" in match_termination_state[1]:
-                        job_information.append(f"[red]Abnormal termination[/red]")
+                        job_information.append(f"{colors['red']}Abnormal termination{colors['back_to_default']}")
 
                         match_signal = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
                         signal = match_signal[1] if match_signal else "None"
