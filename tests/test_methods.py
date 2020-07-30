@@ -80,7 +80,7 @@ def test_initialize():
     assert ht.bad_usage_threshold == 1.2
 
     # global variables with default values for err/log/out files
-    assert ht.std_log == ".log"
+    assert ht.std_log == ""
     assert ht.std_err == ".err"
     assert ht.std_out == ".out"
 
@@ -156,7 +156,7 @@ def test_check_for_redirection():
     ht.check_for_redirection()
     assert ht.reading_stdin is False and ht.redirecting_output is False
 
-    sys.stdin = PseudoTTY(sys.stdin, False)
+    sys.stdin = io.StringIO('Some file')
     sys.stdout = PseudoTTY(sys.stdout, True)
     ht.check_for_redirection()
     assert ht.reading_stdin is True and ht.redirecting_output is False
@@ -166,7 +166,7 @@ def test_check_for_redirection():
     ht.check_for_redirection()
     assert ht.reading_stdin is False and ht.redirecting_output is True
 
-    sys.stdin = PseudoTTY(sys.stdin, False)
+    sys.stdin = io.StringIO('Some file')
     sys.stdout = PseudoTTY(sys.stdout, False)
     ht.check_for_redirection()
     assert ht.reading_stdin is True and ht.redirecting_output is True
@@ -221,6 +221,14 @@ def test_manage_prioritized_params():
     test_error = "asd"
     with pytest.raises(ValueError):
         ht.manage_prioritized_params(test_error)
+
+
+def test_reverse_dns_lookup():
+    test_initialize()
+    ht.gethostbyaddr("172.217.0.0")
+    assert ht.store_dns_lookups["172.217.0.0"] == "ord38s04-in-f0.1e100.net"
+    ht.gethostbyaddr("NoIP")
+    assert ht.store_dns_lookups["NoIP"] == "NoIP"
 
 
 # Todo: other methods test
