@@ -1,9 +1,10 @@
 .Dd May 26, 2020
-.Dt HTCompact 1
+.Dt HTCOMPACT 1
 .Os \" Current operating system.
+.
 .Sh NAME
 .Nm htcompact
-.Nd summarize and analyse HTCondor log files
+.Nd summarize and analyse HTCondor job log files
 .
 .Sh SYNOPSIS
 .Nm
@@ -30,11 +31,11 @@
 .Sh DESCRIPTION
 The
 .Nm
-script takes files and directories as input with given flags and
-prints out a readable result of found HTCondor log files.
+script takes files and directories as input with given flags and prints out a
+readable result of found HTCondor log files.
 The default and analyser mode can also show a look inside a running process,
-however it's not meaningful for summation purposes,
-so that all summation modes will only focus on terminated jobs.
+however it's not meaningful for summation purposes, so that all summation modes
+will only focus on terminated jobs.
 .Pp
 Its arguments are as follows:
 .Bl -tag -width Ds
@@ -45,10 +46,12 @@ just pass any log files, config files or directories, you just need to separate 
 .It Ar OPTIONS
 .
 .It Fl h | Fl Fl help
-This will print a small help function, just like this.
+Prints a summary of
+.Nm Ap s
+command\[hy]line options and exits.
 .
 .It Fl Fl print-events-table
-Print all 34 HTCondor events, with description, known at this time (29.06.2020)
+Prints a table of known HTCondor events and their descriptions.
 .
 .It Fl m Ar mode | Fl Fl mode Ar mode
 Specify the mode, to interpret HTCondor log files,
@@ -208,7 +211,7 @@ default: pretty
 .Sh CONFIG
 .Bd -literal -compact
 furthermore all these variables|settings can be set inside a config file.
-See the Config specification:
+See the config specification:
 .Lk https://github.com/psyinfra/htcompact/blob/master/CONFIG.md
 .
 The script is also checking for other config files in other places:
@@ -255,7 +258,7 @@ grep -R -l aborted ~/logs | htcompact -as
 .
 .Sh SEE ALSO
 .Bd -literal
-The Repository is available at
+The repository is available at
 .Lk https://github.com/psyinfra/htcompact
 Bug reports, patches, and (constructive) input are always welcome.
 .Ed
