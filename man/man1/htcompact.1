@@ -61,17 +61,21 @@ Valid arguments:
 the standard mode of the script is 'default'
 .Ed
 .
-.Bd -literal
 .It Fl s
-Short for '--mode summarize'
-In combination with -a, it's the same as --mode analysed-summary
-.Ed
+Short for
+.Fl Fl mode Ar summarize .
+When used with
+.Fl a ,
+it's the same as
+.Fl Fl mode Ar analysed-summary
 .
-.Bd -literal
 .It Fl a
-Short for '--mode analyse'.
-In combination with -s, it's the same as --mode analysed-summary
-.Ed
+Short for
+.Fl Fl mode Ar analyse .
+When used with
+.Fl s ,
+it's the same as
+.Fl Fl mode Ar analysed-summary
 .
 .It Fl Fl filter Ar keywords Op OPTIONS
 Its options are as follows:
