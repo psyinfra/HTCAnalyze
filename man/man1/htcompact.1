@@ -231,6 +231,15 @@ Priority[5] run with default settings
 -> --filter is a more naive alternative to grep
 .Ed
 .
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa script/htcompact.conf
+A default setup for this script.
+.El
+.
+.Sh EXIT STATUS
+.Ex -std
+.
 .Sh EXAMPLES
 .Bd -literal
 htcompact -a 398_440.log
@@ -251,17 +260,15 @@ The Repository is available at
 Bug reports, patches, and (constructive) input are always welcome.
 .Ed
 .
+.Sh AUTHORS
+.Nm
+was created by
+.An Mathis Loevenich
+.Mt mathisloevenich@fz\[hy]juelich.de .
+See the AUTHORS file for more information.
 .
-.Sh EXIT STATUS
-.Ex -std
-.
-.
-.Sh FILES
-.Bl -tag -width Ds
-.It Pa script/htcompact.conf
-A default setup for this script.
-.El
-.
-.Sh AUTHOR
-.An Mathis Loevenich,
-.Mt mathisloevenich@fz-juelich.de
+.Sh COPYRIGHT
+.Nm
+is released under the
+.Qq MIT License .
+See the LICENSE file for more information.
