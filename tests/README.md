@@ -10,6 +10,7 @@ I recommend to use:
 you should get about 86%, at this moment (30.07.2020)**
 
 The other tests modules should work just fine with:
+
 - pytest "the_module"
 
 To test all modules use:
