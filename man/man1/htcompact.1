@@ -1,9 +1,10 @@
 .Dd May 26, 2020
-.Dt HTCompact 1
+.Dt HTCOMPACT 1
 .Os \" Current operating system.
+.
 .Sh NAME
 .Nm htcompact
-.Nd summarize and analyse HTCondor log files
+.Nd summarize and analyse HTCondor job log files
 .
 .Sh SYNOPSIS
 .Nm
@@ -30,11 +31,11 @@
 .Sh DESCRIPTION
 The
 .Nm
-script takes files and directories as input with given flags and
-prints out a readable result of found HTCondor log files.
+script takes files and directories as input with given flags and prints out a
+readable result of found HTCondor log files.
 The default and analyser mode can also show a look inside a running process,
-however it's not meaningful for summation purposes,
-so that all summation modes will only focus on terminated jobs.
+however it's not meaningful for summation purposes, so that all summation modes
+will only focus on terminated jobs.
 .Pp
 Its arguments are as follows:
 .Bl -tag -width Ds
@@ -45,10 +46,12 @@ just pass any log files, config files or directories, you just need to separate 
 .It Ar OPTIONS
 .
 .It Fl h | Fl Fl help
-This will print a small help function, just like this.
+Prints a summary of
+.Nm Ap s
+command\[hy]line options and exits.
 .
 .It Fl Fl print-events-table
-Print all 34 HTCondor events, with description, known at this time (29.06.2020)
+Prints a table of known HTCondor events and their descriptions.
 .
 .It Fl m Ar mode | Fl Fl mode Ar mode
 Specify the mode, to interpret HTCondor log files,
@@ -61,17 +64,21 @@ Valid arguments:
 the standard mode of the script is 'default'
 .Ed
 .
-.Bd -literal
 .It Fl s
-Short for '--mode summarize'
-In combination with -a, it's the same as --mode analysed-summary
-.Ed
+Short for
+.Fl Fl mode Ar summarize .
+When used with
+.Fl a ,
+it's the same as
+.Fl Fl mode Ar analysed-summary
 .
-.Bd -literal
 .It Fl a
-Short for '--mode analyse'.
-In combination with -s, it's the same as --mode analysed-summary
-.Ed
+Short for
+.Fl Fl mode Ar analyse .
+When used with
+.Fl s ,
+it's the same as
+.Fl Fl mode Ar analysed-summary
 .
 .It Fl Fl filter Ar keywords Op OPTIONS
 Its options are as follows:
@@ -116,23 +123,23 @@ Small example:
 .
 .It Fl Fl std-log Ar standard-log
 The standard log files usually look something like
-.Qq job_452_237.log,
+.Qq job_452_237.log ,
 if for whatever reason the format is not
-.Qq .log,
+.Qq .log ,
 then you can change it with this argument.
 .
 .It Fl Fl std-err Ar standard-err
 The standard error files usually look something like
-.Qq job_452_237.err,
+.Qq job_452_237.err ,
 if for whatever reason the format is not
-.Qq .err,
+.Qq .err ,
 then you can change it with this argument.
 .
 .It Fl Fl std-out Ar standard-out
 The standard output files usually look something like
-.Qq job_452_237.out,
+.Qq job_452_237.out ,
 if for whatever reason the format is not
-.Qq .out,
+.Qq .out ,
 then you can change it with this argument.
 .
 .It Fl Fl show-more Ar keywords
@@ -204,7 +211,7 @@ default: pretty
 .Sh CONFIG
 .Bd -literal -compact
 furthermore all these variables|settings can be set inside a config file.
-See the Config specification:
+See the config specification:
 .Lk https://github.com/psyinfra/htcompact/blob/master/CONFIG.md
 .
 The script is also checking for other config files in other places:
@@ -227,6 +234,15 @@ Priority[5] run with default settings
 -> --filter is a more naive alternative to grep
 .Ed
 .
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa script/htcompact.conf
+A default setup for this script.
+.El
+.
+.Sh EXIT STATUS
+.Ex -std
+.
 .Sh EXAMPLES
 .Bd -literal
 htcompact -a 398_440.log
@@ -242,22 +258,20 @@ grep -R -l aborted ~/logs | htcompact -as
 .
 .Sh SEE ALSO
 .Bd -literal
-The Repository is available at
+The repository is available at
 .Lk https://github.com/psyinfra/htcompact
 Bug reports, patches, and (constructive) input are always welcome.
 .Ed
 .
-.Sh EXIT STATUS
-The
+.Sh AUTHORS
 .Nm
-script will exit normally in any case, if no other output is given, that tells the opposite.
+was created by
+.An Mathis Loevenich
+.Mt mathisloevenich@fz\[hy]juelich.de .
+See the AUTHORS file for more information.
 .
-.Sh FILES
-.Bl -tag -width Ds
-.It Pa script/htcompact.conf
-A default setup for this script.
-.El
-.
-.Sh AUTHOR
-.An Mathis Loevenich,
-.Mt mathisloevenich@fz-juelich.de
+.Sh COPYRIGHT
+.Nm
+is released under the
+.Qq MIT License .
+See the LICENSE file for more information.
