@@ -104,7 +104,7 @@ def initialize():
 
     # filter mode
     filter_mode = False
-    filter_keywords = ""
+    filter_keywords = list()
     filter_extended = False
 
     # escape sequences for colors
@@ -124,7 +124,7 @@ def initialize():
     bad_usage_threshold = 1.2
 
     # global variables with default values for err/log/out files
-    std_log = ".log"
+    std_log = ""
     std_err = ".err"
     std_out = ".out"
 
@@ -333,7 +333,7 @@ def manage_params(args):
                 analyser_mode = True
             elif opt in ["--filter"]:
                 filter_mode = True
-                filter_keywords = arg
+                filter_keywords = " ".join(re.split(',| ', arg)).split()
             elif opt in ["--extend"]:
                 filter_extended = True
             # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
@@ -375,11 +375,11 @@ def manage_params(args):
                                           "Valid arguments:\n" + ", ".join(allowed_ignore_values))
                 logging.debug("Ignore these information: " + ", ".join(ignore_list))
 
-            # all tabulate variables
-            elif opt.__eq__("--to-csv"):
-                to_csv = True
-                rprint("[red]--to-csv not handled yet[/red]")
-                sys.exit(0)
+            # Todo: to-csv
+            # elif opt.__eq__("--to-csv"):
+            #     to_csv = True
+            #     rprint("[red]--to-csv not handled yet[/red]")
+            #     sys.exit(0)
 
             elif opt.__eq__("--table-format"):
                 types = "plain,simple,github,grid,fancy_grid,pipe," \
@@ -471,7 +471,7 @@ def man_help():
             break
 
 
-def get_event_information(event_id=""):
+def get_event_information(event_id="") -> str:
     """
 Event Number: 000
 Event Name: Job submitted
@@ -620,13 +620,17 @@ Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with t
         match = re.match(r"Event Number: ([0-9]{3})", line)
         if match:
             if int(match[1]) == int(event_id):
-                return doc_str[i:i+3]
+                return "\n".join(doc_str[i:i+3])
     # else
-    return ["This event number does not exist", "Valid event numbers range from 000 to 034"]
+    return "This event number does not exist, Valid event numbers range from 000 to 034"
 
 
 def raise_value_error(message: str) -> ValueError:
     raise ValueError(message)
+
+
+def raise_type_error(message: str) -> TypeError:
+    raise TypeError(message)
 
 
 # Todo: time seperated ( submitting / executing / terminating)
@@ -643,7 +647,7 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
     :return: job_df, res_df
 
             job_df should never be empty,
-            it holds information like runtime, return state, host, etc.
+            it holds information like runtime, return value, host, etc.
 
             res_df can be empty, it holds all the
             used, requested and allocated resources
@@ -674,6 +678,8 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
             else:
                 logging.exception("Host and port haven't been matched correctly")
                 rprint("[red]faulty values for the host ip make sure it's a valid IPv4[/red]")
+                host = "Unknown"
+                port = "Unknown"
 
             # make a fancy design for the job_information
             job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
@@ -684,8 +690,8 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
                 # check if termination state is normal
                 termination_state_inf = job_raw_information[-1][0]
                 match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", termination_state_inf)
+                job_labels.insert(0, "Termination State")
                 if match_termination_state:
-                    job_labels.insert(0, "Termination State")
 
                     if "Normal termination" in match_termination_state[1]:
                         job_information.insert(0, match_termination_state[1])
@@ -693,23 +699,23 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
                                                       termination_state_inf)
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
-                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return state in the HTCondor log file: {file}[/red]")
+                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
+                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
                         else:
                             job_labels.append("Return Value")
                             job_information.append(return_value)
                     elif "Abnormal termination" in match_termination_state[1]:
                         job_information.insert(0, "[red]"+match_termination_state[1]+"[/red]")
 
-                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
+                        match_signal = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
                                                       termination_state_inf)
-                        return_value = match_return_value[1] if match_return_value else "None"
-                        if return_value == "None":
-                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return state in the HTCondor log file: {file}[/red]")
+                        signal = match_signal[1] if match_signal else "None"
+                        if signal == "None":
+                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
+                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
                         else:
                             job_labels.append("Return Value")
-                            job_information.append(return_value)
+                            job_information.append(signal)
 
                         termination_desc = list()
                         # append the reason for the Abnormal Termination
@@ -730,6 +736,7 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
                         logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
 
                 else:
+                    job_information.insert(0, "Not valid")
                     rprint(f"[red]Termination error in HTCondor log file: {file}[/red]")
 
             # now put everything together in a table
@@ -761,14 +768,16 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
             if match:
                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
             else:
-                raise_value_error("Something went wrong reading the cpu information")
+                logging.debug("Something went wrong reading the cpu information in: " + file)
+                raise_type_error("Something went wrong reading the cpu information")
 
             match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)",
                              partitionable_res[1])
             if match:
                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
             else:
-                raise raise_value_error("Something went wrong reading the disk information")
+                logging.debug("Something went wrong reading the disk information in: " + file)
+                raise raise_type_error("Something went wrong reading the disk information")
 
             # check if the log has gpu information in between
             gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
@@ -785,7 +794,8 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
             if match:
                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
             else:
-                raise_value_error("Something went wrong reading the memory information")
+                logging.debug("Something went wrong reading the memory information in: " + file)
+                raise_type_error("Something went wrong reading the memory information")
             # ****************************************************************************************************
 
             # list of resources and their labels
@@ -926,10 +936,14 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
         rprint(f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
     except FileNotFoundError or ValueError as err:
         logging.exception(err)
-        rprint(f"[red] {err.__class__.__name__}: {err}[/red]")
+        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
     except IndexError as err:
         logging.debug(f"Index Error with {file}: ")
         logging.exception(err)
+    except TypeError as err:
+        logging.exception(err)
+        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+        sys.exit(3)
     except Exception as err:
         logging.debug(err)
     # finally
@@ -1112,6 +1126,7 @@ def show_htcondor_stderr(file):
                f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
     except TypeError as err:
         logging.exception(err)
+        # we continue here no exit needed
         # rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
     finally:
         return output_string
@@ -1147,6 +1162,7 @@ def show_htcondor_stdout(file):
                f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
     except TypeError as err:
         logging.exception(err)
+        # we continue here no exit needed
         # rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
     finally:
 
@@ -1190,7 +1206,7 @@ def log_to_dict(file):
 
     try:
 
-        job_df, res_df = log_to_dataframe(job_spec_id + std_log)
+        job_df, res_df = log_to_dataframe(file)
 
         # Todo: csv style one line
         if to_csv:
@@ -1226,6 +1242,10 @@ def log_to_dict(file):
     except ValueError as err:
         logging.exception(err)
         rprint(f"[red]{err}[/red]")
+    except TypeError as err:
+        logging.exception(err)
+        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+        sys.exit(3)
     except Exception as err:
         logging.exception(err)
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
@@ -1233,7 +1253,7 @@ def log_to_dict(file):
     return result_dict
 
 
-def find_config() -> 'configfile':
+def find_config(args) -> 'configfile':
     """
 
         Try to find a config file in the given arguments.
@@ -1249,7 +1269,7 @@ def find_config() -> 'configfile':
          in the same order excluding the current working directory,
          because this might lead to misbehaviour, when the user changes the directory.
 
-        :return: file if found, else None
+        :return: file if found, else None, args without config, if found
     """
 
     script_name = sys.argv[0]
@@ -1259,7 +1279,7 @@ def find_config() -> 'configfile':
     # search for the given file, first directly, then in /etc and then in ~/.config/htcompact/
     found_config = False
 
-    arguments = sys.argv[1:]
+    arguments = args
     arguments.append(default_configfile)
 
     found_config_file = None
@@ -1317,8 +1337,6 @@ def find_config() -> 'configfile':
     except ValueError:
         pass
 
-    sys.argv[1:] = arguments
-
     # prepare output if not and break if not found
     if not found_config and not found_default_in_cwd:
         rprint(f"[yellow]No valid config file found in: \n"
@@ -1327,13 +1345,13 @@ def find_config() -> 'configfile':
                f"- ~/.config/htcompact/,\n"
                f"- /etc/ \n"
                f"-> using default settings[/yellow]")
-        return None
+        return None, args
     elif found_default_in_cwd:
         rprint(f"[yellow]Found default {default_configfile} in the current working directory.\n"
                f"It will be ignore, to use this, make sure to pass it as an argument like:\n"
                f"htcompact {default_configfile} [logs] [options]\n"
                f"-> using default settings[/yellow]")
-        return None
+        return None, args
 
     config.read(found_config_file)
     sections = config.sections()
@@ -1344,7 +1362,8 @@ def find_config() -> 'configfile':
             if not generate_log_file:  # if already set, do NOT overwrite
                 generate_log_file = config['features']['generate_log_file'].lower() in accepted_states
                 logging.getLogger().disabled = not generate_log_file
-    return found_config_file
+
+    return found_config_file, arguments
 
 
 # search for config file ( UNIX BASED )
@@ -1398,7 +1417,7 @@ def load_config(config_file: 'file'):
             global show_list
 
             if 'show_list' in config['show-more']:
-                for arg in config['show-more']['show_list'].split():
+                for arg in " ".join(re.split(',| ', config['show-more']['show_list'])).split():
                     if arg in allowed_show_values:
                         show_list.append(arg)
                     else:
@@ -1410,7 +1429,7 @@ def load_config(config_file: 'file'):
             global ignore_list  # sources to ignore
 
             if 'ignore_list' in config['ignore']:
-                for arg in config['ignore']['ignore_list'].split():
+                for arg in " ".join(re.split(',| ', config['ignore']['ignore_list'])).split():
                     if arg in allowed_ignore_values:
                         ignore_list.append(arg)
                     else:
@@ -1445,7 +1464,7 @@ def load_config(config_file: 'file'):
         if "filter" in sections:
             global filter_keywords, filter_extended
             if 'filter_keywords' in config['filter']:
-                filter_keywords = config['filter']['filter_keywords']
+                filter_keywords = " ".join(re.split(',| ', config['filter']['filter_keywords'])).split()
                 logging.debug(f"Changed default filter_keywords to: {filter_keywords}")
             if 'filter_extended' in config['filter']:
                 filter_extended = config['filter']['filter_extended'].lower() in accepted_states
@@ -1615,8 +1634,8 @@ def analyse(log_files: 'file') -> 'list_with_dicts':
 
                 # check if termination state is normal or abnormal
                 match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", job_inf[0])
+                job_labels.append("Termination State")  # append the termination state
                 if match_termination_state:
-                    job_labels.append("Termination State")  # append the termination state
 
                     # Normal termination
                     if "Normal termination" in match_termination_state[1]:
@@ -1624,8 +1643,8 @@ def analyse(log_files: 'file') -> 'list_with_dicts':
                         match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
-                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return state in the HTCondor log file: {file}[/red]")
+                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
+                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
                         else:
                             job_labels.append("Return Value")
                             job_information.append(return_value)
@@ -1634,14 +1653,14 @@ def analyse(log_files: 'file') -> 'list_with_dicts':
                     elif "Abnormal termination" in match_termination_state[1]:
                         job_information.append(f"[red]Abnormal termination[/red]")
 
-                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
-                        return_value = match_return_value[1] if match_return_value else "None"
-                        if return_value == "None":
-                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return state in the HTCondor log file: {file}[/red]")
+                        match_signal = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
+                        signal = match_signal[1] if match_signal else "None"
+                        if signal == "None":
+                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
+                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
                         else:
                             job_labels.append("Return Value")
-                            job_information.append(return_value)
+                            job_information.append(signal)
 
                         termination_desc = list()
                         # append the reason for the Abnormal Termination
@@ -1662,6 +1681,7 @@ def analyse(log_files: 'file') -> 'list_with_dicts':
                         logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
 
                 else:
+                    job_information.append(f"{colors['red']}Not valid{colors['back_to_default']}")
                     rprint(f"[red]Termination error in HTCondor log file: {file}[/red]")
 
                 # now put everything together in a table
@@ -1693,13 +1713,15 @@ def analyse(log_files: 'file') -> 'list_with_dicts':
                 if match:
                     cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
                 else:
-                    raise_value_error("Something went wrong reading the cpu information")
+                    logging.debug("Something went wrong reading the cpu information in: " + file)
+                    raise_type_error("Something went wrong reading the cpu information")
 
                 match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
                 if match:
                     disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
                 else:
-                    raise raise_value_error("Something went wrong reading the disk information")
+                    logging.debug("Something went wrong reading the disk information in: " + file)
+                    raise raise_type_error("Something went wrong reading the disk information")
 
                 # check if the log has gpu information in between
                 gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
@@ -1715,7 +1737,8 @@ def analyse(log_files: 'file') -> 'list_with_dicts':
                 if match:
                     memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
                 else:
-                    raise_value_error("Something went wrong reading the memory information")
+                    logging.debug("Something went wrong reading the memory information in: " + file)
+                    raise_type_error("Something went wrong reading the memory information")
                 # ****************************************************************************************************
 
                 # list of resources and their labels
@@ -1982,7 +2005,7 @@ def summarize(log_files: 'file') -> 'list_with_dicts':
             continue
         except TypeError as err:
             logging.exception(err)
-            rprint(f"[red] {err}[/red]")
+            rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
             sys.exit(3)
 
     n = valid_files - aborted_files  # calc diffrenc of successful executed jobs
@@ -2178,22 +2201,23 @@ def analysed_summary(log_files: 'file') -> 'list_with_dicts':
                         match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
                         return_value = match_return_value[1] if match_return_value else "None"
                         if return_value == "None":
-                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return state in the HTCondor log file: {file}[/red]")
+                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
+                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
 
                     # Abnormal Termination
                     elif "Abnormal termination" in termination_state:
 
-                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
-                        return_value = match_return_value[1] if match_return_value else "None"
-                        if return_value == "None":
-                            logging.debug(f"Not a valid return state in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return state in the HTCondor log file: {file}[/red]")
+                        match_signal = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
+                        signal = match_signal[1] if match_signal else "None"
+                        if signal == "None":
+                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
+                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
 
                     else:
                         logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
 
                 else:
+                    termination_state = "Not valid "
                     rprint(f"[red]Termination error in HTCondor log file: {file}[/red]")
 
                 # these where the job information now focus on the used resources
@@ -2217,13 +2241,15 @@ def analysed_summary(log_files: 'file') -> 'list_with_dicts':
                 if match:
                     cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
                 else:
-                    raise_value_error("Something went wrong reading the cpu information")
+                    logging.debug("Something went wrong reading the cpu information in: " + file)
+                    raise_type_error("Something went wrong reading the cpu information")
 
                 match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
                 if match:
                     disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
                 else:
-                    raise raise_value_error("Something went wrong reading the disk information")
+                    logging.debug("Something went wrong reading the disk information in: " + file)
+                    raise raise_type_error("Something went wrong reading the disk information")
 
                 # check if the log has gpu information in between
                 gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
@@ -2242,7 +2268,8 @@ def analysed_summary(log_files: 'file') -> 'list_with_dicts':
                 if match:
                     memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
                 else:
-                    raise_value_error("Something went wrong reading the memory information")
+                    logging.debug("Something went wrong reading the memory information in: " + file)
+                    raise_type_error("Something went wrong reading the memory information")
                 # ****************************************************************************************************
 
                 # list of resources and their labels
@@ -2479,7 +2506,14 @@ def filter_for(log_files: 'file', keywords: 'list', extend=False) -> 'list_with_
     """
     logging.info('Starting the filter mode')
 
-    keyword_list = " ".join(re.split(',| ', keywords)).split()  # remove spaces and commas from string
+    # if the keywords are given as a string, try to create a list
+    if type(keywords) == list:
+        keyword_list = keywords
+    elif type(keywords) == str:
+        keyword_list = " ".join(re.split(',| ', keywords)).split()  # remove spaces and commas from string
+    else:
+        logging.debug(f"Filter mode only accepts a string or list with keywords, not {keywords}")
+        raise_type_error("Expecting a list or a string")
 
     # if extend is set, keywords like err will also look for keywords like warn exception, aborted, etc.
     if extend:  # apply some rules
@@ -2544,22 +2578,22 @@ def filter_for(log_files: 'file', keywords: 'list', extend=False) -> 'list_with_
         elif mode.__eq__("analyse"):
             rprint("[magenta]Try to analyse these files[/magenta]")
             return_dicts = analyse(found_logs)
-        elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
-            rprint("[blue]Want do do more?[/blue]")
-            x = input("default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
-            if x == "d":
-                return_dicts = default(found_logs)
-            elif x == "s":
-                return_dicts = summarize(found_logs)
-            elif x == "a":
-                return_dicts = analyse(found_logs)
-            elif x == "as":
-                return_dicts = analysed_summary(found_logs)
-            elif x== "e":
-                sys.exit(0)
-            else:
-                print('Not a valid argument, quitting ...')
-                sys.exit(0)
+    elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
+        rprint("[blue]Want do do more?[/blue]")
+        x = input("default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
+        if x == "d":
+            return_dicts = default(found_logs)
+        elif x == "s":
+            return_dicts = summarize(found_logs)
+        elif x == "a":
+            return_dicts = analyse(found_logs)
+        elif x == "as":
+            return_dicts = analysed_summary(found_logs)
+        elif x == "e":
+            sys.exit(0)
+        else:
+            print('Not a valid argument, quitting ...')
+            sys.exit(0)
 
     return return_dicts
 
@@ -2627,6 +2661,12 @@ def validate_given_logs(file_list: 'list_of_files'):
                 total += len(file_dir) - 1
                 for file in file_dir:
                     progress.update(task, total=total, advance=1)
+
+                    # ---- if std_log is set ignore other log files with a different suffix ----
+                    if std_log.__ne__("") and not file.endswith(std_log):
+                        logging.debug("Ignoring this file, " + file + ", because std_log is set to: "+ std_log)
+                        continue
+
                     # ignore hidden files
                     if file.startswith("."):
                         continue
@@ -2657,6 +2697,12 @@ def validate_given_logs(file_list: 'list_of_files'):
             # else if path "might" be a valid HTCondor file
             elif working_file_path.__ne__(""):
                 progress.update(task, advance=1)
+
+                # ---- if std_log is set ignore other log files with a different suffix ----
+                if std_log.__ne__("") and not working_file_path.endswith(std_log):
+                    logging.debug("Ignoring this file, " +
+                                  working_file_path + ", because std_log is set to: " + std_log)
+                    continue
 
                 if std_err.__ne__("") and working_file_path.endswith(std_err) or \
                         std_out.__ne__("") and working_file_path.endswith(std_out):
@@ -2795,6 +2841,7 @@ def customize_results(files):
             if mystery[_i] is not None:
                 output_string += mystery[_i] + "\n"
             else:
+                logging.debug("This musst be fixed, NoneType found.")
                 rprint("[red]NoneType object found, this should not happen[/red]")
 
         output_string += "\n"
@@ -2833,7 +2880,7 @@ def run(commandline_args):
         # so it's not possible to give multiple config files
         found_conf = None
         if not no_config:
-            found_conf = find_config()
+            found_conf, commandline_args = find_config(commandline_args)
 
         setup_logging_tool()  # set up the logging device
 
@@ -2868,6 +2915,11 @@ def run(commandline_args):
         logging.debug("-------End of htcompact script-------")
 
         sys.exit(0)
+
+    except TypeError as err:
+        logging.exception(err)
+        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+        sys.exit(3)
 
     except KeyboardInterrupt:
         logging.info("Script was interrupted by the user")
