@@ -17,7 +17,7 @@ setup(name='htcompact',
       author_email='m.loevenich@fz-juelich.de',
       packages=find_packages(),
       license='LICENSE.txt',
-      python_requires='>=3.7',
+      python_requires='>=3.6',
       install_requires=[
             "numpy",
             "datetime",
