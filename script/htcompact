@@ -17,6 +17,10 @@ from rich.progress import track, Progress
 from tabulate import tabulate
 from plotille import Figure
 
+from typing import List
+log_inf_list = List[dict]
+list_of_logs = List[str]
+
 """
 
 This script is basically reading information from HTCondor log files and storing them into
@@ -174,7 +178,7 @@ def check_for_redirection():
 # Todo: consider regex in this implementation: --ignore alloc tim ...
 #  with focus on longest prefix match
 # may not be needed in future but will be used for now
-def remove_files_from_args(args, short_opts, long_opts):
+def remove_files_from_args(args: list, short_opts : str, long_opts: list):
     """
         I want to make it easier for the user to insert many files at once.
         The script should detect option arguments and files
@@ -227,7 +231,7 @@ def remove_files_from_args(args, short_opts, long_opts):
     return new_args
 
 
-def manage_prioritized_params(args):
+def manage_prioritized_params(args: list):
 
     if type(args) != list:
         raise_value_error("Expecting a list as argument")
@@ -271,7 +275,7 @@ def manage_prioritized_params(args):
 
 
 # Todo: thresholds by command line
-def manage_params(args):
+def manage_params(args: list):
     """
     Interprets the given command line arguments and changes the global variables in this scrips
 
@@ -428,7 +432,7 @@ def manage_params(args):
         sys.exit(2)
 
 
-def small_help():
+def small_help() -> str:
     """
 Usage: htcompact (log_files|config_file) [ Arguments ]
 
@@ -1015,7 +1019,7 @@ def read_condor_log(file: str) -> (list, list):
 
 # Todo: maybe less information
 # just read .err files content and return it as a string
-def read_condor_error(file):
+def read_condor_error(file: str) -> str:
     """
     Reads a HTCondor .err file and returns its content
 
@@ -1040,7 +1044,7 @@ def read_condor_error(file):
 
 
 # just read .out files content and return it as a string
-def read_condor_output(file):
+def read_condor_output(file: str) -> str:
     """
         Reads a HTCondor .out file and returns its content
 
@@ -1085,7 +1089,7 @@ def gethostbyaddr(ip):
         return ip
 
 
-def show_htcondor_stderr(file):
+def show_htcondor_stderr(file: str) -> str:
     """
 
     :param file: a HTCondor .err file
@@ -1132,7 +1136,7 @@ def show_htcondor_stderr(file):
         return output_string
 
 
-def show_htcondor_stdout(file):
+def show_htcondor_stdout(file: str) -> str:
     """
     Todo: filter the output ?
     :param file: a HTCondor .out file
@@ -1169,7 +1173,7 @@ def show_htcondor_stdout(file):
         return output_string
 
 
-def log_to_dict(file):
+def log_to_dict(file: str) -> dict:
     """
     reads a given HTCondor .log file with the read_condor_logs() function
 
@@ -1253,7 +1257,7 @@ def log_to_dict(file):
     return result_dict
 
 
-def find_config(args) -> 'configfile':
+def find_config(args: list) -> (str, list):
     """
 
         Try to find a config file in the given arguments.
@@ -1367,7 +1371,7 @@ def find_config(args) -> 'configfile':
 
 
 # search for config file ( UNIX BASED )
-def load_config(config_file: 'file'):
+def load_config(config_file: str):
 
     config = configparser.ConfigParser()
 
@@ -1507,7 +1511,7 @@ def _int_formatter(val, chars, delta, left=False):
 
 
 # Todo: err and output not visible ???
-def default(log_files: 'file') -> 'list_with_dicts':
+def default(log_files: list_of_logs) -> log_inf_list:
     """
     Print the default output for a given list of log files
 
@@ -1557,7 +1561,7 @@ def default(log_files: 'file') -> 'list_with_dicts':
 
 # Todo: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
 #       until now there is not the need for other filters but it might be needed to extend this fucntion
-def analyse(log_files: 'file') -> 'list_with_dicts':
+def analyse(log_files: list_of_logs) -> log_inf_list:
 
     logging.info('Starting the analyser mode')
 
@@ -1903,7 +1907,7 @@ def analyse(log_files: 'file') -> 'list_with_dicts':
 
 # Todo: what means sucessful executed ?
 # Todo: remake
-def summarize(log_files: 'file') -> 'list_with_dicts':
+def summarize(log_files: list_of_logs) -> log_inf_list:
     """
     Summarises all used resources and the runtime in total and average
 
@@ -2116,7 +2120,7 @@ def summarize(log_files: 'file') -> 'list_with_dicts':
 # Todo ram histogram, BUT HOW
 # Todo get files for which the specific termination state appeared ( if not nomral ???)
 # Todo: separate Gpus from another
-def analysed_summary(log_files: 'file') -> 'list_with_dicts':
+def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     """
         analyse the summarized log files,
         this is meant to give the ultimate output
@@ -2489,7 +2493,7 @@ def analysed_summary(log_files: 'file') -> 'list_with_dicts':
 # search in the files for the keywords
 # Todo: show which keywords have been found and which not
 # Todo: AND option, ONLY option
-def filter_for(log_files: 'file', keywords: 'list', extend=False) -> 'list_with_dicts':
+def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf_list:
     """
     Filter for a list of keywords, which can be extended
     and print out every file which matches the pattern (not case sensitive)
@@ -2598,7 +2602,7 @@ def filter_for(log_files: 'file', keywords: 'list', extend=False) -> 'list_with_
     return return_dicts
 
 
-def validate_given_logs(file_list: 'list_of_files'):
+def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
     """
     This method is supposed to take the given log files (by config or command line argument)
     and tries to determine if these are valid log files, ignoring the std_log specification, if std_log = "".
@@ -2788,7 +2792,7 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
 
 # Todo: a lot of information can still not be ignored
 # Todo: a function to format the output
-def customize_results(files):
+def customize_results(files: list_of_logs):
 
     output_string = ""
 
