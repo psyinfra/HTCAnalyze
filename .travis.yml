@@ -1,0 +1,25 @@
+language: python
+os: linux
+dist: bionic
+cache: pip
+jobs:
+    include:
+      - python: 3.6
+      - python: 3.7
+      - python: 3.8
+      - python: 3.9-dev
+      - python: nightly
+      - python: pypy3
+    allow_failures:
+      - python: 3.9-dev
+      - python: nightly
+before_install:
+  - sudo apt-get -y install mandoc
+install:
+  - pip install -U -r requirements.txt
+  - pip install -U -r requirements-test.txt
+  - pip list
+script:
+  - pyflakes --version && pyflakes *.py
+  - pytest --version && pytest tests/
+  - mandoc -T lint man/man1/*

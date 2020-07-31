@@ -1,5 +1,7 @@
 # HTCompact
 
+[![Build Status](https://travis-ci.org/psyinfra/htcompact.svg?branch=master)](https://travis-ci.org/psyinfra/htcompact)
+
 Search through HTCondor log files to extract information, identify patterns, and
 even build graphs (such as resource utilization).
 
