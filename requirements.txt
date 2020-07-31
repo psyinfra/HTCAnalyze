@@ -1,0 +1,4 @@
+pandas
+plotille
+rich
+tabulate
