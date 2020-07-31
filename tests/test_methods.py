@@ -60,7 +60,7 @@ def test_initialize():
 
     # filter mode
     assert ht.filter_mode is False
-    assert ht.filter_keywords == ""
+    assert type(ht.filter_keywords) == list
     assert ht.filter_extended is False
 
     # escape sequences for colors
