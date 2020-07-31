@@ -2345,6 +2345,16 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         if terminated_date and submitted_date:
             total_time = terminated_date - submitted_date
 
+        # still running ?
+        if not terminated_date:
+            today = datetime.datetime.now()
+            today = today.replace(year=1900, microsecond=0)  # format the date
+            if executed_date:
+                runtime = today - executed_date
+            if submitted_date:
+                total_time = today - submitted_date
+
+
         # show HTCondor errors
         if len(occurred_errors) > 0:
             # Todo: is this covering all cases ?
@@ -2382,10 +2392,11 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         elif event_number_order[-1].__eq__("005"):
             termination_type = termination_state
         else:
-            logging.debug("Process still running described in: " + file)
-            rprint(f"[yellow]Process of {file} is still running, \n"
-                   f"it will be ignored for this analysed summation[/yellow]")
-            continue
+            termination_type = "running"
+            # logging.debug("Process still running described in: " + file)
+            # rprint(f"[yellow]Process of {file} is still running, \n"
+            #        f"it will be ignored for this analysed summation[/yellow]")
+            # continue
 
         # now insert into all_files dictionary
         try:
@@ -2450,15 +2461,35 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         term_info = all_files[term_state]
         result_dict = dict()
 
-        result_dict["file-description"] = f"{colors['blue']}All files summarized with the Termination State: " \
-                                          f"{term_state}{colors['back_to_default']}"
+        # differentiate between terminated and running processes
+        if term_state.__ne__("running"):
+            result_dict["file-description"] = f"{colors['blue']}" \
+                                              f"All files summarized with the Termination State: {term_state}" \
+                                              f"{colors['back_to_default']}"
+        else:
+            result_dict["file-description"] = f"{colors['blue']}" \
+                                              f"All files summarized, that are currently running:" \
+                                              f"{colors['back_to_default']}"
 
+        n = int(term_info[0])
         desc_df = pd.DataFrame({
-            "Description": ["Occurence", "Waiting Time", "Runtime", "Total"],
-            "Values": [term_info[0], term_info[1], term_info[2], term_info[3]]
+            "Description": ["Occurence"],
+            "Values": [n]
+        })
+
+        times = np.array([term_info[1], term_info[2], term_info[3]])
+        av_times = times/n
+        format_av_times = [datetime.timedelta(days=time.days, seconds=time.seconds) for time in av_times]
+
+        time_df = pd.DataFrame({
+            "Times": ["Waiting Time", "Runtime", "Total"],
+            "Total": times,
+            "Average": format_av_times
         })
 
         result_dict["execution-details"] = tabulate(desc_df, showindex=False, headers='keys', tablefmt=table_format)
+
+        result_dict["times"] = tabulate(time_df, showindex=False, headers='keys', tablefmt=table_format)
 
         if not term_info[4].empty:
             average_res_df = term_info[4]

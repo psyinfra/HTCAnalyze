@@ -34,8 +34,7 @@ The
 script takes files and directories as input with given flags and prints out a
 readable result of valid HTCondor log files.
 There are 4 main modes to work with this facility.
-The default and analyser mode are made for single log analytics
-and can also show a look inside a running process.
+The default and analyser mode are mostly made for single log analytics.
 The summariser and analysed-summary mode,
 are made to summarise huge collections of log files,
 to give a view on the average used resources and occurred errors.
@@ -68,8 +67,9 @@ Valid arguments:
 the standard mode of the script is 'default'
 
 default mode:
-    just gain a feeling about the process py passing a log file.
-    This is just a simple "Look at" mode.
+    This mode just provides a really basic overview,
+    about how the output can look like
+    and what information is gathered.
 
 analyse mode:
     For more detailed output, use the analyser mode.
@@ -80,18 +80,18 @@ analyse mode:
     - have a look in running processes
 
 summarize mode:
-    summarise a collection of log files,
+    summarise a collection of log files based on its used resources
     Features:
     - average usages of all collected log files
     - average usage and durations on each host node
-    NOTE: this will ignore running processes and other kind of processes,
+    NOTE: this will ignore running, aborted and other kind of processes,
           that do not contain details about the resource usages
 
 analysed-summary mode:
     This mode is a combination of the summariser and analyser mode.
-    This will as well mostly focus on finished jobs,
-    but it will also differentiate between the different termination types
-    Different to the summariser mode this will leave no files untouched.
+    Features:
+    - Seperate the summation based on the termination types
+    - Also handles running processes
 
 .Ed
 .
