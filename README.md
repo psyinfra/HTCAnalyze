@@ -26,16 +26,6 @@ adjusting various warning/error thresholds. See
 [CONFIG.md](https://github.com/psyinfra/htcompact/blob/master/CONFIG.md) for
 more information
 
-### Dependencies
-If you're packaging **htcompact** or installing through some other method, the
-following dependencies are required:
-- python version >= 3.6
-- [setuptools-git-version](https://pypi.org/project/setuptools-git-version/)
-- [tabulate](https://pypi.org/project/tabulate/)
-- [plotille](https://pypi.org/project/plotille/)
-- [rich](https://pypi.org/project/rich/)
-- [pandas](https://pypi.org/project/pandas/) (especially pandas.DataFrame)
-
 ## Getting Started
 - *htcompact --help* for detailed description
 - general use:
