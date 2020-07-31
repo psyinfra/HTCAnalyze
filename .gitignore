@@ -138,7 +138,6 @@ dmypy.json
 cython_debug/
 
 
-
 # HTCompact realted files
 logs/
 .log
@@ -147,3 +146,7 @@ logs/
 .tsv
 .csv
 .txt
+
+# Pycharm files
+.idea
+.DS_Store
