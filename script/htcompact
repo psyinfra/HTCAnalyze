@@ -1745,6 +1745,24 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                     raise_type_error("Something went wrong reading the memory information")
                 # ****************************************************************************************************
 
+                # Add threshold colors
+
+                # reuested vs used disk RAM
+                if float(disk_usage) / float(disk_request) > bad_usage_threshold:
+                    disk_usage = colors["red"] + str(disk_usage) \
+                                 + colors["back_to_default"]  # changed color to red
+                elif float(disk_usage) / float(disk_request) < low_usage_threshold:
+                    disk_usage = colors["yellow"] + disk_usage \
+                                 + colors["back_to_default"]  # changed color to yellow
+
+                # requested vs used Memory
+                if float(memory_usage) / float(memory_request) > bad_usage_threshold:
+                    memory_usage = colors["red"] + memory_usage + colors[
+                        "back_to_default"]  # changed color to red
+                elif float(memory_usage) / float(memory_request) < low_usage_threshold:
+                    memory_usage = colors["yellow"] + memory_usage \
+                                   + colors["back_to_default"]  # changed color to yellow
+
                 # list of resources and their labels
                 resource_labels = ["Cpu", "Disk (KB)", "Memory (MB)"]
                 usage = [cpu_usage, disk_usage, memory_usage]
@@ -1960,14 +1978,14 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             # continue if Process is still running
             if log_description.at[0, 'Description'].__eq__("Process is"):
                 still_running += 1
-                rprint(f"[yellow]Process of {file} is still running, \n"
-                       f"it will be ignored for this summation[/yellow]")
+                rprint(f"[orange3]Process of {file} is still running, \n"
+                       f"it will be ignored for this summation[/orange3]")
                 continue
 
             # if the Job was aborted, it still might have a runtime
             elif log_description.at[0, 'Description'].__eq__("Process was"):
                 # print(f"The job described in {file} was aborted")
-                #aborted_runtime += log_description.at[1, 'Values']
+                # aborted_runtime += log_description.at[1, 'Values']
                 aborted_files += 1
                 continue
 
