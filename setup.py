@@ -22,7 +22,6 @@ setup(name='htcompact',
             "numpy",
             "datetime",
             "configparser",
-            "pandas",
             "tabulate",
             "plotille >= 3.7",
             "rich >= 3.0.3"

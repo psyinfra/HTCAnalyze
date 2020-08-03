@@ -9,7 +9,6 @@ from logging.handlers import RotatingFileHandler
 
 import socket
 import configparser
-import pandas as pd
 import numpy as np
 from rich import print as rprint
 from rich import logging as rlog
@@ -24,7 +23,7 @@ list_of_logs = List[str]
 """
 
 This script is basically reading information from HTCondor log files and storing them into
-pandas DataFrames. By that its actually pretty simple to analyse the data.
+dictionaries. By that its actually pretty simple to analyse the data.
 
 The script makes the information compact and easy to under stand,
 that's the reason for the name htcompact
@@ -644,7 +643,7 @@ def raise_type_error(message: str) -> TypeError:
 def log_to_dict(file: str) -> (dict, dict):
     """
         Read the log file and filter useful information.
-        Structur it in a way, that later two different dataframes will be retuned.
+        Structur it in a way, that later two different dictionaries will be retuned.
 
     :type file: str
     :param file: HTCondor log file
@@ -786,7 +785,7 @@ def log_to_dict(file: str) -> (dict, dict):
 
             # check if the log has gpu information in between
             gpu_match_index = 2  # can be ignored if gpu is given, memory has to access the next index
-            gpu_found = False  # easier to check to add information in the DataFrame
+            gpu_found = False  # easier to check to add information in the dict
             match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
                              partitionable_res[gpu_match_index])
             if match:
@@ -824,9 +823,9 @@ def log_to_dict(file: str) -> (dict, dict):
                 if allocated[i] == "":
                     allocated[i] = np.nan
 
-            # put the data in the DataFrame
+            # put the data in the dict
             res_dict = {
-                "Rescources": resource_labels,
+                "Resources": resource_labels,
                 "Usage": usage,
                 "Requested": requested,
                 "Allocated": allocated
@@ -1265,7 +1264,7 @@ def customize_log(file: str) -> dict:
         else:
             result_dict["file-description"] = f"{colors['green']}The job procedure of : {file}{colors['back_to_default']}"
 
-            result_dict["execution-details"] = tabulate(job_dict, tablefmt=table_format, showindex=False)
+            result_dict["execution-details"] = job_dict
             if not len(res_dict) == 0:  # make sure res_df is not None
 
                 res_dict = manage_thresholds(res_dict)
@@ -1628,7 +1627,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
         submitted_date, executed_date, terminated_date = None, None, None
         ram_histroy = list()
         occurred_errors = list()
-        job_df, res_df = pd.DataFrame(columns=["Description", "Values"]), pd.DataFrame({})
+        job_dict, res_dict = {"Execution details": [], "Values": []}, dict()
 
         logging.debug(f"Analysing the HTCondor log file: {file}")
         result_dict["file-description"] = f"{colors['green']}Job analysis of: {file}{colors['back_to_default']}"
@@ -1644,8 +1643,8 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                 if match_host:
                     from_host = match_host[1]
                     # port = match_host[2]
-                    job_df = job_df.append(pd.DataFrame({"Description": "Submitted from host",
-                                                         "Values": [from_host]}))
+                    job_dict["Execution details"].append("Submitted from host")
+                    job_dict["Values"].append(from_host)
 
             # job executing
             elif job_id == "001":
@@ -1658,8 +1657,9 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                         host = gethostbyaddr(host)
                     port = match_host[2]
 
-                    job_df = job_df.append(pd.DataFrame({"Description": ["Executing on Host", "Port"],
-                                                         "Values": [host, port]}))
+                    job_dict["Execution details"].extend(["Executing on Host", "Port"])
+                    job_dict["Values"].extend([host, port])
+
                 else:
                     logging.exception("Host and port haven't been matched correctly")
                     rprint("[red]Your log file has faulty values for the host ip,"
@@ -1712,7 +1712,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                                 break
 
                         if not len(termination_desc) == 0:
-                            job_labels.append("Description")
+                            job_labels.append("Execution details")
                             job_information.append("\n".join(termination_desc))
                         else:
                             logging.debug(f"No termination description for {file} found")
@@ -1725,13 +1725,8 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                     job_information.append(f"{colors['red']}Not valid{colors['back_to_default']}")
                     rprint(f"[red]Termination error in HTCondor log file: {file}[/red]")
 
-                # now put everything together in a table
-                job_temp_df = pd.DataFrame({
-                    "Description": job_labels,
-                    "Values": job_information
-                })
-
-                job_df = job_df.append(job_temp_df)
+                job_dict["Execution details"].extend(job_labels)
+                job_dict["Values"].extend(job_information)
 
                 # these where the job information now focus on the used resources
                 relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
@@ -1766,7 +1761,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
 
                 # check if the log has gpu information in between
                 gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
-                gpu_found = False  # easier to check to add information in the DataFrame
+                gpu_found = False  # easier to check to add information in the dict
                 match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
                                  partitionable_res[gpu_match_index])
                 if match:
@@ -1781,24 +1776,6 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                     logging.debug("Something went wrong reading the memory information in: " + file)
                     raise_type_error("Something went wrong reading the memory information")
                 # ****************************************************************************************************
-
-                # Add threshold colors
-
-                # # reuested vs used disk RAM
-                # if float(disk_usage) / float(disk_request) > bad_usage_threshold:
-                #     disk_usage = colors["red"] + str(disk_usage) \
-                #                  + colors["back_to_default"]  # changed color to red
-                # elif float(disk_usage) / float(disk_request) < low_usage_threshold:
-                #     disk_usage = colors["yellow"] + disk_usage \
-                #                  + colors["back_to_default"]  # changed color to yellow
-                #
-                # # requested vs used Memory
-                # if float(memory_usage) / float(memory_request) > bad_usage_threshold:
-                #     memory_usage = colors["red"] + memory_usage + \
-                #                    colors["back_to_default"]  # changed color to red
-                # elif float(memory_usage) / float(memory_request) < low_usage_threshold:
-                #     memory_usage = colors["yellow"] + memory_usage \
-                #                    + colors["back_to_default"]  # changed color to yellow
 
                 # list of resources and their labels
                 resource_labels = ["Cpu", "Disk (KB)", "Memory (MB)"]
@@ -1821,7 +1798,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                     if allocated[i] == "":
                         allocated[i] = np.nan
 
-                # put the data in the DataFrame
+                # put the data in the dict
                 resource_dict = {
                     "Rescources": resource_labels,
                     "Usage": usage,
@@ -1829,12 +1806,10 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                     "Allocated": allocated
                 }
 
-                resource_dict = manage_thresholds(resource_dict)  # check for thresholds
-
                 if gpu_found:
                     resource_dict["Assigned"] = ["", "", "", gpu_name]
 
-                res_df = pd.DataFrame(resource_dict)
+                res_dict = manage_thresholds(resource_dict)  # check for thresholds
 
             # job image size updated
             elif job_id == "006":
@@ -1849,8 +1824,6 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                 terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
 
                 aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
-                # job_df = job_df.append(pd.DataFrame({"Description": "Job was aborted by the user",
-                #                                      "Values": [yellow+aborted_by_user+back_to_default]}))
                 occurred_errors.append([job_id, terminated_date, "Terminated by user: "+aborted_by_user])
 
             else:
@@ -1864,37 +1837,50 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                                                     re.sub(' \t', '', job_desc)])
                             break  # avoid duplicates
 
+        # append execution details
+        result_dict["execution-details"] = job_dict
+
         # managing the time information
-        time_dict = dict()
+        desc_list = list()
+        value_list = list()
         waiting_time = None
         if submitted_date:
-            time_dict["Submission date"] = submitted_date.strftime("%m/%d %H:%M:%S")
+            desc_list.append("Submission date")
+            value_list.append(submitted_date.strftime("%m/%d %H:%M:%S"))
         if executed_date:
-            time_dict["Execution date"] = executed_date.strftime("%m/%d %H:%M:%S")
+            desc_list.append("Execution date")
+            value_list.append(executed_date.strftime("%m/%d %H:%M:%S"))
             if submitted_date:
                 waiting_time = executed_date - submitted_date
         if terminated_date:
-            time_dict["Termination date"] = terminated_date.strftime("%m/%d %H:%M:%S")
+            desc_list.append("Termination date")
+            value_list.append(terminated_date.strftime("%m/%d %H:%M:%S"))
             if waiting_time:
-                time_dict["Waiting time"] = waiting_time
+                desc_list.append("Waiting time")
+                value_list.append(waiting_time)
             if executed_date:
                 runtime = terminated_date - executed_date
-                time_dict["Execution runtime"] = runtime
+                desc_list.append("Execution runtime")
+                value_list.append(runtime)
             if submitted_date:
                 total_time = terminated_date - submitted_date
-                time_dict["Total runtime"] = total_time
+                desc_list.append("Total runtime")
+                value_list.append(total_time)
         elif waiting_time:
-            time_dict["Termination date"] = "Process still running"
-            time_dict["Waiting time"] = waiting_time
+            desc_list.append("Termination date")
+            value_list.append("Process still running")
+            desc_list.append("Waiting time")
+            value_list.append(waiting_time)
 
-        if len(time_dict) > 0:
-            time_df = pd.DataFrame(time_dict.values(), index=time_dict.keys())
-            result_dict["times"] = tabulate(time_df)
+        if len(desc_list) > 0:
+            time_dict = {
+                "Runtime details": desc_list,
+                "Times and dates": value_list
+            }
+            result_dict["times"] = time_dict
 
-        if not job_df.empty:
-            result_dict["execution-details"] = tabulate(job_df, showindex=False)
-        if not res_df.empty:
-            result_dict["all-resources"] = tabulate(res_df, showindex=False, headers="keys", tablefmt=table_format)
+        if not len(res_dict) == 0:
+            result_dict["all-resources"] = res_dict
 
         # show HTCondor errors
         if len(occurred_errors) > 0:
@@ -1917,13 +1903,13 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                 else:
                     err_reason.append(err[2])
 
-            err_df = pd.DataFrame({
+            err_dict = {
                 "Time": time_list,
                 "Event Number": event_numbers,
                 "Reason": err_reason
-            })
+            }
 
-            result_dict["errors"] = tabulate(err_df, showindex=False, headers='keys')
+            result_dict["errors"] = err_dict
 
         # managing the ram history
         if len(ram_histroy) > 0:
@@ -1966,7 +1952,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     """
     Summarises all used resources and the runtime in total and average
 
-    Runs through the log files via the log_to_dataframe function
+    Runs through the log files via the log_to_dict function
 
     :return:
     """
@@ -2011,51 +1997,49 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             log = log_to_dict(file)
 
             log_description, log_resources = log[0], log[1]
-
             # continue if Process is still running
-            if log_description.at[0, 'Description'].__eq__("Process is"):
+            if log_description['Description'][0].__eq__("Process is"):
                 still_running += 1
                 rprint(f"[orange3]Process of {file} is still running, \n"
                        f"it will be ignored for this summation[/orange3]")
                 continue
 
             # if the Job was aborted, it still might have a runtime
-            elif log_description.at[0, 'Description'].__eq__("Process was"):
+            elif log_description['Description'][0].__eq__("Process was"):
                 # print(f"The job described in {file} was aborted")
                 # aborted_runtime += log_description.at[1, 'Values']
                 aborted_files += 1
                 continue
 
-            normal_runtime += log_description.at[3, 'Values']
-            host = log_description.at[0, 'Values']
+            normal_runtime += log_description['Values'][3]
+            host = log_description['Values'][2]
             if host in host_nodes:
                 host_nodes[host][0] += 1
-                host_nodes[host][1] += log_description.at[3, 'Values']
+                host_nodes[host][1] += log_description['Values'][3]
             else:
-                host_nodes[host] = [1, log_description.at[3, 'Values']]
+                host_nodes[host] = [1, log_description['Values'][3]]
 
-            total_cpu_usage += float(log_resources.at[0, 'Usage']) \
-                if str(log_resources.at[0, 'Usage']).lower() != 'nan' else 0
-            total_disk_usage += int(log_resources.at[1, 'Usage'])
-            total_memory_usage += int(log_resources.at[2, 'Usage'])
+            total_cpu_usage += float(log_resources['Usage'][0]) \
+                if str(log_resources['Usage'][0]).lower() != 'nan' else 0
+            total_disk_usage += int(log_resources['Usage'][1])
+            total_memory_usage += int(log_resources['Usage'][2])
 
-            total_cpu_requested += int(log_resources.at[0, 'Requested'])
-            total_disk_requested += int(log_resources.at[1, 'Requested'])
-            total_memory_requested += int(log_resources.at[2, 'Requested'])
+            total_cpu_requested += int(log_resources['Requested'][0])
+            total_disk_requested += int(log_resources['Requested'][1])
+            total_memory_requested += int(log_resources['Requested'][2])
 
-            if not "allocated-resources" in ignore_list:
-                total_cpu_allocated += int(log_resources.at[0, 'Allocated'])
-                total_disk_allocated += int(log_resources.at[1, 'Allocated'])
-                total_memory_allocated += int(log_resources.at[2, 'Allocated'])
+            total_cpu_allocated += int(log_resources['Allocated'][0])
+            total_disk_allocated += int(log_resources['Allocated'][1])
+            total_memory_allocated += int(log_resources['Allocated'][2])
 
-            if 3 in log_resources.index:  # this means gpu information is given
+            if len(log_resources['Resources']) == 4:  # this means gpu information is given
                 gpu_found = True
-                total_gpu_usage += float(log_resources.at[3, 'Usage'])
-                total_gpu_requested += int(log_resources.at[3, 'Requested'])
+                total_gpu_usage += float(log_resources['Usage'][3])
+                total_gpu_requested += int(log_resources['Requested'][3])
                 if not "allocated-resources" in ignore_list:
-                    total_gpu_allocated += int(log_resources.at[3, 'Allocated'])
-                if log_resources.at[3, 'Assigned'] not in list_of_gpu_names:  # append new gpus
-                    list_of_gpu_names.append(log_resources.at[3, 'Assigned'])
+                    total_gpu_allocated += int(log_resources['Allocated'][3])
+                if log_resources['Assigned'][3] not in list_of_gpu_names:  # append new gpus
+                    list_of_gpu_names.append(log_resources['Assigned'][3]) # Todo:
 
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
@@ -2077,34 +2061,41 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     # Todo: store number of successful, aborted, ect. (ERRORS)
 
-    time_dict = dict()
-
+    time_desc_list = list()
+    time_value_list = list()
     if normal_runtime != datetime.timedelta(0, 0, 0):
-        time_dict["Total runtime of all successful jobs"] = normal_runtime
+        time_desc_list.append("Total runtime of all successful jobs")
+        time_value_list.append(normal_runtime)
     if aborted_runtime != datetime.timedelta(0, 0, 0):
         # some jobs were aborted, diffrentiate between normal runtime, aborted runtime and total runtime
-        time_dict["Total runtime of all aborted jobs"] = aborted_runtime
-        time_dict["Total runtime"] = total_runtime
+        time_desc_list.append("Total runtime of all aborted jobs")
+        time_value_list.append(aborted_runtime)
+        time_desc_list.append("Total runtime")
+        time_value_list.append(total_runtime)
     if average_runtime:
-        time_dict["Average runtime per job\n(only successful executed jobs)"] = average_runtime
+        time_desc_list.append("Average runtime per job\n(only successful executed jobs)")
+        time_value_list.append(average_runtime)
 
-    runtime_df = pd.DataFrame(time_dict.items())
-    result_dict["times"] = tabulate(runtime_df, showindex=False, tablefmt='simple')
+    time_dict = {
+        "Times": time_desc_list,
+        "Values": time_value_list
+    }
+    result_dict["times"] = time_dict
 
     if n != 0:  # do nothing, if all valid jobs were aborted
-        df_total = pd.DataFrame({
-            "Resources": ['Total Cpu', 'Total Disk (KB)', 'Total Memory (MB)'],
-            "Usage": [str(round(total_cpu_usage, 2)),
-                      str(total_disk_usage),
-                      str(total_memory_usage)],  # necessary
-            "Requested": [total_cpu_requested,
-                          total_disk_requested,
-                          total_memory_requested],
-            "Allocated": [total_cpu_allocated,
-                          total_disk_allocated,
-                          total_memory_allocated]
-
-        })
+        # total_dict = {
+        #     "Resources": ['Total Cpu', 'Total Disk (KB)', 'Total Memory (MB)'],
+        #     "Usage": [str(round(total_cpu_usage, 2)),
+        #               str(total_disk_usage),
+        #               str(total_memory_usage)],  # necessary
+        #     "Requested": [total_cpu_requested,
+        #                   total_disk_requested,
+        #                   total_memory_requested],
+        #     "Allocated": [total_cpu_allocated,
+        #                   total_disk_allocated,
+        #                   total_memory_allocated]
+        #
+        # }
 
         average_dict = {
             "Resources": ['Average Cpu', 'Avergae Disk (KB)', 'Average Memory (MB)'],
@@ -2122,38 +2113,28 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
         average_dict = manage_thresholds(average_dict)
 
-        df_average = pd.DataFrame(average_dict)
-
         # if gpu information was found
         if gpu_found:
-            df_gpu_total = pd.DataFrame({
-                "Resources": ['Total Gpu'],
-                "Usage": [total_gpu_usage],  # necessary
-                "Requested": [total_gpu_requested]
-            })
-            df_gpu_average = pd.DataFrame({
-                "Resources": ['Average Gpu'],
-                "Usage": [round(total_gpu_usage / n, 2)],  # Todo: divide by gpu occurrence ????
-                "Requested": [round(total_gpu_requested / n, 2)]
-            })
-
-            df_gpu_total.insert(3, "Allocated", [total_gpu_allocated])
-            df_gpu_average.insert(3, "Allocated", [round(total_gpu_allocated / n, 2)])
-
-
-            df_total = df_total.append(df_gpu_total)
-            df_average = df_average.append(df_gpu_average)
-
+            # gpu_total_dict = {
+            #     "Resources": ['Total Gpu'],
+            #     "Usage": [total_gpu_usage],  # necessary
+            #     "Requested": [total_gpu_requested]
+            #     "Allocated":
+            # }
+            # gpu_average_dict ={
+            #     "Resources": ['Average Gpu'],
+            #     "Usage": [round(total_gpu_usage / n, 2)],  # Todo: divide by gpu occurrence ????
+            #     "Requested": [round(total_gpu_requested / n, 2)],
+            #     "Allocated": [round(total_gpu_allocated / n, 2)]
+            # }
+            average_dict["Resources"].append('Average Gpu')
+            average_dict["Usage"].append(round(total_gpu_usage / n, 2))
+            average_dict["Requested"].append(round(total_gpu_requested / n, 2))
+            average_dict["Allocated"].append(round(total_gpu_allocated / n, 2))
+            average_dict["Assigned"] = ["", "", "", ", ".join(list_of_gpu_names)]
             # Todo: each gpu gets a single row
-            df_total.insert(4, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
-            df_average.insert(4, "Assigned", ["", "", "", ", ".join(list_of_gpu_names)])
 
-
-        # Todo: add later
-        # output_string += "Total used resources:\n"
-        # output_string += tabulate(df_total, showindex=False, headers='keys', tablefmt=table_format) + "\n\n"
-
-        result_dict["all-resources"] = tabulate(df_average, showindex=False, headers='keys', tablefmt=table_format)
+        result_dict["all-resources"] = average_dict
 
     # Todo: cpu nodes might change over lifetime of a job
     if len(host_nodes) > 0:
@@ -2186,7 +2167,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         this is meant to give the ultimate output
         about every single log event in average etc.
 
-        Runs through the log files via the log_to_dataframe function
+        Runs through the log files via the read_condor_log function
 
         :return: string
         """
@@ -2315,7 +2296,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
                 # check if the log has gpu information in between
                 gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
-                gpu_found = False  # easier to check to add information in the DataFrame
+                gpu_found = False  # easier to check to add information in the dict
                 match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
                                  partitionable_res[gpu_match_index])
                 if match:
@@ -2352,7 +2333,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                     requested.append(float(gpu_request))
                     allocated.append(float(gpu_allocated))
 
-                # put the data in the DataFrame
+                # create a resource_dict
                 resource_dict = {
                     "Resources": resource_labels,
                     "Usage": np.array(usage, dtype=float),
@@ -2435,12 +2416,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 else:
                     err_reason.append(err[3])
 
-            # err_df = pd.DataFrame({
+            # err_dict = {
             #     "Time": time_list,
             #     "Event Number": event_numbers,
             #     "Error": err_keyword,
             #     "Reason": err_reason
-            # })
+            # }
 
         # if last termination was not 005, get last occurred error
         if event_number_order[-1] in ["002", "003", "004", "007", "009",
@@ -2493,7 +2474,6 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                     count_host_nodes['Aborted before submission'] = [1, total_time]
                 all_files[termination_type] = [1, waiting_time, runtime, total_time, resource_dict, count_host_nodes]
 
-
         # Todo: test if valid here
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
@@ -2522,24 +2502,24 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                                               f"{colors['back_to_default']}"
 
         n = int(term_info[0])
-        desc_df = pd.DataFrame({
+        desc_dict = {
             "Description": ["Occurence"],
             "Values": [n]
-        })
+        }
 
         times = np.array([term_info[1], term_info[2], term_info[3]])
         av_times = times/n
         format_av_times = [datetime.timedelta(days=time.days, seconds=time.seconds) for time in av_times]
 
-        time_df = pd.DataFrame({
+        time_dict = {
             "Times": ["Waiting Time", "Runtime", "Total"],
             "Total": times,
             "Average": format_av_times
-        })
+        }
 
-        result_dict["execution-details"] = tabulate(desc_df, showindex=False, headers='keys', tablefmt=table_format)
+        result_dict["execution-details"] = desc_dict
 
-        result_dict["times"] = tabulate(time_df, showindex=False, headers='keys', tablefmt=table_format)
+        result_dict["times"] = time_dict
 
         if not len(term_info[4]) == 0:
             total_resources_dict = term_info[4]
@@ -2552,11 +2532,9 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
             if 'Assigned' in total_resources_dict.keys():
                 avg_dict['Resources'].append('Gpu')
                 avg_dict['Assigned'] = ['', '', '', ", ".join(list_of_gpu_names)]
-                print(avg_dict)
 
             avg_dict = manage_thresholds(avg_dict)
-            avg_res_df = pd.DataFrame(avg_dict)
-            result_dict["all-resources"] = tabulate(avg_res_df, showindex=False, headers='keys', tablefmt=table_format)
+            result_dict["all-resources"] = avg_dict
 
         executed_jobs = list()
         runtime_per_node = list()
@@ -2909,10 +2887,19 @@ def customize_results(files: list_of_logs):
     for i in range(len(work_with)):
         mystery = work_with[i]
 
-        if "execution-details" in ignore_list and "execution-details" in mystery:
-            del mystery["execution-details"]
-        elif "times" in ignore_list and "times" in mystery:
-            del mystery["times"]
+        if "execution-details" in mystery:
+            if "execution-details" in ignore_list:
+                del mystery["execution-details"]
+            else:
+                mystery["execution-details"] = tabulate(mystery["execution-details"],
+                                                        headers='keys', tablefmt=table_format)
+
+        if "times" in mystery:
+            if "times" in ignore_list:
+                del mystery["times"]
+            else:
+                time_dict = mystery["times"]
+                mystery["times"] = tabulate(mystery["times"], showindex=False, headers='keys', tablefmt=table_format)
 
         if "all-resources" in mystery:
             if "all-resources" in ignore_list:
@@ -2920,16 +2907,29 @@ def customize_results(files: list_of_logs):
             else:
                 mystery["all-resources"] = tabulate(mystery["all-resources"], showindex=False,
                                                     headers='keys', tablefmt=table_format)
+        else:
+            if "used-resources" in mystery:
+                if "used-resources" in ignore_list:
+                    del mystery["used-resources"]
+                else:
+                    pass # Todo
+            if "requested-resources" in mystery:
+                if "requested-resources" in ignore_list:
+                    del mystery["requested-resources"]
+                else:
+                    pass # Todo
+            if "allocated-resources" in mystery:
+                if "allocated-resources" in ignore_list:
+                    del mystery["allocated-resources"]
+                else:
+                    pass # Todo
 
-        elif "used-resources" in ignore_list and "used-resources" in mystery:
-            del mystery["used-resources"]
-        elif "requested-resources" in ignore_list and "requested-resources" in mystery:
-            del mystery["requested-resources"]
-        elif "allocated-resources" in ignore_list and "allocated-resources" in mystery:
-            del mystery["allocated-resources"]
-
-        if "errors" in ignore_list and "errors" in mystery:
-            del mystery["errors"]
+        if "errors" in mystery:
+            if "errors" in ignore_list:
+                del mystery["errors"]
+            else:
+                mystery["errors"] = "Occurred errors: \n" +\
+                                    tabulate(mystery["errors"], showindex=False, headers='keys', tablefmt='grid')
 
         if "host-nodes" in mystery:
             if "host-nodes" in ignore_list:
@@ -2940,10 +2940,15 @@ def customize_results(files: list_of_logs):
 
         for _i in mystery:
             if mystery[_i] is not None:
-                output_string += mystery[_i] + "\n"
+                output_string += mystery[_i]
             else:
                 logging.debug("This musst be fixed, NoneType found.")
                 rprint("[red]NoneType object found, this should not happen[/red]")
+
+            if mystery[_i] == mystery[list(mystery.keys())[-1]]:
+                output_string += "\n"
+            else:
+                output_string += "\n\n"
 
         output_string += "\n"
 
