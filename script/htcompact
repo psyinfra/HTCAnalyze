@@ -2175,12 +2175,13 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             average_job_duration = val[1]/val[0]
             runtime_per_node.append(datetime.timedelta(average_job_duration.days, average_job_duration.seconds))
 
-        df_cpu = pd.DataFrame({
+        cpu_dict = {
             "Host Nodes": list(host_nodes.keys()),
             "Executed Jobs": executed_jobs,
             "Average job duration": runtime_per_node
-        })
-        result_dict["host-nodes"] = tabulate(df_cpu, showindex=False, headers='keys', tablefmt=table_format)
+        }
+
+        result_dict["host-nodes"] = cpu_dict
 
     return [result_dict]
 
@@ -2573,13 +2574,14 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
             executed_jobs.append(val[0])
             average_job_duration = val[1] / val[0]
             runtime_per_node.append(datetime.timedelta(average_job_duration.days, average_job_duration.seconds))
-        host_nodes_df = pd.DataFrame({
+
+        host_nodes_dict = {
             "Host Nodes": list(term_info[5].keys()),
             "Executed Jobs": executed_jobs,
             "Average job duration": runtime_per_node
-        })
+        }
 
-        result_dict["host-nodes"] = tabulate(host_nodes_df, showindex=False, headers='keys', tablefmt=table_format)
+        result_dict["host-nodes"] = host_nodes_dict
 
         result_list.append(result_dict)
 
@@ -2934,8 +2936,11 @@ def customize_results(files: list_of_logs):
         if "errors" in ignore_list and "errors" in mystery:
             del mystery["errors"]
 
-        if "host-nodes" in ignore_list and "host-nodes" in mystery:
-            del mystery["host-nodes"]
+        if "host-nodes" in mystery:
+            if "host-nodes" in ignore_list:
+                del mystery["host-nodes"]
+            else:
+                mystery["host-nodes"] = tabulate(mystery["host-nodes"], showindex=False, headers='keys', tablefmt=table_format)
 
         for _i in mystery:
             if mystery[_i] is not None:
