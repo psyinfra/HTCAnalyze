@@ -86,12 +86,11 @@ def initialize():
 
     # ignore information
     ignore_list = list()
-    allowed_ignore_values = ["execution-details", "times",
-                             "gpu", "cpu", "host-nodes",
+    allowed_ignore_values = ["execution-details", "times", "host-nodes",
                              "used-resources", "requested-resources",
                              "allocated-resources", "all-resources",
-                             "errors", "warnings"]
-    # Todo: used-resources, requested-resources, times, gpus, cpu, errors, warnings]
+                             "errors"]
+    # Todo: ignore script warnings ?
 
     # if set do not use a config file, even if one was found
     no_config = False

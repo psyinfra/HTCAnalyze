@@ -74,7 +74,7 @@ default mode:
 analyse mode:
     For more detailed output, use the analyser mode.
     Features:
-    - if more then one image size update is found -> provides ram histogram
+    - provides ram histogram
     - shows HTCondor errors
     - more details in general
     - have a look in running processes
@@ -84,7 +84,7 @@ summarize mode:
     Features:
     - average usages of all collected log files
     - average usage and durations on each host node
-    NOTE: this will ignore running, aborted and other kind of processes,
+    NOTE: this will ignore running, aborted and other processes,
           that do not contain details about the resource usages
 
 analysed-summary mode:
@@ -120,7 +120,6 @@ Its options are as follows:
 .
 .It Fl m Ar mode | Fl Fl mode Ar mode
 Forward the results, to be processed.
-Example: analyse the results
 .It Fl Fl extend
 will include these keywords:
 .Bd -literal
@@ -194,10 +193,9 @@ ignore a given set of information
 .Bd -literal
 Valid arguments are:
 
-[execution-details, times, gpu,
-cpu, errors, warnings, host-nodes,
-used-resources, requested-resources,
-allocated-resources, all-resources]
+[execution-details, times, errors, host-nodes,
+ used-resources, requested-resources,
+ allocated-resources, all-resources]
 
 if you want to ignore multiple information,
 use the string notation: "keyword1 keyword2 ...",
