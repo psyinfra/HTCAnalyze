@@ -1800,7 +1800,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
 
                 # put the data in the dict
                 resource_dict = {
-                    "Rescources": resource_labels,
+                    "Resources": resource_labels,
                     "Usage": usage,
                     "Requested": requested,
                     "Allocated": allocated
@@ -2884,6 +2884,7 @@ def customize_results(files: list_of_logs):
     if type(results) == dict:
         work_with = [results]
 
+    # check for ignore values
     for i in range(len(work_with)):
         mystery = work_with[i]
 
@@ -2898,31 +2899,23 @@ def customize_results(files: list_of_logs):
             if "times" in ignore_list:
                 del mystery["times"]
             else:
-                time_dict = mystery["times"]
                 mystery["times"] = tabulate(mystery["times"], showindex=False, headers='keys', tablefmt=table_format)
 
         if "all-resources" in mystery:
+            resources = mystery["all-resources"]
+            print(resources)
             if "all-resources" in ignore_list:
                 del mystery["all-resources"]
             else:
-                mystery["all-resources"] = tabulate(mystery["all-resources"], showindex=False,
-                                                    headers='keys', tablefmt=table_format)
-        else:
-            if "used-resources" in mystery:
                 if "used-resources" in ignore_list:
-                    del mystery["used-resources"]
-                else:
-                    pass # Todo
-            if "requested-resources" in mystery:
+                    del mystery["all-resources"]["Usage"]
                 if "requested-resources" in ignore_list:
-                    del mystery["requested-resources"]
-                else:
-                    pass # Todo
-            if "allocated-resources" in mystery:
+                    del mystery["all-resources"]["Requested"]
                 if "allocated-resources" in ignore_list:
-                    del mystery["allocated-resources"]
-                else:
-                    pass # Todo
+                    del mystery["all-resources"]["Allocated"]
+
+                mystery["all-resources"] = tabulate(resources, showindex=False, headers='keys',
+                                                    tablefmt=table_format)
 
         if "errors" in mystery:
             if "errors" in ignore_list:
