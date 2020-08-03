@@ -641,26 +641,27 @@ def raise_type_error(message: str) -> TypeError:
 # Todo: Read HTCondor Errors that occurred
 # Todo: for loop instead of single run
 # Todo: termination types are dynamical
-def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
+def log_to_dict(file: str) -> (dict, dict):
     """
         Read the log file and filter useful information.
         Structur it in a way, that later two different dataframes will be retuned.
 
     :type file: str
     :param file: HTCondor log file
-    :return: job_df, res_df
+    :return: job_dict, res_dict
 
-            job_df should never be empty,
+            job_dict should never be empty,
             it holds information like runtime, return value, host, etc.
 
-            res_df can be empty, it holds all the
+            res_dict can be empty, it holds all the
             used, requested and allocated resources
     """
+
     try:
         job_events, job_raw_information = read_condor_log(file)
 
-        job_df = pd.DataFrame({})
-        res_df = pd.DataFrame({})
+        job_dict = dict()
+        res_dict = dict()
 
         # if the last job event is : Job terminated
         if job_events[-1][0].__eq__("005"):
@@ -744,10 +745,10 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
                     rprint(f"[red]Termination error in HTCondor log file: {file}[/red]")
 
             # now put everything together in a table
-            job_df = pd.DataFrame({
+            job_dict = {
                 "Description": job_labels,
                 "Values": job_information
-            })
+            }
 
             # these where the job information now focus on the used resources
 
@@ -784,7 +785,7 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
                 raise raise_type_error("Something went wrong reading the disk information")
 
             # check if the log has gpu information in between
-            gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
+            gpu_match_index = 2  # can be ignored if gpu is given, memory has to access the next index
             gpu_found = False  # easier to check to add information in the DataFrame
             match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
                              partitionable_res[gpu_match_index])
@@ -824,16 +825,15 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
                     allocated[i] = np.nan
 
             # put the data in the DataFrame
-            res_df = pd.DataFrame({
+            res_dict = {
                 "Rescources": resource_labels,
                 "Usage": usage,
                 "Requested": requested,
-                # "Allocated": allocated
-            })
+                "Allocated": allocated
+            }
 
-            res_df.insert(3, "Allocated", allocated)
             if gpu_found:
-                res_df.insert(4, "Assigned", ["", "", "", gpu_name])
+                res_dict["Assigned"] = ["", "", "", gpu_name]
 
         # Todo: check this section
         # This means the job was terminated, is still running or some other cases
@@ -861,7 +861,7 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
             if job_events[-1][0].__eq__("009"):  # job aborted
 
                 desc_list.insert(0, "Process was")
-                value_list.insert(0, colors['yellow']+"aborted"+ colors['back_to_default'])
+                value_list.insert(0, colors['yellow'] + "aborted" + colors['back_to_default'])
 
                 # calculate the runtime for the job
                 if job_events[-1].__ne__(job_events[0]):
@@ -885,7 +885,7 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
                     value_list.append(terminating_date.strftime("%m/%d %H:%M:%S"))
 
                 user = ((job_raw_information[-1][0]).split(" ")[-1])[:-1]
-                logging.debug(f"{file}: Job arboted by {user}")
+                logging.debug(f"{file}: Job aborted by {user}")
 
                 desc_list.append('Aborted by user:')
                 value_list.append(colors['yellow']+user+colors['back_to_default'])
@@ -930,10 +930,10 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
                     desc_list.append('Already running since')
                     value_list.append(runtime)
 
-            job_df = job_df = pd.DataFrame({
+            job_dict = {
                 "Description": desc_list,
                 "Values": value_list
-            })
+            }
 
     except NameError as err:
         logging.exception(err)
@@ -953,7 +953,7 @@ def log_to_dataframe(file: str) -> (pd.DataFrame, pd.DataFrame):
     # finally
     else:
 
-        return job_df, res_df
+        return job_dict, res_dict
 
 
 # reads all information, but returns them in two lists
@@ -1220,7 +1220,7 @@ def show_htcondor_stdout(file: str) -> str:
         return output_string
 
 
-def log_to_dict(file: str) -> dict:
+def customize_log(file: str) -> dict:
     """
     reads a given HTCondor .log file with the read_condor_logs() function
 
@@ -1251,13 +1251,13 @@ def log_to_dict(file: str) -> dict:
     if std_log.__ne__("") and file[-len(std_log):].__eq__(std_log):
         job_spec_id = file[:-len(std_log)]
     else:
-        job_spec_id = file
+        job_spec_id = os.path.splitext(file)[0]
 
     result_dict = dict()
 
     try:
 
-        job_df, res_df = log_to_dataframe(file)
+        job_dict, res_dict = log_to_dict(file)
 
         # Todo: csv style one line
         if to_csv:
@@ -1265,22 +1265,12 @@ def log_to_dict(file: str) -> dict:
         else:
             result_dict["file-description"] = f"{colors['green']}The job procedure of : {file}{colors['back_to_default']}"
 
-            result_dict["execution-details"] = tabulate(job_df, tablefmt=table_format, showindex=False)
-            if not res_df.empty:  # make sure res_df is not None
+            result_dict["execution-details"] = tabulate(job_dict, tablefmt=table_format, showindex=False)
+            if not len(res_dict) == 0:  # make sure res_df is not None
 
-                # reuested vs used disk RAM
-                if float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) > bad_usage_threshold:
-                    res_df.iloc[1, 1] = colors["red"]+res_df.iloc[1, 1]+colors["back_to_default"]  # changed color to red
-                elif float(res_df.iloc[1, 1]) / float(res_df.iloc[1, 2]) < low_usage_threshold:
-                    res_df.iloc[1, 1] = colors["yellow"]+res_df.iloc[1, 1]+colors["back_to_default"]  # changed color to yellow
+                res_dict = manage_thresholds(res_dict)
 
-                # requested vs used Memory
-                if float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) > bad_usage_threshold:
-                    res_df.iloc[2, 1] = colors["red"]+res_df.iloc[2, 1]+colors["back_to_default"]  # changed color to red
-                elif float(res_df.iloc[2, 1]) / float(res_df.iloc[2, 2]) < low_usage_threshold:
-                    res_df.iloc[2, 1] = colors["yellow"]+res_df.iloc[2, 1]+colors["back_to_default"]  # changed color to yellow
-
-                result_dict["all-resources"] = tabulate(res_df, headers='keys', tablefmt=table_format, showindex=False)
+                result_dict["all-resources"] = res_dict
 
         if 'errors' in show_list or 'warnings' in show_list:
             result_dict['stderr'] = show_htcondor_stderr(job_spec_id + std_err)
@@ -1582,14 +1572,14 @@ def default(log_files: list_of_logs) -> log_inf_list:
 
         # else check if file is a valid file
         if os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
-            list_of_dicts.append(log_to_dict(file))
+            list_of_dicts.append(customize_log(file))
 
         # if that did not work try std_log at the end of that file
         elif not file.endswith(std_log):
             new_path = file + std_log
             # is this now a valid file ?
             if os.path.isfile(new_path) or os.path.isfile(current_path + "/" + new_path):
-                list_of_dicts.append(log_to_dict(new_path))
+                list_of_dicts.append(customize_log(new_path))
             # no file or directory found, even after manipulating the string
             else:
                 logging.error(f"No such file with that name or prefix: {file}")
@@ -2018,7 +2008,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     for file in track(log_files, transient=True, description="Summarizing..."):
         try:
-            log = log_to_dataframe(file)
+            log = log_to_dict(file)
 
             log_description, log_resources = log[0], log[1]
 
@@ -2924,8 +2914,13 @@ def customize_results(files: list_of_logs):
         elif "times" in ignore_list and "times" in mystery:
             del mystery["times"]
 
-        if "all-resources" in ignore_list and "all-resources" in mystery:
-            del mystery["all-resources"]
+        if "all-resources" in mystery:
+            if "all-resources" in ignore_list:
+                del mystery["all-resources"]
+            else:
+                mystery["all-resources"] = tabulate(mystery["all-resources"], showindex=False,
+                                                    headers='keys', tablefmt=table_format)
+
         elif "used-resources" in ignore_list and "used-resources" in mystery:
             del mystery["used-resources"]
         elif "requested-resources" in ignore_list and "requested-resources" in mystery:
@@ -2940,7 +2935,8 @@ def customize_results(files: list_of_logs):
             if "host-nodes" in ignore_list:
                 del mystery["host-nodes"]
             else:
-                mystery["host-nodes"] = tabulate(mystery["host-nodes"], showindex=False, headers='keys', tablefmt=table_format)
+                mystery["host-nodes"] = tabulate(mystery["host-nodes"], showindex=False,
+                                                 headers='keys', tablefmt=table_format)
 
         for _i in mystery:
             if mystery[_i] is not None:
