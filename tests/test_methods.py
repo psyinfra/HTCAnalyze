@@ -230,4 +230,134 @@ def test_reverse_dns_lookup():
     assert ht.store_dns_lookups["NoIP"] == "NoIP"
 
 
+def test_manage_params():
+    test_initialize()
+    args = "--std-log=.logging --std-out=.output --std-err=.error".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        ht.manage_params(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 2
+    assert ht.std_log == ".logging"
+    assert ht.std_out == ".output"
+    assert ht.std_err == ".error"
+    args = "--std-log=logging --std-out=output --std-err=error tests/test_logs/valid_logs".split()
+    ht.manage_params(args)
+    assert ht.std_log == ".logging"
+    assert ht.std_out == ".output"
+    assert ht.std_err == ".error"
+    # files are set globaly so no more system exit is raised
+    args = "--std-log logging --std-out output --std-err error".split()
+    ht.manage_params(args)
+    assert ht.std_log == ".logging"
+    assert ht.std_out == ".output"
+    assert ht.std_err == ".error"
+
+    args = "--show-more output,errors,warnings --ignore execution-details," \
+           "times,errors,host-nodes,used-resources," \
+           "requested-resources,allocated-resources,all-resources".split()
+    ht.manage_params(args)
+    assert ht.show_list == "output,errors,warnings".split(',')
+    assert ht.ignore_list == "execution-details,times,errors,host-nodes," \
+                             "used-resources,requested-resources," \
+                             "allocated-resources,all-resources".split(',')
+    args = "--table-format=plain --table-format simple --table-format github".split()
+    ht.manage_params(args)
+    assert ht.table_format == "github"
+    args = "--table-format=None".split()
+    ht.manage_params(args)
+    assert ht.table_format == "github"  # should still be github
+
+    args = "--reverse-dns-lookup --no-config --generate-log -v".split()
+    ht.manage_params(args)
+    assert ht.reverse_dns_lookup is True
+
+    args = "--to-csv".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        ht.manage_params(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
+    args = "--what_is_this".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        ht.manage_params(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 1
+
+    args = "--mode whatever".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        ht.manage_params(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 1
+
+    args = "--mode default".split()
+    ht.manage_params(args)
+    assert ht.mode == "default"
+    args = "--mode d".split()
+    ht.manage_params(args)
+    assert ht.mode == "default"
+    args = "-m default".split()
+    ht.manage_params(args)
+    assert ht.mode == "default"
+    args = "-m d".split()
+    ht.manage_params(args)
+    assert ht.mode == "default"
+
+    # all ways to start analyser mode
+    args = "-a".split()
+    ht.manage_params(args)
+    assert ht.mode == "analyse"
+    args = "--mode analyse".split()
+    ht.manage_params(args)
+    assert ht.mode == "analyse"
+    args = "--mode a".split()
+    ht.manage_params(args)
+    assert ht.mode == "analyse"
+    args = "-m analyse".split()
+    ht.manage_params(args)
+    assert ht.mode == "analyse"
+    args = "-m a".split()
+    ht.manage_params(args)
+    assert ht.mode == "analyse"
+
+    # all ways to start summarizer mdoe
+    args = "-s".split()
+    ht.manage_params(args)
+    assert ht.mode == "summarize"
+    args = "--mode summarize".split()
+    ht.manage_params(args)
+    assert ht.mode == "summarize"
+    args = "--mode s".split()
+    ht.manage_params(args)
+    assert ht.mode == "summarize"
+    args = "-m summarize".split()
+    ht.manage_params(args)
+    assert ht.mode == "summarize"
+    args = "-m s".split()
+    ht.manage_params(args)
+    assert ht.mode == "summarize"
+
+    # all ways to start the analysed-summary mode
+    args = "-as".split()
+    ht.manage_params(args)
+    assert ht.mode == "analysed-summary"
+    args = "--mode analysed-summary".split()
+    ht.manage_params(args)
+    assert ht.mode == "analysed-summary"
+    ht.mode = None
+    args = "--mode as".split()
+    ht.manage_params(args)
+    assert ht.mode == "analysed-summary"
+    args = "-m analysed-summary".split()
+    ht.manage_params(args)
+    assert ht.mode == "analysed-summary"
+    args = "-m as".split()
+    ht.manage_params(args)
+    assert ht.mode == "analysed-summary"
+
+
+def test_log_to_dict():
+    test_initialize()
+
+
+
 # Todo: other methods test
