@@ -142,9 +142,9 @@ def test_show_values():
 
 
 def test_ignore_values():
-    args = "--ignore execution-details,times,gpu,cpu,host-nodes," \
+    args = "--ignore execution-details,times,host-nodes," \
            "used-resources,requested-resources,allocated-resources," \
-           "all-resources,errors,warnings -as tests/test_logs/valid_logs/gpu_usage.log".split()
+           "all-resources,errors -as tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert ht.ignore_list == args[1].split(',')

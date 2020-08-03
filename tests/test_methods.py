@@ -42,11 +42,10 @@ def test_initialize():
     assert ht.allowed_show_values == ["errors", "warnings", "output"]
 
     assert type(ht.ignore_list) == list
-    assert ht.allowed_ignore_values == ["execution-details", "times",
-                                        "gpu", "cpu", "host-nodes",
+    assert ht.allowed_ignore_values == ["execution-details", "times", "host-nodes",
                                         "used-resources", "requested-resources",
                                         "allocated-resources", "all-resources",
-                                        "errors", "warnings"]
+                                        "errors"]
     assert ht.no_config is False
 
     # Features:
