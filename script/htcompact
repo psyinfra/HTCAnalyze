@@ -1940,7 +1940,6 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
 
 
 # Todo: what means sucessful executed ?
-# Todo: remake
 def summarize(log_files: list_of_logs) -> log_inf_list:
     """
     Summarises all used resources and the runtime in total and average
@@ -1962,6 +1961,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     aborted_files = 0
     still_running = 0
+    other_exception = 0
     normal_runtime = datetime.timedelta()
     aborted_runtime = datetime.timedelta()
     host_nodes = dict()
@@ -1997,11 +1997,16 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
                        f"it will be ignored for this summation[/orange3]")
                 continue
 
-            # if the Job was aborted, it still might have a runtime
             elif log_description['Description'][0].__eq__("Process was"):
-                # print(f"The job described in {file} was aborted")
-                # aborted_runtime += log_description.at[1, 'Values']
                 aborted_files += 1
+                rprint(f"[orange3]Process of {file} has been aborted, \n"
+                       f"it will be ignored for this summation[/orange3]")
+                continue
+            elif len(log_resources) == 0:
+                logging.error("if this even get's printed out, more work is needed")
+                rprint(f"[orange3]Process of {file} is strange, \n"
+                       f"don't know how to handle this yet[/orange3]")
+                other_exception += 1
                 continue
 
             normal_runtime += log_description['Values'][3]
@@ -2032,7 +2037,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
                 if not "allocated-resources" in ignore_list:
                     total_gpu_allocated += int(log_resources['Allocated'][3])
                 if log_resources['Assigned'][3] not in list_of_gpu_names:  # append new gpus
-                    list_of_gpu_names.append(log_resources['Assigned'][3]) # Todo:
+                    list_of_gpu_names.append(log_resources['Assigned'][3])  # Todo:
 
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
@@ -2044,27 +2049,46 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
             sys.exit(3)
 
-    n = valid_files - aborted_files  # calc diffrenc of successful executed jobs
+    n = valid_files - aborted_files - still_running - other_exception # calc diffrenc of successful executed jobs
 
     average_runtime = normal_runtime / n if n != 0 else normal_runtime
     average_runtime = datetime.timedelta(days=average_runtime.days, seconds=average_runtime.seconds)
-    total_runtime = normal_runtime + aborted_runtime
+    #total_runtime = normal_runtime + aborted_runtime
 
-    result_dict["file-description"] = f"{valid_files} valid HTCondor job files found"
+    exec_dict = {
+        "Job types": ["Successful executed jobs"],
+        "Occurrence": [n]
+    }
+    if aborted_files > 0:
+        exec_dict["Job types"].append("Aborted jobs")
+        exec_dict["Occurrence"].append(aborted_files)
+    if still_running > 0:
+        exec_dict["Job types"].append("Still running jobs")
+        exec_dict["Occurrence"].append(still_running)
+    if other_exception > 0:
+        exec_dict["Job types"].append("Other exceptions")
+        exec_dict["Occurrence"].append(other_exception)
 
-    # Todo: store number of successful, aborted, ect. (ERRORS)
+
+    result_dict["execution-details"] = exec_dict
+
+    # do not even try futher if the only files given have been aborted, are still running etc.
+    if n == 0:
+        return result_dict
+
+    create_desc = "The following data only implies on sucessful executed jobs"
+    if aborted_files > 0 or still_running > 0 or other_exception > 0:
+        create_desc += f"\n{colors['light_grey']}" \
+            f"Use the analysed-summary mode for more details about the other jobs" \
+            f"{colors['back_to_default']}"
+
+    result_dict["summation-description"] = create_desc
 
     time_desc_list = list()
     time_value_list = list()
     if normal_runtime != datetime.timedelta(0, 0, 0):
-        time_desc_list.append("Total runtime of all successful jobs")
+        time_desc_list.append("Total runtime of all \nsuccessful executed jobs")
         time_value_list.append(normal_runtime)
-    if aborted_runtime != datetime.timedelta(0, 0, 0):
-        # some jobs were aborted, diffrentiate between normal runtime, aborted runtime and total runtime
-        time_desc_list.append("Total runtime of all aborted jobs")
-        time_value_list.append(aborted_runtime)
-        time_desc_list.append("Total runtime")
-        time_value_list.append(total_runtime)
     if average_runtime:
         time_desc_list.append("Average runtime per job\n(only successful executed jobs)")
         time_value_list.append(average_runtime)
