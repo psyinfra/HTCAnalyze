@@ -46,8 +46,6 @@ to see for ex. the average runtime and usage of all the logs
 # Todos:
 # Todo: rich progress bar collision with verbose mode looks ugly
 # Todo: summary mode remake
-# Todo: an extra mode for running progresses ???
-# Todo: pytest
 # Todo: script is not accepting IPv6 yet
 
 
@@ -169,7 +167,7 @@ def check_for_redirection():
         }
 
 
-# Todo: adjust this method to accept all values,
+# consider: adjust this method to accept all values,
 #  that are related to an option and interpret
 #  the first one which does not as a file again
 #  -> something like --ignore allocated-resources times ... should be possible
@@ -251,6 +249,7 @@ def manage_prioritized_params(args: list):
                 sys.exit(0)
             if opt.__eq__("--version"):
                 # Todo:
+                print(f"Version: v1.0.7")
                 sys.exit(0)
             if opt.__eq__("--print-event-table"):
                 print(get_event_information())
@@ -637,8 +636,6 @@ def raise_type_error(message: str) -> TypeError:
 
 # Todo: time seperated ( submitting / executing / terminating)
 # Todo: Read HTCondor Errors that occurred
-# Todo: for loop instead of single run
-# Todo: termination types are dynamical
 def log_to_dict(file: str) -> (dict, dict):
     """
         Read the log file and filter useful information.
@@ -1183,7 +1180,6 @@ def show_htcondor_stderr(file: str) -> str:
 
 def show_htcondor_stdout(file: str) -> str:
     """
-    Todo: filter the output ?
     :param file: a HTCondor .out file
     :return: the content of that file as a string
     """
@@ -1509,7 +1505,6 @@ def load_config(config_file: str):
                 filter_extended = config['filter']['filter_extended'].lower() in accepted_states
                 logging.debug(f"Changed default filter_extended to: {filter_extended}")
 
-        # Todo: reverse DNS-Lookup etc.
         if 'features' in sections:
             global reverse_dns_lookup, to_csv  # extra parameters
             # the first thing to check should be if logging is turend on
@@ -1545,7 +1540,6 @@ def _int_formatter(val, chars, delta, left=False):
     return '{:{}{}d}'.format(int(val), align, chars)
 
 
-# Todo: err and output not visible ???
 def default(log_files: list_of_logs) -> log_inf_list:
     """
     Print the default output for a given list of log files
@@ -2855,7 +2849,6 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
         log.addHandler(stdout_handler)
 
 
-# Todo: a lot of information can still not be ignored
 # Todo: a function to format the output
 def customize_results(files: list_of_logs):
 
@@ -2902,7 +2895,6 @@ def customize_results(files: list_of_logs):
 
         if "all-resources" in mystery:
             resources = mystery["all-resources"]
-            print(resources)
             if "all-resources" in ignore_list:
                 del mystery["all-resources"]
             else:
@@ -2929,6 +2921,8 @@ def customize_results(files: list_of_logs):
             else:
                 mystery["host-nodes"] = tabulate(mystery["host-nodes"], showindex=False,
                                                  headers='keys', tablefmt=table_format)
+
+        # Todo: show-more section
 
         for _i in mystery:
             if mystery[_i] is not None:
