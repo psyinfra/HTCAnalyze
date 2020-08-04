@@ -1064,7 +1064,7 @@ def read_condor_output(file: str) -> str:
 
 def gethostbyaddr(ip):
     """
-        this function is supposed to filter a given ip for it's representive domain name like google.com
+        this function is supposed to filter a given ip for it's representative domain name like google.com
         :return: resolved domain name, else give back the ip
     """
     try:
@@ -1072,7 +1072,7 @@ def gethostbyaddr(ip):
             return store_dns_lookups[ip]
         # else lookup
         reversed_dns = socket.gethostbyaddr(ip)
-        logging.debug('Lookup sucessful ' + ip + ' resolved as: ' + reversed_dns[0])
+        logging.debug('Lookup successful ' + ip + ' resolved as: ' + reversed_dns[0])
         # store
         store_dns_lookups[ip] = reversed_dns[0]
         # return
@@ -1089,7 +1089,7 @@ def manage_thresholds(resources: dict) -> dict:
     """
         Takes a dict which should look like this:
         average_dict = {
-            "Resources": ['Average Cpu', 'Avergae Disk (KB)', 'Average Memory (MB)'],
+            "Resources": ['Average Cpu', 'Average Disk (KB)', 'Average Memory (MB)'],
             "Usage": [round(total_cpu_usage / n, 2),
                       round(total_disk_usage / n, 2),
                       round(total_memory_usage / n, 2)],  # necessary
@@ -1102,10 +1102,10 @@ def manage_thresholds(resources: dict) -> dict:
 
         }
 
-        The important part ist that the keywords "Usage", "Requested" exists
+        The important part is that the keywords "Usage", "Requested" exists
         and that at least 3 values are given: cpu, disk, memory
 
-        Additionally gpu usage ist possible
+        Additionally gpu usage is possible
     :param resources:
     :return:
     """
@@ -1589,7 +1589,7 @@ def default(log_files: list_of_logs) -> log_inf_list:
 
 
 # Todo: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
-#       until now there is not the need for other filters but it might be needed to extend this fucntion
+#       until now there is not the need for other filters but it might be needed to extend this function
 def analyse(log_files: list_of_logs) -> log_inf_list:
 
     logging.info('Starting the analyser mode')
@@ -1602,7 +1602,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
         if not reading_stdin:
             x = input("Want to continue (y/n): ")
             if x != "y":
-                rprint('[red]Process stoped[/red]')
+                rprint('[red]Process stopped[/red]')
                 sys.exit(0)
 
     result_list = list()
