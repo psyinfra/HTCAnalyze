@@ -20,8 +20,6 @@ setup(name='htcompact',
       python_requires='>=3.6',
       install_requires=[
             "numpy",
-            "datetime",
-            "configparser",
             "tabulate",
             "plotille >= 3.7",
             "rich >= 3.0.3"
