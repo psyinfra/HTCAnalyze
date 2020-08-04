@@ -1,3 +1,4 @@
 plotille
 rich
+numpy
 tabulate
