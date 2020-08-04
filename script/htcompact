@@ -245,7 +245,7 @@ def manage_prioritized_params(args: list):
 
             # system exit params
             if opt in ["-h", "--help"]:
-                man_help()
+                print(small_help())
                 sys.exit(0)
             if opt.__eq__("--version"):
                 # Todo:
@@ -267,7 +267,7 @@ def manage_prioritized_params(args: list):
     # print error messages
     except Exception as err:
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        print(small_help())
+        rprint("[dark_olive_green1]Use '--help' or 'man htcompact' for help [/dark_olive_green1]")
         sys.exit(1)
 
 
@@ -406,13 +406,12 @@ def manage_params(args: list):
 
             else:
                 rprint("[red]Option not handled yet[/red]")
-                print(small_help())
                 sys.exit(0)
     # print error messages
     except Exception as err:
         logging.exception(err)  # write a detailed description in the stdout.log file
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        print(small_help())
+        rprint("[dark_olive_green1]Use '--help' or 'man htcompact' for help [/dark_olive_green1]")
         sys.exit(1)
 
     if summarizer_mode and analyser_mode:
@@ -425,13 +424,18 @@ def manage_params(args: list):
     if len(files) == 0:
         logging.debug("No files given")
         rprint("[red]No files given[/red]")
-        print(small_help())
         sys.exit(2)
 
 
 def small_help() -> str:
     """
-Usage: htcompact (log_files|config_file) [ Arguments ]
+Usage:
+  htcompact [file ...] [-hsav] [-m mode] [--help] [--version] [--verbose]
+            [--mode mode] [--std-log suffix] [--std-out suffix]
+            [--std-err suffix] [--ignore keywords] [--show-more keywords]
+            [--no-config] [--to-csv] [--generate-log-file]
+            [--filter keywords [--extend]] [--print-event-table]
+            [--reverse-dns-lookup] [--table-format tablefmt]
 
 ----------------------------Main features:---------------------------------
 
@@ -448,28 +452,10 @@ Usage: htcompact (log_files|config_file) [ Arguments ]
         A combination of both modes, which gives a more detailed overview
 
  More detailed descriptions and help on other options with:
- "man htcompact" or "htcompact -h"
+ 'man htcompact'
     """
     # returns this docstring
     return small_help.__doc__
-
-
-def man_help():
-
-    check_places = ['/share/man/man1/htcompact.1', '/env/share/man/man1/htcompact.1',
-                    '/man/man1/htcompact.1', '/../man/man1/htcompact.1']
-    cwd = os.getcwd()
-    for place in check_places:
-        path = cwd+place
-        # check current working directory
-        if os.path.isfile(path):
-            os.system(f"groff -Tlatin1 -mandoc {path}")
-            break
-        # check environment
-        path = sys.prefix + place
-        if os.path.isfile(path):
-            os.system(f"groff -Tlatin1 -mandoc {path}")
-            break
 
 
 def get_event_information(event_id="") -> str:
