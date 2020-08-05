@@ -21,6 +21,7 @@ setup(name='htcompact',
       install_requires=[
             "numpy",
             "tabulate",
+            "htcondor"
             "plotille >= 3.7",
             "rich >= 3.0.3"
       ],
