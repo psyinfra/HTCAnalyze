@@ -10,6 +10,8 @@ from logging.handlers import RotatingFileHandler
 import socket
 import configparser
 import numpy as np
+import htcondor
+from htcondor import JobEventType as jet
 from rich import print as rprint
 from rich import logging as rlog
 from rich.progress import track, Progress
@@ -17,8 +19,11 @@ from tabulate import tabulate
 from plotille import Figure
 
 from typing import List
+
 log_inf_list = List[dict]
 list_of_logs = List[str]
+date_time = datetime.datetime
+timedelta = datetime.timedelta
 
 """
 
@@ -39,9 +44,10 @@ to see for ex. the average runtime and usage of all the logs
  Normal Termination: 0
  Wrong Options or Arguments: 1
  No given files: 2
- Type Error within summation: 3
+ TypeError: 3
  Keyboard interruption: 4
 """
+
 
 # Todos:
 # Todo: rich progress bar collision with verbose mode looks ugly
@@ -59,7 +65,7 @@ def initialize():
         store_dns_lookups, verbose_mode, \
         to_csv, generate_log_file, filter_mode, filter_keywords, filter_extended, \
         colors, low_usage_threshold, bad_usage_threshold, std_log, std_err, std_out, \
-        default_configfile, table_format, reading_stdin, redirecting_output,\
+        default_configfile, table_format, reading_stdin, redirecting_output, \
         show_list, allowed_show_values, mode, allowed_modes
 
     # global parameters, used for dynamical output of information
@@ -174,7 +180,7 @@ def check_for_redirection():
 # Todo: consider regex in this implementation: --ignore alloc tim ...
 #  with focus on longest prefix match
 # may not be needed in future but will be used for now
-def remove_files_from_args(args: list, short_opts : str, long_opts: list):
+def remove_files_from_args(args: list, short_opts: str, long_opts: list):
     """
         I want to make it easier for the user to insert many files at once.
         The script should detect option arguments and files
@@ -208,9 +214,9 @@ def remove_files_from_args(args: list, short_opts : str, long_opts: list):
                 arg = arg[1:]
 
             # skip the argument if getopt arguments are setable
-            if arg+":" in short_opts:
+            if arg + ":" in short_opts:
                 index += 1
-            elif arg+"=" in long_opts:
+            elif arg + "=" in long_opts:
                 index += 1
         else:
             generate_files.append(arg)
@@ -228,7 +234,6 @@ def remove_files_from_args(args: list, short_opts : str, long_opts: list):
 
 
 def manage_prioritized_params(args: list):
-
     if type(args) != list:
         raise_value_error("Expecting a list as argument")
 
@@ -322,11 +327,11 @@ def manage_params(args: list):
                     mode = arg
                 else:
                     raise_value_error("Invalid argument '" + arg + "'\n"
-                                      "Valid arguments:\n" +
+                                                                   "Valid arguments:\n" +
                                       ", ".join("'{}' or '{}'".format(key, value)
                                                 for key, value in allowed_modes.items()))
 
-                logging.debug("Starting the: "+mode+" mode")
+                logging.debug("Starting the: " + mode + " mode")
 
             elif opt.__eq__("-s"):
                 summarizer_mode = True
@@ -341,17 +346,17 @@ def manage_params(args: list):
             elif opt.__eq__("--std-log"):
                 # to forget the . should not be painful
                 if arg[0] != '.':
-                    arg = "."+arg
+                    arg = "." + arg
                 std_log = arg
             elif opt.__eq__("--std-err"):
                 # to forget the . should not be painful
                 if arg[0] != '.':
-                    arg = "."+arg
+                    arg = "." + arg
                 std_err = arg
             elif opt.__eq__("--std-out"):
                 # to forget the . should not be painful
                 if arg[0] != '.':
-                    arg = "."+arg
+                    arg = "." + arg
                 std_out = arg
 
             # show more specific information
@@ -362,7 +367,8 @@ def manage_params(args: list):
                         show_list.append(keyword)
                     else:
                         raise_value_error("Invalid argument '" + keyword + "'\n"
-                                          "Valid arguments:\n" + ", ".join(allowed_show_values))
+                                                                           "Valid arguments:\n" + ", ".join(
+                            allowed_show_values))
                 logging.debug("Show these information: " + ", ".join(show_list))
 
             # all variables to ignore unwanted information
@@ -373,7 +379,8 @@ def manage_params(args: list):
                         ignore_list.append(keyword)
                     else:
                         raise_value_error("Invalid argument '" + keyword + "'\n"
-                                          "Valid arguments:\n" + ", ".join(allowed_ignore_values))
+                                                                           "Valid arguments:\n" + ", ".join(
+                            allowed_ignore_values))
                 logging.debug("Ignore these information: " + ", ".join(ignore_list))
 
             # Todo: to-csv
@@ -607,7 +614,7 @@ Event Description: For DAGMan, this event is logged if a PRE SCRIPT exits with t
         match = re.match(r"Event Number: ([0-9]{3})", line)
         if match:
             if int(match[1]) == int(event_id):
-                return "\n".join(doc_str[i:i+3])
+                return "\n".join(doc_str[i:i + 3])
     # else
     return "This event number does not exist, Valid event numbers range from 000 to 034"
 
@@ -620,321 +627,569 @@ def raise_type_error(message: str) -> TypeError:
     raise TypeError(message)
 
 
-# Todo: time seperated ( submitting / executing / terminating)
-# Todo: Read HTCondor Errors that occurred
-def log_to_dict(file: str) -> (dict, dict):
+# # Todo: time seperated ( submitting / executing / terminating)
+# # Todo: Read HTCondor Errors that occurred
+# def old_log_to_dict(file: str) -> (dict, dict):
+#     """
+#         Read the log file and filter useful information.
+#         Structur it in a way, that later two different dictionaries will be retuned.
+#
+#     :type file: str
+#     :param file: HTCondor log file
+#     :return: job_dict, res_dict
+#
+#             job_dict should never be empty,
+#             it holds information like runtime, return value, host, etc.
+#
+#             res_dict can be empty, it holds all the
+#             used, requested and allocated resources
+#     """
+#
+#     try:
+#         job_events, job_raw_information = read_condor_log(file)
+#
+#         job_dict = dict()
+#         res_dict = dict()
+#
+#         # if the last job event is : Job terminated
+#         if job_events[-1][0].__eq__("005"):
+#
+#             # calculate the runtime for the job
+#             executed_date = datetime.datetime.strptime(
+#                 job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
+#             terminating_date = datetime.datetime.strptime(
+#                 job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
+#             runtime = terminating_date - executed_date  # calculation of the time runtime
+#
+#             match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
+#             if match_host:
+#                 host = match_host[1]
+#                 # if reverse dns lookup, change the ip to cpu: last number
+#                 if reverse_dns_lookup:
+#                     host = gethostbyaddr(host)
+#                 port = match_host[2]
+#             else:
+#                 logging.exception("Host and port haven't been matched correctly")
+#                 rprint("[red]faulty values for the host ip make sure it's a valid IPv4[/red]")
+#                 host = "Unknown"
+#                 port = "Unknown"
+#
+#             # make a fancy design for the job_information
+#             job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
+#             job_information = [host, port, runtime]  # holds the related job information
+#
+#             # filter the termination state ...
+#             if True:
+#                 # check if termination state is normal
+#                 termination_state_inf = job_raw_information[-1][0]
+#                 match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", termination_state_inf)
+#                 job_labels.insert(0, "Termination State")
+#                 if match_termination_state:
+#
+#                     if "Normal termination" in match_termination_state[1]:
+#                         job_information.insert(0, match_termination_state[1])
+#                         match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
+#                                                       termination_state_inf)
+#                         return_value = match_return_value[1] if match_return_value else "None"
+#                         if return_value == "None":
+#                             logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
+#                             rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
+#                         else:
+#                             job_labels.append("Return Value")
+#                             job_information.append(return_value)
+#                     elif "Abnormal termination" in match_termination_state[1]:
+#                         job_information.insert(0, colors['red']+match_termination_state[1]+colors['back_to_default'])
+#
+#                         match_signal = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
+#                                                       termination_state_inf)
+#                         signal = match_signal[1] if match_signal else "None"
+#                         if signal == "None":
+#                             logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
+#                             rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
+#                         else:
+#                             job_labels.append("Return Value")
+#                             job_information.append(signal)
+#
+#                         termination_desc = list()
+#                         # append the reason for the Abnormal Termination
+#                         for desc in job_raw_information[-1][1:]:
+#                             if re.match(r"[\t ]+\(0\)", desc):
+#                                 termination_desc.append(desc[5:])
+#                             else:
+#                                 break
+#
+#                         if not len(termination_desc) == 0:
+#                             job_labels.append("Description")
+#                             job_information.append("\n".join(termination_desc))
+#                         else:
+#                             logging.debug(f"No termination description for {file} found")
+#
+#                     else:
+#                         job_information.insert(0, match_termination_state[1])
+#                         logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
+#
+#                 else:
+#                     job_information.insert(0, "Not valid")
+#                     rprint(f"[red]Termination error in HTCondor log file: {file}[/red]")
+#
+#             # now put everything together in a table
+#             job_dict = {
+#                 "Description": job_labels,
+#                 "Values": job_information
+#             }
+#
+#             # these where the job information now focus on the used resources
+#
+#             relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
+#
+#             # next part removes not useful lines
+#             if True:  # just for readability
+#                 # remove unnecessary lines
+#                 lines = relevant_str.splitlines()
+#                 # while not lines[0].startswith("\tPartitionable"):
+#                 while not re.match(r"[\t ]+Partitionable", lines[0]):
+#                     lines.remove(lines[0])
+#
+#                 lines.remove(lines[0])
+#                 partitionable_res = lines
+#                 # done, partitionable_resources contain now only information about used resources
+#
+#             # match all resources
+#             # ***************************************************************************************
+#             match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)",
+#                              partitionable_res[0])
+#             if match:
+#                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
+#             else:
+#                 logging.debug("Something went wrong reading the cpu information in: " + file)
+#                 raise_type_error("Something went wrong reading the cpu information")
+#
+#             match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)",
+#                              partitionable_res[1])
+#             if match:
+#                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
+#             else:
+#                 logging.debug("Something went wrong reading the disk information in: " + file)
+#                 raise raise_type_error("Something went wrong reading the disk information")
+#
+#             # check if the log has gpu information in between
+#             gpu_match_index = 2  # can be ignored if gpu is given, memory has to access the next index
+#             gpu_found = False  # easier to check to add information in the dict
+#             match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
+#                              partitionable_res[gpu_match_index])
+#             if match:
+#                 gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
+#                 gpu_match_index += 1
+#                 gpu_found = True
+#
+#             match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)",
+#                              partitionable_res[gpu_match_index])
+#             if match:
+#                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
+#             else:
+#                 logging.debug("Something went wrong reading the memory information in: " + file)
+#                 raise_type_error("Something went wrong reading the memory information")
+#             # ****************************************************************************************************
+#
+#             # list of resources and their labels
+#             resource_labels = ["Cpu", "Disk", "Memory"]
+#             usage = [cpu_usage, disk_usage, memory_usage]
+#             requested = [cpu_request, disk_request, memory_request]
+#             allocated = [cpu_allocated, disk_allocated, memory_allocated]
+#
+#             if gpu_found:
+#                 resource_labels.append("Gpus")
+#                 usage.append(gpu_usage)
+#                 requested.append(gpu_request)
+#                 allocated.append(gpu_allocated)
+#
+#             # Error handling: change empty values to NaN in the first column
+#             for i in range(3):
+#                 if usage[i] == "":
+#                     usage[i] = np.nan
+#                 if requested[i] == "":
+#                     requested[i] = np.nan
+#                 if allocated[i] == "":
+#                     allocated[i] = np.nan
+#
+#             # put the data in the dict
+#             res_dict = {
+#                 "Resources": resource_labels,
+#                 "Usage": usage,
+#                 "Requested": requested,
+#                 "Allocated": allocated
+#             }
+#
+#             if gpu_found:
+#                 res_dict["Assigned"] = ["", "", "", gpu_name]
+#
+#         # Todo: check this section
+#         # This means the job was terminated, is still running or some other cases
+#         # In this case I want to give the user more information about the process
+#         else:
+#
+#             waiting_time = None
+#             runtime = None
+#             desc_list = list()  # append to this list for further details
+#             value_list = list()  # append the related values to this list
+#
+#             # first job event was submitted
+#             if job_events[0][0].__eq__("000"):
+#                 submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
+#
+#                 match_from_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[0][5])
+#                 if match_from_host:
+#                     from_host = match_from_host[1]
+#                     desc_list.append('Send from IP')
+#                     value_list.append(from_host)
+#
+#                 desc_list.append('Submission date')
+#                 value_list.append(submitted_date.strftime("%m/%d %H:%M:%S"))
+#
+#             if job_events[-1][0].__eq__("009"):  # job aborted
+#
+#                 desc_list.insert(0, "Process was")
+#                 value_list.insert(0, colors['yellow'] + "aborted" + colors['back_to_default'])
+#
+#                 # calculate the runtime for the job
+#                 if job_events[-1].__ne__(job_events[0]):
+#                     executed_date = datetime.datetime.strptime(
+#                         job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
+#                     terminating_date = datetime.datetime.strptime(
+#                         job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
+#
+#                     waiting_time = executed_date - submitted_date  # calculate the waiting time
+#                     today = datetime.datetime.now()  # get todays date
+#                     today = today.replace(year=1900, microsecond=0)  # format the date
+#                     runtime = today - executed_date  # calculate the runtime
+#
+#                     desc_list.append('Executing since')
+#                     value_list.append(executed_date.strftime("%m/%d %H:%M:%S"))
+#                     desc_list.append('Total waiting time')
+#                     value_list.append(waiting_time)
+#                     desc_list.append('Total runtime')
+#                     value_list.append(runtime)
+#                     desc_list.append('Termination date')
+#                     value_list.append(terminating_date.strftime("%m/%d %H:%M:%S"))
+#
+#                 user = ((job_raw_information[-1][0]).split(" ")[-1])[:-1]
+#                 logging.debug(f"{file}: Job aborted by {user}")
+#
+#                 desc_list.append('Aborted by user:')
+#                 value_list.append(colors['yellow']+user+colors['back_to_default'])
+#
+#             # Todo: prove this section
+#             # This usally means the job is still running
+#             else:
+#
+#                 if job_events[-1].__ne__(job_events[0]):
+#
+#                     executed_date = datetime.datetime.strptime(
+#                         job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
+#
+#                     waiting_time = executed_date - submitted_date  # calculate the waiting time
+#                     today = datetime.datetime.now()
+#                     today = today.replace(year=1900, microsecond=0)
+#                     runtime = today - executed_date  # calculate the runtime
+#
+#                     desc_list.append('Executing since')
+#                     value_list.append(executed_date.strftime("%m/%d %H:%M:%S"))
+#                 else:
+#                     today = datetime.datetime.now()
+#                     today = today.replace(year=1900, microsecond=0)
+#                     waiting_time = today - submitted_date
+#
+#                 if job_events[-1][0].__eq__("000"):
+#                     state = "Waiting"
+#                 else:
+#                     state = "Executing"
+#
+#                 desc_list.insert(0, "Process is")
+#                 value_list.insert(0, state)
+#
+#                 if waiting_time is not None:
+#                     if runtime is None:
+#                         desc_list.append('Still waiting since')
+#                     else:
+#                         desc_list.append('Total waiting time')
+#                     value_list.append(waiting_time)
+#
+#                 if runtime is not None:
+#                     desc_list.append('Already running since')
+#                     value_list.append(runtime)
+#
+#             job_dict = {
+#                 "Description": desc_list,
+#                 "Values": value_list
+#             }
+#
+#     except NameError as err:
+#         logging.exception(err)
+#         rprint(f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
+#     except FileNotFoundError or ValueError as err:
+#         logging.exception(err)
+#         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+#     except IndexError as err:
+#         logging.debug(f"Index Error with {file}: ")
+#         logging.exception(err)
+#     except TypeError as err:
+#         logging.exception(err)
+#         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+#         sys.exit(3)
+#     except Exception as err:
+#         logging.debug(err)
+#     # finally
+#     else:
+#
+#         return job_dict, res_dict
+
+def calc_time_differences(
+        submission_date: date_time,
+        execution_date: date_time = None,
+        termination_date: date_time = None
+) -> (timedelta, timedelta, timedelta):
     """
-        Read the log file and filter useful information.
-        Structur it in a way, that later two different dictionaries will be retuned.
+    Takes in three dates, at least one must be given,
+    return the datetime.timedelta objects,
+    Depending on the given arguments,
+    this function will try to find out the time differences between the events.
+    If not all three values are given, it will return None
 
-    :type file: str
-    :param file: HTCondor log file
-    :return: job_dict, res_dict
+    Example:
+    Submissio
 
-            job_dict should never be empty,
-            it holds information like runtime, return value, host, etc.
+    :param submission_date: Job Sumbission date from the user
+    :param execution_date: The date when the job actually started executing
+    :param termination_date: The date when the job was finished
+    :return: (waiting_time, runtime, total_time)
 
-            res_dict can be empty, it holds all the
-            used, requested and allocated resources
     """
+    waiting_time = None
+    runtime = None
+    total_time = None
+    today = datetime.datetime.now()
+    today = today.replace(microsecond=0)  # remove unnessecary microseconds
+    if execution_date:
+        if submission_date:
+            waiting_time = execution_date - submission_date
+    if termination_date:
+        if waiting_time:
+            pass
+        if execution_date:
+            runtime = termination_date - execution_date
+        if submission_date:
+            total_time = termination_date - submission_date
+    # Process still running
+    elif waiting_time:
+        runtime = today - execution_date
+    # Still waiting for execution
+    elif submission_date:
+        waiting_time = today - submission_date
+
+    return (waiting_time, runtime, total_time)
+
+
+def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
+    """
+            Read the log file with the use of the htcondor module and filter useful information.
+            Structur it in a way, that later two different dictionaries will be retuned.
+
+        :type file: str
+        :param file: HTCondor log file
+        :param sec: seconds to wait for new events
+        :return: job_dict, res_dict
+
+                job_dict should never be empty,
+                it holds information like runtime, return value, host, etc.
+
+                res_dict can be empty, it holds all the
+                used, requested and allocated resources
+    """
+    job_events = list()
+    res_dict = dict()
+    time_dict = {
+        "Submission date": None,
+        "Execution date": None,
+        "Termination date": None
+    }
+    ram_history = list()
+    occurred_errors = list()
+
+    has_terminated = False
 
     try:
-        job_events, job_raw_information = read_condor_log(file)
+        jel = htcondor.JobEventLog(file)
+        # Read all currently-available events waiting for 'sec' seconds for the next event.
+        for event in jel.events(sec):
+            print(event.type)
+            print(event.items())
+            event_type_number = event.get('EventTypeNumber')
+            # convert time to datetime object
+            date = datetime.datetime.strptime(event.get('EventTime'), "%Y-%m-%dT%H:%M:%S")
+            if event.type == jet.SUBMIT:
+                # submitted_date = date
+                time_dict["Submission date"] = date
 
-        job_dict = dict()
-        res_dict = dict()
-
-        # if the last job event is : Job terminated
-        if job_events[-1][0].__eq__("005"):
-
-            # calculate the runtime for the job
-            executed_date = datetime.datetime.strptime(
-                job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-            terminating_date = datetime.datetime.strptime(
-                job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-            runtime = terminating_date - executed_date  # calculation of the time runtime
-
-            match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
-            if match_host:
-                host = match_host[1]
-                # if reverse dns lookup, change the ip to cpu: last number
-                if reverse_dns_lookup:
-                    host = gethostbyaddr(host)
-                port = match_host[2]
-            else:
-                logging.exception("Host and port haven't been matched correctly")
-                rprint("[red]faulty values for the host ip make sure it's a valid IPv4[/red]")
-                host = "Unknown"
-                port = "Unknown"
-
-            # make a fancy design for the job_information
-            job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
-            job_information = [host, port, runtime]  # holds the related job information
-
-            # filter the termination state ...
-            if True:
-                # check if termination state is normal
-                termination_state_inf = job_raw_information[-1][0]
-                match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", termination_state_inf)
-                job_labels.insert(0, "Termination State")
-                if match_termination_state:
-
-                    if "Normal termination" in match_termination_state[1]:
-                        job_information.insert(0, match_termination_state[1])
-                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
-                                                      termination_state_inf)
-                        return_value = match_return_value[1] if match_return_value else "None"
-                        if return_value == "None":
-                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
-                        else:
-                            job_labels.append("Return Value")
-                            job_information.append(return_value)
-                    elif "Abnormal termination" in match_termination_state[1]:
-                        job_information.insert(0, colors['red']+match_termination_state[1]+colors['back_to_default'])
-
-                        match_signal = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
-                                                      termination_state_inf)
-                        signal = match_signal[1] if match_signal else "None"
-                        if signal == "None":
-                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
-                        else:
-                            job_labels.append("Return Value")
-                            job_information.append(signal)
-
-                        termination_desc = list()
-                        # append the reason for the Abnormal Termination
-                        for desc in job_raw_information[-1][1:]:
-                            if re.match(r"[\t ]+\(0\)", desc):
-                                termination_desc.append(desc[5:])
-                            else:
-                                break
-
-                        if not len(termination_desc) == 0:
-                            job_labels.append("Description")
-                            job_information.append("\n".join(termination_desc))
-                        else:
-                            logging.debug(f"No termination description for {file} found")
-
-                    else:
-                        job_information.insert(0, match_termination_state[1])
-                        logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
-
-                else:
-                    job_information.insert(0, "Not valid")
-                    rprint(f"[red]Termination error in HTCondor log file: {file}[/red]")
-
-            # now put everything together in a table
-            job_dict = {
-                "Description": job_labels,
-                "Values": job_information
-            }
-
-            # these where the job information now focus on the used resources
-
-            relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
-
-            # next part removes not useful lines
-            if True:  # just for readability
-                # remove unnecessary lines
-                lines = relevant_str.splitlines()
-                # while not lines[0].startswith("\tPartitionable"):
-                while not re.match(r"[\t ]+Partitionable", lines[0]):
-                    lines.remove(lines[0])
-
-                lines.remove(lines[0])
-                partitionable_res = lines
-                # done, partitionable_resources contain now only information about used resources
-
-            # match all resources
-            # ***************************************************************************************
-            match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)",
-                             partitionable_res[0])
-            if match:
-                cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
-            else:
-                logging.debug("Something went wrong reading the cpu information in: " + file)
-                raise_type_error("Something went wrong reading the cpu information")
-
-            match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)",
-                             partitionable_res[1])
-            if match:
-                disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
-            else:
-                logging.debug("Something went wrong reading the disk information in: " + file)
-                raise raise_type_error("Something went wrong reading the disk information")
-
-            # check if the log has gpu information in between
-            gpu_match_index = 2  # can be ignored if gpu is given, memory has to access the next index
-            gpu_found = False  # easier to check to add information in the dict
-            match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
-                             partitionable_res[gpu_match_index])
-            if match:
-                gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
-                gpu_match_index += 1
-                gpu_found = True
-
-            match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)",
-                             partitionable_res[gpu_match_index])
-            if match:
-                memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
-            else:
-                logging.debug("Something went wrong reading the memory information in: " + file)
-                raise_type_error("Something went wrong reading the memory information")
-            # ****************************************************************************************************
-
-            # list of resources and their labels
-            resource_labels = ["Cpu", "Disk", "Memory"]
-            usage = [cpu_usage, disk_usage, memory_usage]
-            requested = [cpu_request, disk_request, memory_request]
-            allocated = [cpu_allocated, disk_allocated, memory_allocated]
-
-            if gpu_found:
-                resource_labels.append("Gpus")
-                usage.append(gpu_usage)
-                requested.append(gpu_request)
-                allocated.append(gpu_allocated)
-
-            # Error handling: change empty values to NaN in the first column
-            for i in range(3):
-                if usage[i] == "":
-                    usage[i] = np.nan
-                if requested[i] == "":
-                    requested[i] = np.nan
-                if allocated[i] == "":
-                    allocated[i] = np.nan
-
-            # put the data in the dict
-            res_dict = {
-                "Resources": resource_labels,
-                "Usage": usage,
-                "Requested": requested,
-                "Allocated": allocated
-            }
-
-            if gpu_found:
-                res_dict["Assigned"] = ["", "", "", gpu_name]
-
-        # Todo: check this section
-        # This means the job was terminated, is still running or some other cases
-        # In this case I want to give the user more information about the process
-        else:
-
-            waiting_time = None
-            runtime = None
-            desc_list = list()  # append to this list for further details
-            value_list = list()  # append the related values to this list
-
-            # first job event was submitted
-            if job_events[0][0].__eq__("000"):
-                submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
-
-                match_from_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[0][5])
+                match_from_host = re.match(r"<(.+):[0-9]+\?(.*)>", event.get('SubmitHost'))
                 if match_from_host:
-                    from_host = match_from_host[1]
-                    desc_list.append('Send from IP')
-                    value_list.append(from_host)
+                    submitted_host = match_from_host[1]
+                    from_port = match_from_host[2]
+                    # additional_parms = match_from_host[3]
+                    job_events.append(('Submitted from host', submitted_host))
 
-                desc_list.append('Submission date')
-                value_list.append(submitted_date.strftime("%m/%d %H:%M:%S"))
-
-            if job_events[-1][0].__eq__("009"):  # job aborted
-
-                desc_list.insert(0, "Process was")
-                value_list.insert(0, colors['yellow'] + "aborted" + colors['back_to_default'])
-
-                # calculate the runtime for the job
-                if job_events[-1].__ne__(job_events[0]):
-                    executed_date = datetime.datetime.strptime(
-                        job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-                    terminating_date = datetime.datetime.strptime(
-                        job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-
-                    waiting_time = executed_date - submitted_date  # calculate the waiting time
-                    today = datetime.datetime.now()  # get todays date
-                    today = today.replace(year=1900, microsecond=0)  # format the date
-                    runtime = today - executed_date  # calculate the runtime
-
-                    desc_list.append('Executing since')
-                    value_list.append(executed_date.strftime("%m/%d %H:%M:%S"))
-                    desc_list.append('Total waiting time')
-                    value_list.append(waiting_time)
-                    desc_list.append('Total runtime')
-                    value_list.append(runtime)
-                    desc_list.append('Termination date')
-                    value_list.append(terminating_date.strftime("%m/%d %H:%M:%S"))
-
-                user = ((job_raw_information[-1][0]).split(" ")[-1])[:-1]
-                logging.debug(f"{file}: Job aborted by {user}")
-
-                desc_list.append('Aborted by user:')
-                value_list.append(colors['yellow']+user+colors['back_to_default'])
-
-            # Todo: prove this section
-            # This usally means the job is still running
-            else:
-
-                if job_events[-1].__ne__(job_events[0]):
-
-                    executed_date = datetime.datetime.strptime(
-                        job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-
-                    waiting_time = executed_date - submitted_date  # calculate the waiting time
-                    today = datetime.datetime.now()
-                    today = today.replace(year=1900, microsecond=0)
-                    runtime = today - executed_date  # calculate the runtime
-
-                    desc_list.append('Executing since')
-                    value_list.append(executed_date.strftime("%m/%d %H:%M:%S"))
                 else:
-                    today = datetime.datetime.now()
-                    today = today.replace(year=1900, microsecond=0)
-                    waiting_time = today - submitted_date
+                    raise_value_error("Submission Host is wrong in file: " + file)
+                # proc_id = event.get('Proc')
+                # cluster_id = event.get('Cluster')
+                # sub_proc_id = event.get('Subproc')
 
-                if job_events[-1][0].__eq__("000"):
+            if event.type == jet.EXECUTE:
+                # execution_date = date
+                time_dict["Execution date"] = date
+
+                match_to_host = re.match(r"<(.+):[0-9]+\?(.*)>", event.get('ExecuteHost'))
+                if match_to_host:
+                    execution_host = match_to_host[1]
+                    to_port = match_to_host[2]
+                    # additional_parms = match_to_host[3]
+                    if reverse_dns_lookup:  # resolve ip to dns if set
+                        execution_host = gethostbyaddr(execution_host)
+
+                    job_events.append(('Executing on', execution_host))
+                else:
+                    raise_value_error("Execution Host is wrong in file: " + file)
+                # proc_id = event.get('Proc')
+                # cluster_id = event.get('Cluster')
+
+            if event.type == jet.IMAGE_SIZE:
+                ram_to_dict = dict(event.items())  # resolve event to dict
+                ram_to_dict['Date'] = date  # insert datetime object
+                del ram_to_dict['EventTime']  # remove EventTime string
+                ram_history.append(ram_to_dict)  # append to ram_history list
+
+            if event.type == jet.JOB_TERMINATED:
+                has_terminated = True
+
+                # termination_date = date
+                time_dict["Termination date"] = date
+
+                # get all resources, replace by np.nan if value is None
+                cpu_usage = event.get('CpusUsage') if event.get('CpusUsage') is not None else np.nan
+                cpu_requested = event.get('RequestCpus') if event.get('RequestCpus') is not None else np.nan
+                cpu_allocated = event.get('Cpus') if event.get('Cpus') is not None else np.nan
+                disk_usage = event.get('DiskUsage') if event.get('DiskUsage') is not None else np.nan
+                disk_requested = event.get('RequestDisk') if event.get('RequestDisk') is not None else np.nan
+                disk_allocated = event.get("Disk") if event.get('Disk') is not None else np.nan
+                memory_usage = event.get('MemoryUsage') if event.get('MemoryUSage') is not None else np.nan
+                memory_requested = event.get('RequestMemory') if event.get('RequestMemory') is not None else np.nan
+                memory_allocated = event.get('Memory') if event.get('Memory') is not None else np.nan
+
+                # put the data in the dict
+                res_dict = {
+                    "Resources": ["Cpu", "Disk", "Memory"],
+                    "Usage": [cpu_usage, disk_usage, memory_usage],
+                    "Requested": [cpu_requested, disk_requested, memory_requested],
+                    "Allocated": [cpu_allocated, disk_allocated, memory_allocated]
+                }
+                normal_termination = event.get('TerminatedNormally')
+                # differentiate between normal and abnormal termination
+                if normal_termination:
+                    job_events.insert(0, ("Termination State", "Normal"))
+                    return_value = event.get('ReturnValue')
+                    job_events.append(("Return Value", return_value))
+                else:
+                    job_events.insert(0, ("Termination State", colors['red'] + "Abnormal" + colors['back_to_default']))
+                    signal = event.get('TerminatedBySignal')
+                    job_events.append(("Terminated by Signal", signal))
+
+                    # TODO: is there a way to get the description ?
+
+            if event.type == jet.JOB_ABORTED:
+                has_terminated = True
+                # termination_date = date
+                time_dict["Termination date"] = date
+
+                reason = event.get('Reason')
+                job_events.insert(0, ("Aborted", reason))
+
+            # search for errors
+            # error_strings = ["error", "err", "warning", "warn", "exception", "fatal"]
+            # if event_type_number in[2, 3, 4, 7, 9, 10, 18, 21, 22, 26, 29]:
+
+            # now filter all known errors
+            if event.type == jet.JOB_HELD:
+                reason = event.get('HoldReason')
+                # hold_reason_code = event.get('HoldReasonCode')
+                # hold_reason_sub_code = event.get('HoldReasonSubCode')
+                occurred_errors.append([event_type_number, date, jet.JOB_HELD, reason])
+
+            if event.type == jet.SHADOW_EXCEPTION:
+                reason = event.get('Message')
+                occurred_errors.append([event_type_number, date, jet.SHADOW_EXCEPTION, reason])
+        else:
+            # End of the file
+            time_values = list(time_dict.values())
+            waiting, runtime, total = calc_time_differences(*time_values)
+            if waiting:
+                time_dict['Waiting time'] = waiting
+            if runtime:
+                time_dict['Executing runtime'] = runtime
+            if total:
+                time_dict['Total runtime'] = total
+
+            # delete empty values:
+            if time_dict["Submission date"] is None:
+                del time_dict["Submission date"]
+            if time_dict["Execution date"] is None:
+                del time_dict["Execution date"]
+            if time_dict["Termination date"] is None:
+                del time_dict["Termination date"]
+
+            # Job still running
+            if not has_terminated:
+                if total:
+                    rprint("[red]This is not supposed to happen, check your code[/red]")
+                elif runtime:
+                    state = "Executing"
+                elif waiting:
                     state = "Waiting"
                 else:
-                    state = "Executing"
+                    pass
+                job_events.insert(0, ("Process is", state))
 
-                desc_list.insert(0, "Process is")
-                value_list.insert(0, state)
+        # print(job_events)
+        # print(res_dict)
+        # print(time_dict)
+        # print(ram_history)
 
-                if waiting_time is not None:
-                    if runtime is None:
-                        desc_list.append('Still waiting since')
-                    else:
-                        desc_list.append('Total waiting time')
-                    value_list.append(waiting_time)
-
-                if runtime is not None:
-                    desc_list.append('Already running since')
-                    value_list.append(runtime)
-
-            job_dict = {
-                "Description": desc_list,
-                "Values": value_list
-            }
-
-    except NameError as err:
-        logging.exception(err)
-        rprint(f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
-    except FileNotFoundError or ValueError as err:
+    except OSError as err:
+        if err.args[0] == "ULOG_RD_ERROR":
+            rprint(f"[red]{err}: Not a valid htcondor logfile: {file}[/red]")
+        else:
+            rprint(f"[red]Not able to open the file: {file}[/red]")
+    except ValueError as err:
         logging.exception(err)
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-    except IndexError as err:
-        logging.debug(f"Index Error with {file}: ")
-        logging.exception(err)
     except TypeError as err:
         logging.exception(err)
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        sys.exit(3)
-    except Exception as err:
-        logging.debug(err)
-    # finally
-    else:
 
-        return job_dict, res_dict
+    # Now manipulate the output
+    if len(job_events) != 0:
+        desc, val = zip(*job_events)
+        job_events = {
+            "Execution details": desc,
+            "Values": val
+        }
+    if len(time_dict) != 0:
+        desc = list(time_dict.keys())
+        val = list(time_dict.values())
+        time_dict = {
+            "Dates and times": desc,
+            "Values": val
+        }
+
+    return (job_events, res_dict, time_dict, ram_history, occurred_errors)
 
 
 # reads all information, but returns them in two lists
@@ -968,7 +1223,7 @@ def read_condor_log(file: str) -> (list, list):
         for line in log_file:
 
             line = line.rstrip("\n")  # remove newlines
-            match_log\
+            match_log \
                 = re.match(r"([0-9]{3})"  # matches event number
                            r" (\([0-9]+.[0-9]+.[0-9]{3}\))"  # matches clusterid and process id
                            r" ([0-9]{2}/[0-9]{2})"  # matches date
@@ -992,7 +1247,7 @@ def read_condor_log(file: str) -> (list, list):
                     temp_job_event_list = list()  # clear list
                     continue
                 # else
-                #if re.match("[\t ]+", line):
+                # if re.match("[\t ]+", line):
                 else:
                     temp_job_event_list.append(line)
     return log_job_events, job_event_information
@@ -1013,7 +1268,7 @@ def read_condor_error(file: str) -> str:
 
     """
     if not file.endswith(std_err):
-        raise NameError("The read_condor_error method is only for "+std_err+" files")
+        raise NameError("The read_condor_error method is only for " + std_err + " files")
 
     try:
         err_file = open(file)
@@ -1038,7 +1293,7 @@ def read_condor_output(file: str) -> str:
 
         """
     if not file.endswith(std_out):
-        raise NameError("The read_condor_output method is only for "+std_out+" files")
+        raise NameError("The read_condor_output method is only for " + std_out + " files")
     try:
         out_file = open(file)
     except FileNotFoundError as err:
@@ -1064,7 +1319,7 @@ def gethostbyaddr(ip):
         # return
         return reversed_dns[0]
     except Exception:
-        logging.debug('Not able to resolve the IP: '+ip)
+        logging.debug('Not able to resolve the IP: ' + ip)
         # also store
         store_dns_lookups[ip] = ip
         return ip
@@ -1150,10 +1405,10 @@ def show_htcondor_stderr(file: str) -> str:
 
     except NameError as err:
         logging.exception(err)
-        rprint("[red]The smart_output_error method requires a "+std_err+" file as parameter[/red]")
+        rprint("[red]The smart_output_error method requires a " + std_err + " file as parameter[/red]")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
-        match = re.match(r".*?([0-9]{3,}_[0-9]+)"+std_err, relevant[1])
+        match = re.match(r".*?([0-9]{3,}_[0-9]+)" + std_err, relevant[1])
         rprint(f"[yellow]There is no related {std_err} file: {relevant[1]} in the directory:\n[/yellow]"
                f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
     except TypeError as err:
@@ -1185,10 +1440,10 @@ def show_htcondor_stdout(file: str) -> str:
         output_string += output_content
     except NameError as err:
         logging.exception(err)
-        rprint("[red]The smart_output_output method requires a "+std_out+" file as parameter[/red]")
+        rprint("[red]The smart_output_output method requires a " + std_out + " file as parameter[/red]")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
-        match = re.match(r".*?([0-9]{3,}_[0-9]+)"+std_out, relevant[1])
+        match = re.match(r".*?([0-9]{3,}_[0-9]+)" + std_out, relevant[1])
         rprint(f"[yellow]There is no related {std_out} file: {relevant[1]} in the directory:\n[/yellow]"
                f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
     except TypeError as err:
@@ -1202,7 +1457,7 @@ def show_htcondor_stdout(file: str) -> str:
 
 def customize_log(file: str) -> dict:
     """
-    reads a given HTCondor .log file with the read_condor_logs() function
+    reads a given HTCondor .log file with the log_to_dict() function
 
     :param file:    a HTCondor .log file
     :param header:  Shows the header of the columns
@@ -1237,15 +1492,23 @@ def customize_log(file: str) -> dict:
 
     try:
 
-        job_dict, res_dict = log_to_dict(file)
+        htcondor_log = log_to_dict(file)
+
+        job_dict = htcondor_log[0]
+        res_dict = htcondor_log[1]
+        times = htcondor_log[2]
+        print(times)
 
         # Todo: csv style one line
         if to_csv:
             pass
         else:
-            result_dict["file-description"] = f"{colors['green']}The job procedure of : {file}{colors['back_to_default']}"
+            result_dict[
+                "file-description"] = f"{colors['green']}The job procedure of : {file}{colors['back_to_default']}"
 
             result_dict["execution-details"] = job_dict
+
+            result_dict["times"] = times
             if not len(res_dict) == 0:  # make sure res_df is not None
 
                 res_dict = manage_thresholds(res_dict)
@@ -1389,7 +1652,6 @@ def find_config(args: list) -> (str, list):
 
 # search for config file ( UNIX BASED )
 def load_config(config_file: str):
-
     config = configparser.ConfigParser()
 
     try:
@@ -1442,7 +1704,7 @@ def load_config(config_file: str):
                     if arg in allowed_show_values:
                         show_list.append(arg)
                     else:
-                        logging.debug("Don't know this ignore statement: "+ arg)
+                        logging.debug("Don't know this ignore statement: " + arg)
                 logging.debug(f"Changed default ignore statements to: {show_list}")
 
         # what information should to be ignored
@@ -1454,7 +1716,7 @@ def load_config(config_file: str):
                     if arg in allowed_ignore_values:
                         ignore_list.append(arg)
                     else:
-                        logging.debug("Don't know this show statement: "+ arg)
+                        logging.debug("Don't know this show statement: " + arg)
                 logging.debug(f"Changed default show-more statements to: {ignore_list}")
 
         if 'thresholds' in sections:
@@ -1577,7 +1839,6 @@ def default(log_files: list_of_logs) -> log_inf_list:
 # Todo: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
 #       until now there is not the need for other filters but it might be needed to extend this function
 def analyse(log_files: list_of_logs) -> log_inf_list:
-
     logging.info('Starting the analyser mode')
 
     if len(log_files) == 0:
@@ -1697,7 +1958,8 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                             logging.debug(f"No termination description for {file} found")
 
                     else:
-                        job_information.append(f"{colors['yellow']}{match_termination_state[1]}{colors['back_to_default']}")
+                        job_information.append(
+                            f"{colors['yellow']}{match_termination_state[1]}{colors['back_to_default']}")
                         logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
 
                 else:
@@ -1748,7 +2010,8 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                     gpu_match_index += 1
                     gpu_found = True
 
-                match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[gpu_match_index])
+                match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)",
+                                 partitionable_res[gpu_match_index])
                 if match:
                     memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
                 else:
@@ -1803,7 +2066,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                 terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
 
                 aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
-                occurred_errors.append([job_id, terminated_date, "Terminated by user: "+aborted_by_user])
+                occurred_errors.append([job_id, terminated_date, "Terminated by user: " + aborted_by_user])
 
             else:
                 # search for errors
@@ -1873,10 +2136,10 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                 time_list.append(err[1].strftime("%m/%d %H:%M:%S"))
                 # if the line is to long, split it
                 if len(err[2]) > 50:
-                    split = int(len(err[2])/2)
-                    while err[2][split] != ' ' and split < len(err[2])-1:
+                    split = int(len(err[2]) / 2)
+                    while err[2][split] != ' ' and split < len(err[2]) - 1:
                         split += 1
-                    if split > len(err[2])-2:  # if no space was found, change back to normal
+                    if split > len(err[2]) - 2:  # if no space was found, change back to normal
                         split = int(len(err[2]) / 2)
                     err_reason.append(err[2][0:split] + '\n' + err[2][split:])
                 else:
@@ -2035,11 +2298,11 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
             sys.exit(3)
 
-    n = valid_files - aborted_files - still_running - other_exception # calc diffrenc of successful executed jobs
+    n = valid_files - aborted_files - still_running - other_exception  # calc diffrenc of successful executed jobs
 
     average_runtime = normal_runtime / n if n != 0 else normal_runtime
     average_runtime = datetime.timedelta(days=average_runtime.days, seconds=average_runtime.seconds)
-    #total_runtime = normal_runtime + aborted_runtime
+    # total_runtime = normal_runtime + aborted_runtime
 
     exec_dict = {
         "Job types": ["Successful executed jobs"],
@@ -2054,7 +2317,6 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     if other_exception > 0:
         exec_dict["Job types"].append("Other exceptions")
         exec_dict["Occurrence"].append(other_exception)
-
 
     result_dict["execution-details"] = exec_dict
 
@@ -2146,7 +2408,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
         runtime_per_node = list()
         for val in host_nodes.values():
             executed_jobs.append(val[0])
-            average_job_duration = val[1]/val[0]
+            average_job_duration = val[1] / val[0]
             runtime_per_node.append(datetime.timedelta(average_job_duration.days, average_job_duration.seconds))
 
         cpu_dict = {
@@ -2310,7 +2572,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 else:
                     termination_state += "(CPU)"
 
-                match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[gpu_match_index])
+                match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)",
+                                 partitionable_res[gpu_match_index])
                 if match:
                     memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
                 else:
@@ -2363,7 +2626,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
 
                 aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
-                occurred_errors.append([event_number, terminated_date, "aborted", "Terminated by user: "+aborted_by_user])
+                occurred_errors.append(
+                    [event_number, terminated_date, "aborted", "Terminated by user: " + aborted_by_user])
 
             else:
                 # search for errors
@@ -2459,8 +2723,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                     else:
                         all_files[termination_type][5][to_host] = [1, total_time]
                 elif 'Aborted before submission' in all_files[termination_type][5].keys():
-                        all_files[termination_type][5]['Aborted before submission'][0] += 1
-                        all_files[termination_type][5]['Aborted before submission'][1] += total_time
+                    all_files[termination_type][5]['Aborted before submission'][0] += 1
+                    all_files[termination_type][5]['Aborted before submission'][1] += total_time
                 else:
                     count_host_nodes = dict()
                     count_host_nodes['Aborted before submission'] = [1, total_time]
@@ -2497,12 +2761,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         # differentiate between terminated and running processes
         if term_state.__ne__("running"):
             result_dict["file-description"] = f"{colors['blue']}" \
-                                              f"All files summarized with the Termination State: {term_state}" \
-                                              f"{colors['back_to_default']}"
+                f"All files summarized with the Termination State: {term_state}" \
+                f"{colors['back_to_default']}"
         else:
             result_dict["file-description"] = f"{colors['blue']}" \
-                                              f"All files summarized, that are currently running:" \
-                                              f"{colors['back_to_default']}"
+                f"All files summarized, that are currently running:" \
+                f"{colors['back_to_default']}"
 
         n = int(term_info[0])
         desc_dict = {
@@ -2511,7 +2775,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         }
 
         times = np.array([term_info[1], term_info[2], term_info[3]])
-        av_times = times/n
+        av_times = times / n
         format_av_times = [datetime.timedelta(days=time.days, seconds=time.seconds) for time in av_times]
 
         time_dict = {
@@ -2719,10 +2983,10 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
             elif os.path.isfile(logs_path):
                 working_file_path = logs_path
             # check if only the id was given and resolve it with the std_log specification
-            elif os.path.isfile(arg+std_log):
-                working_file_path = arg+std_log
-            elif os.path.isfile(logs_path+std_log):
-                working_file_path = logs_path+std_log
+            elif os.path.isfile(arg + std_log):
+                working_file_path = arg + std_log
+            elif os.path.isfile(logs_path + std_log):
+                working_file_path = logs_path + std_log
 
             # if path is a directory
             if working_dir_path.__ne__(""):
@@ -2737,7 +3001,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
                     # ---- if std_log is set ignore other log files with a different suffix ----
                     if std_log.__ne__("") and not file.endswith(std_log):
-                        logging.debug("Ignoring this file, " + file + ", because std_log is set to: "+ std_log)
+                        logging.debug("Ignoring this file, " + file + ", because std_log is set to: " + std_log)
                         continue
 
                     # ignore hidden files
@@ -2793,7 +3057,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
                     else:
                         logging.debug(f"The given file {read_file.name} is not a valid HTCondor log file")
                         progress.console.print(f"[yellow]The given file {read_file.name} "
-                                               f"is not a valid HTCondor log file[/yellow]",)
+                                               f"is not a valid HTCondor log file[/yellow]", )
             else:
                 logging.error(f"The given file: {arg} does not exist")
                 rprint(f"[red]The given file: {arg} does not exist[/red]")
@@ -2801,7 +3065,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
     return valid_files
 
 
-def setup_logging_tool(log_file=sys.argv[0]+'.log'):
+def setup_logging_tool(log_file=sys.argv[0] + '.log'):
     """
         Set up the logging device,
         to generate a log file, with --generate-log-file
@@ -2851,7 +3115,7 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
         stdout_formatter = logging.Formatter(logging_stdout_format)
 
         stdout_handler = logging.StreamHandler(sys.stdout)
-        #stdout_handler = rlog.RichHandler(logging.DEBUG, console=sys.stdout)
+        # stdout_handler = rlog.RichHandler(logging.DEBUG, console=sys.stdout)
         stdout_handler.setLevel(logging.DEBUG)
         stdout_handler.setFormatter(stdout_formatter)
         log = logging.getLogger()
@@ -2861,7 +3125,6 @@ def setup_logging_tool(log_file=sys.argv[0]+'.log'):
 
 # Todo: a function to format the output
 def customize_results(files: list_of_logs):
-
     output_string = ""
 
     if filter_mode:
@@ -2922,7 +3185,7 @@ def customize_results(files: list_of_logs):
             if "errors" in ignore_list:
                 del mystery["errors"]
             else:
-                mystery["errors"] = "Occurred errors: \n" +\
+                mystery["errors"] = "Occurred errors: \n" + \
                                     tabulate(mystery["errors"], showindex=False, headers='keys', tablefmt='grid')
 
         if "host-nodes" in mystery:
