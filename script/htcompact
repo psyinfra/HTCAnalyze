@@ -49,10 +49,10 @@ to see for ex. the average runtime and usage of all the logs
 """
 
 
-# Todos:
-# Todo: rich progress bar collision with verbose mode looks ugly
-# Todo: summary mode remake
-# Todo: script is not accepting IPv6 yet
+# TODOs:
+# TODO: rich progress bar collision with verbose mode looks ugly
+# TODO: summary mode remake
+# TODO: script is not accepting IPv6 yet
 
 
 def initialize():
@@ -94,7 +94,7 @@ def initialize():
                              "used-resources", "requested-resources",
                              "allocated-resources", "all-resources",
                              "errors"]
-    # Todo: ignore script warnings ?
+    # TODO: ignore script warnings ?
 
     # if set do not use a config file, even if one was found
     no_config = False
@@ -177,7 +177,7 @@ def check_for_redirection():
 #  that are related to an option and interpret
 #  the first one which does not as a file again
 #  -> something like --ignore allocated-resources times ... should be possible
-# Todo: consider regex in this implementation: --ignore alloc tim ...
+# TODO: consider regex in this implementation: --ignore alloc tim ...
 #  with focus on longest prefix match
 # may not be needed in future but will be used for now
 def remove_files_from_args(args: list, short_opts: str, long_opts: list):
@@ -253,7 +253,7 @@ def manage_prioritized_params(args: list):
                 print(small_help())
                 sys.exit(0)
             if opt.__eq__("--version"):
-                # Todo:
+                # TODO:
                 print(f"Version: v1.0.7")
                 sys.exit(0)
             if opt.__eq__("--print-event-table"):
@@ -276,7 +276,7 @@ def manage_prioritized_params(args: list):
         sys.exit(1)
 
 
-# Todo: thresholds by command line
+# TODO: thresholds by command line
 def manage_params(args: list):
     """
     Interprets the given command line arguments and changes the global variables in this scrips
@@ -383,7 +383,7 @@ def manage_params(args: list):
                             allowed_ignore_values))
                 logging.debug("Ignore these information: " + ", ".join(ignore_list))
 
-            # Todo: to-csv
+            # TODO: to-csv
             # elif opt.__eq__("--to-csv"):
             #     to_csv = True
             #     rprint("[red]--to-csv not handled yet[/red]")
@@ -627,322 +627,7 @@ def raise_type_error(message: str) -> TypeError:
     raise TypeError(message)
 
 
-# # Todo: time seperated ( submitting / executing / terminating)
-# # Todo: Read HTCondor Errors that occurred
-# def old_log_to_dict(file: str) -> (dict, dict):
-#     """
-#         Read the log file and filter useful information.
-#         Structur it in a way, that later two different dictionaries will be retuned.
-#
-#     :type file: str
-#     :param file: HTCondor log file
-#     :return: job_dict, res_dict
-#
-#             job_dict should never be empty,
-#             it holds information like runtime, return value, host, etc.
-#
-#             res_dict can be empty, it holds all the
-#             used, requested and allocated resources
-#     """
-#
-#     try:
-#         job_events, job_raw_information = read_condor_log(file)
-#
-#         job_dict = dict()
-#         res_dict = dict()
-#
-#         # if the last job event is : Job terminated
-#         if job_events[-1][0].__eq__("005"):
-#
-#             # calculate the runtime for the job
-#             executed_date = datetime.datetime.strptime(
-#                 job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-#             terminating_date = datetime.datetime.strptime(
-#                 job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-#             runtime = terminating_date - executed_date  # calculation of the time runtime
-#
-#             match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[1][5])
-#             if match_host:
-#                 host = match_host[1]
-#                 # if reverse dns lookup, change the ip to cpu: last number
-#                 if reverse_dns_lookup:
-#                     host = gethostbyaddr(host)
-#                 port = match_host[2]
-#             else:
-#                 logging.exception("Host and port haven't been matched correctly")
-#                 rprint("[red]faulty values for the host ip make sure it's a valid IPv4[/red]")
-#                 host = "Unknown"
-#                 port = "Unknown"
-#
-#             # make a fancy design for the job_information
-#             job_labels = ["Executing on Host", "Port", "Runtime"]  # holds the labels
-#             job_information = [host, port, runtime]  # holds the related job information
-#
-#             # filter the termination state ...
-#             if True:
-#                 # check if termination state is normal
-#                 termination_state_inf = job_raw_information[-1][0]
-#                 match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", termination_state_inf)
-#                 job_labels.insert(0, "Termination State")
-#                 if match_termination_state:
-#
-#                     if "Normal termination" in match_termination_state[1]:
-#                         job_information.insert(0, match_termination_state[1])
-#                         match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
-#                                                       termination_state_inf)
-#                         return_value = match_return_value[1] if match_return_value else "None"
-#                         if return_value == "None":
-#                             logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
-#                             rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
-#                         else:
-#                             job_labels.append("Return Value")
-#                             job_information.append(return_value)
-#                     elif "Abnormal termination" in match_termination_state[1]:
-#                         job_information.insert(0, colors['red']+match_termination_state[1]+colors['back_to_default'])
-#
-#                         match_signal = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)",
-#                                                       termination_state_inf)
-#                         signal = match_signal[1] if match_signal else "None"
-#                         if signal == "None":
-#                             logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
-#                             rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
-#                         else:
-#                             job_labels.append("Return Value")
-#                             job_information.append(signal)
-#
-#                         termination_desc = list()
-#                         # append the reason for the Abnormal Termination
-#                         for desc in job_raw_information[-1][1:]:
-#                             if re.match(r"[\t ]+\(0\)", desc):
-#                                 termination_desc.append(desc[5:])
-#                             else:
-#                                 break
-#
-#                         if not len(termination_desc) == 0:
-#                             job_labels.append("Description")
-#                             job_information.append("\n".join(termination_desc))
-#                         else:
-#                             logging.debug(f"No termination description for {file} found")
-#
-#                     else:
-#                         job_information.insert(0, match_termination_state[1])
-#                         logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
-#
-#                 else:
-#                     job_information.insert(0, "Not valid")
-#                     rprint(f"[red]Termination error in HTCondor log file: {file}[/red]")
-#
-#             # now put everything together in a table
-#             job_dict = {
-#                 "Description": job_labels,
-#                 "Values": job_information
-#             }
-#
-#             # these where the job information now focus on the used resources
-#
-#             relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
-#
-#             # next part removes not useful lines
-#             if True:  # just for readability
-#                 # remove unnecessary lines
-#                 lines = relevant_str.splitlines()
-#                 # while not lines[0].startswith("\tPartitionable"):
-#                 while not re.match(r"[\t ]+Partitionable", lines[0]):
-#                     lines.remove(lines[0])
-#
-#                 lines.remove(lines[0])
-#                 partitionable_res = lines
-#                 # done, partitionable_resources contain now only information about used resources
-#
-#             # match all resources
-#             # ***************************************************************************************
-#             match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)",
-#                              partitionable_res[0])
-#             if match:
-#                 cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
-#             else:
-#                 logging.debug("Something went wrong reading the cpu information in: " + file)
-#                 raise_type_error("Something went wrong reading the cpu information")
-#
-#             match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)",
-#                              partitionable_res[1])
-#             if match:
-#                 disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
-#             else:
-#                 logging.debug("Something went wrong reading the disk information in: " + file)
-#                 raise raise_type_error("Something went wrong reading the disk information")
-#
-#             # check if the log has gpu information in between
-#             gpu_match_index = 2  # can be ignored if gpu is given, memory has to access the next index
-#             gpu_found = False  # easier to check to add information in the dict
-#             match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
-#                              partitionable_res[gpu_match_index])
-#             if match:
-#                 gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
-#                 gpu_match_index += 1
-#                 gpu_found = True
-#
-#             match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)",
-#                              partitionable_res[gpu_match_index])
-#             if match:
-#                 memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
-#             else:
-#                 logging.debug("Something went wrong reading the memory information in: " + file)
-#                 raise_type_error("Something went wrong reading the memory information")
-#             # ****************************************************************************************************
-#
-#             # list of resources and their labels
-#             resource_labels = ["Cpu", "Disk", "Memory"]
-#             usage = [cpu_usage, disk_usage, memory_usage]
-#             requested = [cpu_request, disk_request, memory_request]
-#             allocated = [cpu_allocated, disk_allocated, memory_allocated]
-#
-#             if gpu_found:
-#                 resource_labels.append("Gpus")
-#                 usage.append(gpu_usage)
-#                 requested.append(gpu_request)
-#                 allocated.append(gpu_allocated)
-#
-#             # Error handling: change empty values to NaN in the first column
-#             for i in range(3):
-#                 if usage[i] == "":
-#                     usage[i] = np.nan
-#                 if requested[i] == "":
-#                     requested[i] = np.nan
-#                 if allocated[i] == "":
-#                     allocated[i] = np.nan
-#
-#             # put the data in the dict
-#             res_dict = {
-#                 "Resources": resource_labels,
-#                 "Usage": usage,
-#                 "Requested": requested,
-#                 "Allocated": allocated
-#             }
-#
-#             if gpu_found:
-#                 res_dict["Assigned"] = ["", "", "", gpu_name]
-#
-#         # Todo: check this section
-#         # This means the job was terminated, is still running or some other cases
-#         # In this case I want to give the user more information about the process
-#         else:
-#
-#             waiting_time = None
-#             runtime = None
-#             desc_list = list()  # append to this list for further details
-#             value_list = list()  # append the related values to this list
-#
-#             # first job event was submitted
-#             if job_events[0][0].__eq__("000"):
-#                 submitted_date = datetime.datetime.strptime(job_events[0][2] + " " + job_events[0][3], "%m/%d %H:%M:%S")
-#
-#                 match_from_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job_events[0][5])
-#                 if match_from_host:
-#                     from_host = match_from_host[1]
-#                     desc_list.append('Send from IP')
-#                     value_list.append(from_host)
-#
-#                 desc_list.append('Submission date')
-#                 value_list.append(submitted_date.strftime("%m/%d %H:%M:%S"))
-#
-#             if job_events[-1][0].__eq__("009"):  # job aborted
-#
-#                 desc_list.insert(0, "Process was")
-#                 value_list.insert(0, colors['yellow'] + "aborted" + colors['back_to_default'])
-#
-#                 # calculate the runtime for the job
-#                 if job_events[-1].__ne__(job_events[0]):
-#                     executed_date = datetime.datetime.strptime(
-#                         job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-#                     terminating_date = datetime.datetime.strptime(
-#                         job_events[-1][2] + " " + job_events[-1][3], "%m/%d %H:%M:%S")
-#
-#                     waiting_time = executed_date - submitted_date  # calculate the waiting time
-#                     today = datetime.datetime.now()  # get todays date
-#                     today = today.replace(year=1900, microsecond=0)  # format the date
-#                     runtime = today - executed_date  # calculate the runtime
-#
-#                     desc_list.append('Executing since')
-#                     value_list.append(executed_date.strftime("%m/%d %H:%M:%S"))
-#                     desc_list.append('Total waiting time')
-#                     value_list.append(waiting_time)
-#                     desc_list.append('Total runtime')
-#                     value_list.append(runtime)
-#                     desc_list.append('Termination date')
-#                     value_list.append(terminating_date.strftime("%m/%d %H:%M:%S"))
-#
-#                 user = ((job_raw_information[-1][0]).split(" ")[-1])[:-1]
-#                 logging.debug(f"{file}: Job aborted by {user}")
-#
-#                 desc_list.append('Aborted by user:')
-#                 value_list.append(colors['yellow']+user+colors['back_to_default'])
-#
-#             # Todo: prove this section
-#             # This usally means the job is still running
-#             else:
-#
-#                 if job_events[-1].__ne__(job_events[0]):
-#
-#                     executed_date = datetime.datetime.strptime(
-#                         job_events[1][2] + " " + job_events[1][3], "%m/%d %H:%M:%S")
-#
-#                     waiting_time = executed_date - submitted_date  # calculate the waiting time
-#                     today = datetime.datetime.now()
-#                     today = today.replace(year=1900, microsecond=0)
-#                     runtime = today - executed_date  # calculate the runtime
-#
-#                     desc_list.append('Executing since')
-#                     value_list.append(executed_date.strftime("%m/%d %H:%M:%S"))
-#                 else:
-#                     today = datetime.datetime.now()
-#                     today = today.replace(year=1900, microsecond=0)
-#                     waiting_time = today - submitted_date
-#
-#                 if job_events[-1][0].__eq__("000"):
-#                     state = "Waiting"
-#                 else:
-#                     state = "Executing"
-#
-#                 desc_list.insert(0, "Process is")
-#                 value_list.insert(0, state)
-#
-#                 if waiting_time is not None:
-#                     if runtime is None:
-#                         desc_list.append('Still waiting since')
-#                     else:
-#                         desc_list.append('Total waiting time')
-#                     value_list.append(waiting_time)
-#
-#                 if runtime is not None:
-#                     desc_list.append('Already running since')
-#                     value_list.append(runtime)
-#
-#             job_dict = {
-#                 "Description": desc_list,
-#                 "Values": value_list
-#             }
-#
-#     except NameError as err:
-#         logging.exception(err)
-#         rprint(f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
-#     except FileNotFoundError or ValueError as err:
-#         logging.exception(err)
-#         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-#     except IndexError as err:
-#         logging.debug(f"Index Error with {file}: ")
-#         logging.exception(err)
-#     except TypeError as err:
-#         logging.exception(err)
-#         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-#         sys.exit(3)
-#     except Exception as err:
-#         logging.debug(err)
-#     # finally
-#     else:
-#
-#         return job_dict, res_dict
-
+# Todo: time differences over end of year
 def calc_time_differences(
         submission_date: date_time,
         execution_date: date_time = None,
@@ -968,7 +653,7 @@ def calc_time_differences(
     runtime = None
     total_time = None
     today = datetime.datetime.now()
-    today = today.replace(microsecond=0)  # remove unnessecary microseconds
+    today = today.replace(microsecond=0)  # remove unnecessary microseconds
     if execution_date:
         if submission_date:
             waiting_time = execution_date - submission_date
@@ -986,7 +671,7 @@ def calc_time_differences(
     elif submission_date:
         waiting_time = today - submission_date
 
-    return (waiting_time, runtime, total_time)
+    return waiting_time, runtime, total_time
 
 
 def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
@@ -1108,7 +793,7 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
                 time_dict["Termination date"] = date
 
                 reason = event.get('Reason')
-                job_events.insert(0, ("Aborted", reason))
+                job_events.insert(0, ("Process was", "Aborted, "+ reason))
 
             # search for errors
             # error_strings = ["error", "err", "warning", "warn", "exception", "fatal"]
@@ -1126,34 +811,7 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
                 occurred_errors.append((event_type_number, date, jet.SHADOW_EXCEPTION, reason))
         else:
             # End of the file
-            time_values = list(time_dict.values())
-            waiting, runtime, total = calc_time_differences(*time_values)
-            if waiting:
-                time_dict['Waiting time'] = waiting
-            if runtime:
-                time_dict['Executing runtime'] = runtime
-            if total:
-                time_dict['Total runtime'] = total
-
-            # delete empty values:
-            if time_dict["Submission date"] is None:
-                del time_dict["Submission date"]
-            if time_dict["Execution date"] is None:
-                del time_dict["Execution date"]
-            if time_dict["Termination date"] is None:
-                del time_dict["Termination date"]
-
-            # Job still running
-            if not has_terminated:
-                if total:
-                    rprint("[red]This is not supposed to happen, check your code[/red]")
-                elif runtime:
-                    state = "Executing"
-                elif waiting:
-                    state = "Waiting"
-                else:
-                    pass
-                job_events.insert(0, ("Process is", state))
+            pass
 
     except OSError as err:
         if err.args[0] == "ULOG_RD_ERROR":
@@ -1166,6 +824,35 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
     except TypeError as err:
         logging.exception(err)
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+
+    time_values = list(time_dict.values())
+    waiting, runtime, total = calc_time_differences(*time_values)
+    if waiting:
+        time_dict['Waiting time'] = waiting
+    if runtime:
+        time_dict['Executing runtime'] = runtime
+    if total:
+        time_dict['Total runtime'] = total
+
+    # delete empty values:
+    if time_dict["Submission date"] is None:
+        del time_dict["Submission date"]
+    if time_dict["Execution date"] is None:
+        del time_dict["Execution date"]
+    if time_dict["Termination date"] is None:
+        del time_dict["Termination date"]
+
+    # Job still running
+    if not has_terminated:
+        if total:
+            rprint("[red]This is not supposed to happen, check your code[/red]")
+        elif runtime:
+            state = "Executing"
+        elif waiting:
+            state = "Waiting"
+        else:
+            pass
+        job_events.insert(0, ("Process is", state))
 
     job_events_dict = dict()
     better_time_dict = dict()
@@ -1213,12 +900,6 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
             "Memory usages": list(mem_usage),
             "Resident Set Sizes": list(res_set_size)
         }
-
-    # print(job_events_dict)
-    # print(res_dict)
-    # print(better_time_dict)
-    # print(ram_history_dict)
-    # print(error_dict)
 
     return job_events_dict, res_dict, better_time_dict, ram_history_dict, error_dict
 
@@ -1284,7 +965,7 @@ def read_condor_log(file: str) -> (list, list):
     return log_job_events, job_event_information
 
 
-# Todo: maybe less information
+# TODO: maybe less information
 # just read .err files content and return it as a string
 def read_condor_error(file: str) -> str:
     """
@@ -1356,7 +1037,7 @@ def gethostbyaddr(ip):
         return ip
 
 
-# Todo: question about if thresholds for used cpu, gpu should exists
+# TODO: question about if thresholds for used cpu, gpu should exists
 def manage_thresholds(resources: dict) -> dict:
     """
         Takes a dict which should look like this:
@@ -1381,6 +1062,7 @@ def manage_thresholds(resources: dict) -> dict:
     :param resources:
     :return:
     """
+    resources.update(Usage=list(resources["Usage"]))  # change to list, to avoid numpy type errors
     # thresholds used vs. requested disk
     if float(resources['Usage'][1]) / float(resources['Requested'][1]) > bad_usage_threshold:
         resources['Usage'][1] = colors['red'] + str(resources['Usage'][1]) + colors['back_to_default']
@@ -1410,7 +1092,7 @@ def show_htcondor_stderr(file: str) -> str:
     :return: the content of the given file as a string
     """
 
-    # Todo:
+    # TODO:
     # - errors from htcondor are more important (std.err output)
     # - are there errors ? true or false -> maybe print those in any kind of fromat
     # - maybe check for file size !!!
@@ -1528,9 +1210,8 @@ def customize_log(file: str) -> dict:
         job_dict = htcondor_log[0]
         res_dict = htcondor_log[1]
         times = htcondor_log[2]
-        print(times)
 
-        # Todo: csv style one line
+        # TODO: csv style one line
         if to_csv:
             pass
         else:
@@ -1867,7 +1548,7 @@ def default(log_files: list_of_logs) -> log_inf_list:
     return list_of_dicts
 
 
-# Todo: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
+# TODO: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
 #       until now there is not the need for other filters but it might be needed to extend this function
 def analyse(log_files: list_of_logs) -> log_inf_list:
     logging.info('Starting the analyser mode')
@@ -1900,7 +1581,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
             result_dict["times"] = time_dict
 
         if len(res_dict) > 0:
-            result_dict["all-resources"] = res_dict
+            result_dict["all-resources"] = manage_thresholds(res_dict)
 
         # show HTCondor errors
         if len(occurred_errors) > 0:
@@ -1917,14 +1598,14 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                 fig.width = 55
                 fig.height = 15
                 fig.set_x_limits(min_=min(dates))
-                min_ram = int(min(ram)) # raises an error if not casted to int
+                min_ram = int(min(ram))  # raises an error if not casted to int
                 fig.set_y_limits(min_=min_ram)
                 fig.y_label = "Usage"
                 fig.x_label = "Time"
 
                 # this will use the self written function _num_formatter, to convert the y-label to int values
                 fig.register_label_formatter(float, _int_formatter)
-                fig.plot(dates, ram, lc='green', label="Continuous Graph")  # Todo: implement a way to show thresholds
+                fig.plot(dates, ram, lc='green', label="Continuous Graph")  # TODO: implement a way to show thresholds
                 fig.scatter(dates, ram, lc='red', label="Single Values")
 
                 if redirecting_output:  # if redirected, the Legend is useless
@@ -1942,7 +1623,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
     return result_list
 
 
-# Todo: what means sucessful executed ?
+# TODO: what means sucessful executed ?
 def summarize(log_files: list_of_logs) -> log_inf_list:
     """
     Summarises all used resources and the runtime in total and average
@@ -1966,20 +1647,11 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     still_running = 0
     other_exception = 0
     normal_runtime = datetime.timedelta()
-    aborted_runtime = datetime.timedelta()
     host_nodes = dict()
 
-    total_cpu_usage = float(0)
-    total_disk_usage = int(0)
-    total_memory_usage = int(0)
-
-    total_cpu_requested = int(0)
-    total_disk_requested = int(0)
-    total_memory_requested = int(0)
-
-    total_cpu_allocated = int(0)
-    total_disk_allocated = int(0)
-    total_memory_allocated = int(0)
+    total_usages = np.array([0, 0, 0], dtype=float)
+    total_requested = np.array([0, 0, 0])
+    total_allocated = np.array([0, 0, 0])
 
     # if gpu given
     gpu_found = False
@@ -1990,57 +1662,49 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     for file in track(log_files, transient=True, description="Summarizing..."):
         try:
-            log = log_to_dict(file)
+            job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(file)
 
-            log_description, log_resources = log[0], log[1]
             # continue if Process is still running
-            if log_description['Description'][0].__eq__("Process is"):
+            if job_dict['Execution details'][0].__eq__("Process is"):
                 still_running += 1
                 rprint(f"[orange3]Process of {file} is still running, \n"
                        f"it will be ignored for this summation[/orange3]")
                 continue
 
-            elif log_description['Description'][0].__eq__("Process was"):
+            elif job_dict['Execution details'][0].__eq__("Process was"):
                 aborted_files += 1
                 rprint(f"[orange3]Process of {file} has been aborted, \n"
                        f"it will be ignored for this summation[/orange3]")
                 continue
-            elif len(log_resources) == 0:
+            elif len(job_dict) == 0:
                 logging.error("if this even get's printed out, more work is needed")
                 rprint(f"[orange3]Process of {file} is strange, \n"
                        f"don't know how to handle this yet[/orange3]")
                 other_exception += 1
                 continue
 
-            normal_runtime += log_description['Values'][3]
-            host = log_description['Values'][2]
+            if "Total runtime" in time_dict["Dates and times"]:
+                normal_runtime += time_dict['Values'][3]
+            host = job_dict['Values'][2]
             if host in host_nodes:
                 host_nodes[host][0] += 1
-                host_nodes[host][1] += log_description['Values'][3]
+                host_nodes[host][1] += time_dict['Values'][3]
             else:
-                host_nodes[host] = [1, log_description['Values'][3]]
+                host_nodes[host] = [1, time_dict['Values'][3]]
 
-            total_cpu_usage += float(log_resources['Usage'][0]) \
-                if str(log_resources['Usage'][0]).lower() != 'nan' else 0
-            total_disk_usage += int(log_resources['Usage'][1])
-            total_memory_usage += int(log_resources['Usage'][2])
+            total_usages += np.nan_to_num(res_dict["Usage"])
+            total_requested += np.nan_to_num(res_dict["Requested"])
+            total_allocated += np.nan_to_num(res_dict["Allocated"])
 
-            total_cpu_requested += int(log_resources['Requested'][0])
-            total_disk_requested += int(log_resources['Requested'][1])
-            total_memory_requested += int(log_resources['Requested'][2])
-
-            total_cpu_allocated += int(log_resources['Allocated'][0])
-            total_disk_allocated += int(log_resources['Allocated'][1])
-            total_memory_allocated += int(log_resources['Allocated'][2])
-
-            if len(log_resources['Resources']) == 4:  # this means gpu information is given
-                gpu_found = True
-                total_gpu_usage += float(log_resources['Usage'][3])
-                total_gpu_requested += int(log_resources['Requested'][3])
-                if not "allocated-resources" in ignore_list:
-                    total_gpu_allocated += int(log_resources['Allocated'][3])
-                if log_resources['Assigned'][3] not in list_of_gpu_names:  # append new gpus
-                    list_of_gpu_names.append(log_resources['Assigned'][3])  # Todo:
+            # TODO: gpu usage
+            # if len(log_resources['Resources']) == 4:  # this means gpu information is given
+            #     gpu_found = True
+            #     total_gpu_usage += float(log_resources['Usage'][3])
+            #     total_gpu_requested += int(log_resources['Requested'][3])
+            #     if not "allocated-resources" in ignore_list:
+            #         total_gpu_allocated += int(log_resources['Allocated'][3])
+            #     if log_resources['Assigned'][3] not in list_of_gpu_names:  # append new gpus
+            #         list_of_gpu_names.append(log_resources['Assigned'][3])  # TODO:
 
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
@@ -2095,38 +1759,18 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
         time_desc_list.append("Average runtime per job\n(only successful executed jobs)")
         time_value_list.append(average_runtime)
 
-    time_dict = {
+    result_dict["times"] = {
         "Times": time_desc_list,
         "Values": time_value_list
     }
-    result_dict["times"] = time_dict
 
     if n != 0:  # do nothing, if all valid jobs were aborted
-        # total_dict = {
-        #     "Resources": ['Total Cpu', 'Total Disk (KB)', 'Total Memory (MB)'],
-        #     "Usage": [str(round(total_cpu_usage, 2)),
-        #               str(total_disk_usage),
-        #               str(total_memory_usage)],  # necessary
-        #     "Requested": [total_cpu_requested,
-        #                   total_disk_requested,
-        #                   total_memory_requested],
-        #     "Allocated": [total_cpu_allocated,
-        #                   total_disk_allocated,
-        #                   total_memory_allocated]
-        #
-        # }
 
         average_dict = {
-            "Resources": ['Average Cpu', 'Avergae Disk (KB)', 'Average Memory (MB)'],
-            "Usage": [round(total_cpu_usage / n, 2),
-                      round(total_disk_usage / n, 2),
-                      round(total_memory_usage / n, 2)],  # necessary
-            "Requested": [round(total_cpu_requested / n, 2),
-                          round(total_disk_requested / n, 2),
-                          round(total_memory_requested / n, 2)],
-            "Allocated": [round(total_cpu_allocated / n, 2),
-                          round(total_disk_allocated / n, 2),
-                          round(total_memory_allocated / n, 2)]
+            "Resources": ['Average Cpu', 'Average Disk (KB)', 'Average Memory (MB)'],
+            "Usage": np.round(total_usages / n, 4),
+            "Requested": np.round(total_requested / n, 2),
+            "Allocated": np.round(total_allocated / n, 2)
 
         }
 
@@ -2134,15 +1778,9 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
         # if gpu information was found
         if gpu_found:
-            # gpu_total_dict = {
-            #     "Resources": ['Total Gpu'],
-            #     "Usage": [total_gpu_usage],  # necessary
-            #     "Requested": [total_gpu_requested]
-            #     "Allocated":
-            # }
             # gpu_average_dict ={
             #     "Resources": ['Average Gpu'],
-            #     "Usage": [round(total_gpu_usage / n, 2)],  # Todo: divide by gpu occurrence ????
+            #     "Usage": [round(total_gpu_usage / n, 2)],  # TODO: divide by gpu occurrence ????
             #     "Requested": [round(total_gpu_requested / n, 2)],
             #     "Allocated": [round(total_gpu_allocated / n, 2)]
             # }
@@ -2151,11 +1789,11 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             average_dict["Requested"].append(round(total_gpu_requested / n, 2))
             average_dict["Allocated"].append(round(total_gpu_allocated / n, 2))
             average_dict["Assigned"] = ["", "", "", ", ".join(list_of_gpu_names)]
-            # Todo: each gpu gets a single row
+            # TODO: each gpu gets a single row
 
         result_dict["all-resources"] = average_dict
 
-    # Todo: cpu nodes might change over lifetime of a job
+    # TODO: cpu nodes might change over lifetime of a job
     if len(host_nodes) > 0:
 
         executed_jobs = list()
@@ -2176,10 +1814,10 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     return [result_dict]
 
 
-# Todo more specific control what to print out
-# Todo ram histogram, BUT HOW
-# Todo get files for which the specific termination state appeared ( if not nomral ???)
-# Todo: separate Gpus from another
+# TODO more specific control what to print out
+# TODO ram histogram, BUT HOW
+# TODO get files for which the specific termination state appeared ( if not nomral ???)
+# TODO: separate Gpus from another
 def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     """
         analyse the summarized log files,
@@ -2202,7 +1840,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     all_files = dict()
     list_of_gpu_names = list()  # list of gpus found
 
-    # Todo: rich logging handler
+    # TODO: rich logging handler
     for file in track(log_files, transient=True, description="Summarizing..."):
 
         try:
@@ -2211,6 +1849,10 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
             logging.exception(err)
             rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
             break
+
+        log = log_to_dict(file)
+        for i in range(len(log)):
+            print(log[i])
 
         # initialise with empty values
         event_number_order = []
@@ -2361,7 +2003,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                     "Allocated": np.array(allocated, dtype=float)
                 }
 
-                # Todo split different gpus
+                # TODO split different gpus
                 if gpu_found:
                     resource_dict["Assigned"] = ["", "", "", gpu_name]
                     if gpu_name not in list_of_gpu_names:  # append new gpus
@@ -2416,7 +2058,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         # show HTCondor errors
         if len(occurred_errors) > 0:
-            # Todo: is this covering all cases ?
+            # TODO: is this covering all cases ?
             event_numbers = []
             time_list = []
             err_keyword = []
@@ -2495,7 +2137,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                     count_host_nodes['Aborted before submission'] = [1, total_time]
                 all_files[termination_type] = [1, waiting_time, runtime, total_time, resource_dict, count_host_nodes]
 
-        # Todo: test if valid here
+        # TODO: test if valid here
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
             logging.exception(err)
@@ -2578,8 +2220,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
 
 # search in the files for the keywords
-# Todo: show which keywords have been found and which not
-# Todo: AND option, ONLY option
+# TODO: show which keywords have been found and which not
+# TODO: AND option, ONLY option
 def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf_list:
     """
     Filter for a list of keywords, which can be extended
@@ -2641,8 +2283,8 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
                     if re.search(keyword.lower(), line.lower()):
                         if not found_at_least_one:
                             print("Matches:")
-                        # Todo: save numbers of occurence for each keyword, if more than one is given
-                        # Todo: can be commenetd, or maybe should be hidden, if more than like 50 files are found
+                        # TODO: save numbers of occurence for each keyword, if more than one is given
+                        # TODO: can be commenetd, or maybe should be hidden, if more than like 50 files are found
                         rprint(f"[grey74]{keyword} in:\t{file}[/grey74] ")
                         found = True
                         found_at_least_one = True
@@ -2704,9 +2346,9 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
     The user will also be informed if a given file was not found.
 
-    Todo: In addition there should be an option --force, that makes the script stop, if the file was not found or marked as valid
+    TODO: In addition there should be an option --force, that makes the script stop, if the file was not found or marked as valid
 
-    Todo: user should be able to get the option to decide, when the same files appear more than once
+    TODO: user should be able to get the option to decide, when the same files appear more than once
     -> my guess: yes or no question, if nothing is given in under 10 seconds, it should go with no
     -> this should prevent, that the script is stucked, if the user is for example running it over night
 
@@ -2769,7 +2411,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
                     if os.path.isfile(file_path):
                         with open(file_path, "r") as read_file:
-                            # Todo: better specification with re
+                            # TODO: better specification with re
                             if os.path.getsize(file_path) == 0:  # file is empty
                                 continue
 
@@ -2877,7 +2519,7 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
         log.addHandler(stdout_handler)
 
 
-# Todo: a function to format the output
+# TODO: a function to format the output
 def customize_results(files: list_of_logs):
     output_string = ""
 
@@ -2949,7 +2591,7 @@ def customize_results(files: list_of_logs):
                 mystery["host-nodes"] = tabulate(mystery["host-nodes"], showindex=False,
                                                  headers='keys', tablefmt=table_format)
 
-        # Todo: show-more section
+        # TODO: show-more section
 
         for _i in mystery:
             if mystery[_i] is not None:
@@ -2968,7 +2610,7 @@ def customize_results(files: list_of_logs):
     return output_string
 
     # these might be added in future:
-    # Todo: gpus, cpu, warnings
+    # TODO: gpus, cpu, warnings
 
 
 def run(commandline_args):
