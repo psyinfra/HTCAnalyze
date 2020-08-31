@@ -18,6 +18,6 @@
 	0  -  Total Bytes Received By Job
 	Partitionable Resources :    Usage  Request Allocated
 	   Cpus                 :        1.3   12        34
-	   Disk (KB)            :     abc     5000   3770642
+	   Disk (KB)            :          5000   3770642
 	   Memory (MB)          :        20     6000      6016
 ...

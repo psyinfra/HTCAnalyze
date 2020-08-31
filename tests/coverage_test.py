@@ -46,7 +46,7 @@ def _event_table():
     ht.get_event_information(30)
     with pytest.raises(ValueError):
         ht.get_event_information("hallo")
-    assert ht.get_event_information("066") == "This event number does not exist, Valid event numbers range from 000 to 034"
+    assert ht.get_event_information("066") == "This event number does not exist, Valid event numbers range from 0 to 34"
 
 
 # Todo: change when implemented
@@ -407,7 +407,7 @@ def test_all_modes_by_faulty_logs():
 
 def test_all_modes_by_exception_logs():
     folder = "tests/test_logs/faulty_resource_logs"
-    _all_modes_by_logfiles(folder, 3)
+    _all_modes_by_logfiles(folder, 0)
 
 
 def test_config():
