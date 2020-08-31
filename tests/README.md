@@ -1,5 +1,8 @@
 ## How to test this facility
 
+
+
+
 I used pytest for testing
 
 to use the coverage test module: coverage_test.py 
@@ -18,6 +21,9 @@ To test all modules use:
 
 -> if you use this as well with coverage, it should scratch at the 100% mark.
 
+### Requirements:
+- pytest
+- pytest-cov (for coverage tests)
 
 #### Note:
 you should always start a test from the source destination (htcompact/)
