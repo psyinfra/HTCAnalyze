@@ -684,7 +684,7 @@ def calc_time_differences(
     return waiting_time, runtime, total_time
 
 
-def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
+def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
     """
             Read the log file with the use of the htcondor module and filter useful information.
             Structur it in a way, that later two different dictionaries will be retuned.
@@ -711,6 +711,7 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
     occurred_errors = list()
 
     has_terminated = False
+    invalid_file = False
 
     try:
         jel = htcondor.JobEventLog(file)
@@ -824,8 +825,12 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
             pass
 
     except OSError as err:
+        invalid_file = True
         if err.args[0] == "ULOG_RD_ERROR":
             rprint(f"[red]{err}: Not a valid htcondor logfile: {file}[/red]")
+            reason = "Error while reading log file. " \
+                     "This happens if the file was manipulated or contains gpu usage."
+            occurred_errors.append(["None", "Now", "ULOG_RD_ERROR", reason])
         else:
             rprint(f"[red]Not able to open the file: {file}[/red]")
     except ValueError as err:
@@ -852,8 +857,8 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
     if time_dict["Termination date"] is None:
         del time_dict["Termination date"]
 
-    # Job still running
-    if not has_terminated:
+    # Job still running adn file valid
+    if not invalid_file and not has_terminated:
         if total:
             rprint("[red]This is not supposed to happen, check your code[/red]")
         elif runtime:
@@ -863,6 +868,9 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
         else:
             pass
         job_events.insert(0, ("Process is", state))
+    # file not fully readable
+    elif invalid_file:
+        job_events.insert(0, ("Error", "Error reading log file"))
 
     job_events_dict = dict()
     better_time_dict = dict()
@@ -1655,6 +1663,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     aborted_files = 0
     still_running = 0
+    error_reading_files = 0
     other_exception = 0
     normal_runtime = datetime.timedelta()
     host_nodes = dict()
@@ -1684,6 +1693,12 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             elif job_dict['Execution details'][0].__eq__("Process was"):
                 aborted_files += 1
                 rprint(f"[orange3]Process of {file} has been aborted, \n"
+                       f"it will be ignored for this summation[/orange3]")
+                continue
+            elif job_dict['Execution details'][0].__eq__("Error"):
+                error_reading_files += 1
+                rprint(f"[orange3]Process of {file} not fully readable,\n"
+                       f"cause it's not matching the htcondor specs,\n"
                        f"it will be ignored for this summation[/orange3]")
                 continue
             elif len(job_dict) == 0:
@@ -1726,7 +1741,8 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
             sys.exit(3)
 
-    n = valid_files - aborted_files - still_running - other_exception  # calc diffrenc of successful executed jobs
+    # calc difference of successful executed jobs
+    n = valid_files - aborted_files - still_running - other_exception - error_reading_files
 
     average_runtime = normal_runtime / n if n != 0 else normal_runtime
     average_runtime = datetime.timedelta(days=average_runtime.days, seconds=average_runtime.seconds)
@@ -1742,6 +1758,9 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     if still_running > 0:
         exec_dict["Job types"].append("Still running jobs")
         exec_dict["Occurrence"].append(still_running)
+    if error_reading_files > 0:
+        exec_dict["Job types"].append("Error reading log file")
+        exec_dict["Occurrence"].append(error_reading_files)
     if other_exception > 0:
         exec_dict["Job types"].append("Other exceptions")
         exec_dict["Occurrence"].append(other_exception)
@@ -1763,10 +1782,10 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     time_desc_list = list()
     time_value_list = list()
     if normal_runtime != datetime.timedelta(0, 0, 0):
-        time_desc_list.append("Total runtime of all \nsuccessful executed jobs")
+        time_desc_list.append("Total runtime of all jobs")
         time_value_list.append(normal_runtime)
     if average_runtime:
-        time_desc_list.append("Average runtime per job\n(only successful executed jobs)")
+        time_desc_list.append("Average runtime per job")
         time_value_list.append(average_runtime)
 
     result_dict["times"] = {
@@ -1894,18 +1913,30 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
                 # add cpu
                 if to_host != "":
+                    # cpu known ???
                     if to_host in all_files[termination_type][5].keys():
                         all_files[termination_type][5][to_host][0] += 1
                         all_files[termination_type][5][to_host][1] += total_time
                     else:
                         all_files[termination_type][5][to_host] = [1, total_time]
-                elif 'Aborted before submission' in all_files[termination_type][5].keys():
-                    all_files[termination_type][5]['Aborted before submission'][0] += 1
-                    all_files[termination_type][5]['Aborted before submission'][1] += total_time
+                elif "Submitted from host" in job_dict["Execution details"]:
+                    # other waiting jobs ???
+                    if 'Waiting for execution' in all_files[termination_type][5].keys():
+                        all_files[termination_type][5]['Waiting for execution'][0] += 1
+                        all_files[termination_type][5]['Waiting for execution'][1] += total_time
+                    else:
+                        count_host_nodes = dict()
+                        count_host_nodes['Waiting for execution'] = [1, total_time]
+                        all_files[termination_type][5] = count_host_nodes
                 else:
-                    count_host_nodes = dict()
-                    count_host_nodes['Aborted before submission'] = [1, total_time]
-                    all_files[termination_type][5] = count_host_nodes
+                    # other aborted before submission jobs ???
+                    if 'Aborted before submission' in all_files[termination_type][5].keys():
+                        all_files[termination_type][5]['Aborted before submission'][0] += 1
+                        all_files[termination_type][5]['Aborted before submission'][1] += total_time
+                    else:
+                        count_host_nodes = dict()
+                        count_host_nodes['Aborted before submission'] = [1, total_time]
+                        all_files[termination_type][5] = count_host_nodes
 
             # else new entry
             else:
@@ -1914,6 +1945,11 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                     to_host = job_dict["Values"][2]
                     count_host_nodes = dict()
                     count_host_nodes[to_host] = [1, total_time]
+                # else if still waiting
+                elif "Submitted from host" in job_dict["Execution details"]:
+                    count_host_nodes = dict()
+                    count_host_nodes['Waiting for execution'] = [1, total_time]
+                # else aborted before submission ?
                 else:
                     count_host_nodes = dict()
                     count_host_nodes['Aborted before submission'] = [1, total_time]
@@ -1943,7 +1979,11 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         result_dict = dict()
 
         # differentiate between terminated and running processes
-        if not term_state in ["Waiting", "Executing"]:
+        if term_state.__eq__("Error reading log file"):
+            result_dict["file-description"] = f"{colors['blue']}" \
+                f"All files summarized that caused an error while reading:" \
+                f"{colors['back_to_default']}"
+        elif not term_state in ["Waiting", "Executing"]:
             result_dict["file-description"] = f"{colors['blue']}" \
                 f"All files summarized with the Termination State: {term_state}" \
                 f"{colors['back_to_default']}"
@@ -1974,7 +2014,6 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         if not len(term_info[4]) == 0:
             total_resources_dict = term_info[4]
-            print(type(total_resources_dict['Usage']))
             avg_dict = {
                 'Resources': ['Average Cpu', ' Average Requested ', 'Average Allocated'],
                 'Usage': np.round(np.array(total_resources_dict['Usage']) / term_info[0], 2).tolist(),
@@ -2120,6 +2159,7 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
     return return_dicts
 
 
+# TODO: Use htcondor module (may cost to much time)
 def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
     """
     This method is supposed to take the given log files (by config or command line argument)
