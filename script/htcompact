@@ -257,7 +257,7 @@ def manage_prioritized_params(args: list):
                 print(f"Version: v1.0.7")
                 sys.exit(0)
             if opt.__eq__("--print-event-table"):
-                print_event()
+                print(get_event_information())
                 sys.exit(0)
 
             # prioritized management params,
@@ -465,7 +465,7 @@ Usage:
     return small_help.__doc__
 
 
-def print_event(event_id="") -> str:
+def get_event_information(event_id="") -> str:
     events = [
         {
             "Event Number": "000",
@@ -679,20 +679,24 @@ def print_event(event_id="") -> str:
         }
     ]
 
+    out_str = ""
+
+    # print the whoel table
     if event_id == "":
-        indent = 0
         for event in events:
             for key, value in event.items():
-                print(str(key), ":", str(value))
-            print()
-        return
+                out_str += str(key) + ": " + str(value) + "\n"
+            out_str += "\n"
+        return out_str
 
+    # print a single event
     event_id = int(event_id)
-    if event_id >= 0 and event_id <= 34:
+    if  0 <= event_id <= 34:
         for key, value in events[event_id].items():
-            print(str(key), ":", str(value))
+            out_str += str(key)+ ": " + str(value)
+        return out_str
     else:
-        print("This event number does not exist, Valid event numbers range from 0 to 34")
+        return "This event number does not exist, Valid event numbers range from 0 to 34"
 
 
 def raise_value_error(message: str) -> ValueError:
@@ -994,7 +998,6 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
             "Memory usages": list(mem_usage),
             "Resident Set Sizes": list(res_set_size)
         }
-
     return job_events_dict, res_dict, better_time_dict, ram_history_dict, error_dict
 
 
@@ -1158,15 +1161,17 @@ def manage_thresholds(resources: dict) -> dict:
     """
     resources.update(Usage=list(resources["Usage"]))  # change to list, to avoid numpy type errors
     # thresholds used vs. requested disk
-    if float(resources['Usage'][1]) / float(resources['Requested'][1]) > bad_usage_threshold:
-        resources['Usage'][1] = colors['red'] + str(resources['Usage'][1]) + colors['back_to_default']
-    elif float(resources['Usage'][1]) / float(resources['Requested'][1]) < low_usage_threshold:
-        resources['Usage'][1] = colors['yellow'] + str(resources['Usage'][1]) + colors['back_to_default']
+    if float(resources['Requested'][1]) != 0:
+        if float(resources['Usage'][1]) / float(resources['Requested'][1]) > bad_usage_threshold:
+            resources['Usage'][1] = colors['red'] + str(resources['Usage'][1]) + colors['back_to_default']
+        elif float(resources['Usage'][1]) / float(resources['Requested'][1]) < low_usage_threshold:
+            resources['Usage'][1] = colors['yellow'] + str(resources['Usage'][1]) + colors['back_to_default']
     # thresholds used vs. requested memory
-    if float(resources['Usage'][2]) / float(resources['Requested'][2]) > bad_usage_threshold:
-        resources['Usage'][2] = colors['red'] + str(resources['Usage'][2]) + colors['back_to_default']
-    elif float(resources['Usage'][2]) / float(resources['Requested'][2]) < low_usage_threshold:
-        resources['Usage'][2] = colors['yellow'] + str(resources['Usage'][2]) + colors['back_to_default']
+    if float(resources['Requested'][2]) != 0:
+        if float(resources['Usage'][2]) / float(resources['Requested'][2]) > bad_usage_threshold:
+            resources['Usage'][2] = colors['red'] + str(resources['Usage'][2]) + colors['back_to_default']
+        elif float(resources['Usage'][2]) / float(resources['Requested'][2]) < low_usage_threshold:
+            resources['Usage'][2] = colors['yellow'] + str(resources['Usage'][2]) + colors['back_to_default']
 
     # # Gpu Usage found
     # if len(resources['Usage']) == 4 and len(resources['Requested']) == 4:
@@ -1745,8 +1750,8 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     host_nodes = dict()
 
     total_usages = np.array([0, 0, 0], dtype=float)
-    total_requested = np.array([0, 0, 0])
-    total_allocated = np.array([0, 0, 0])
+    total_requested = np.array([0, 0, 0], dtype=float)
+    total_allocated = np.array([0, 0, 0], dtype=float)
 
     # if gpu given
     gpu_found = False
