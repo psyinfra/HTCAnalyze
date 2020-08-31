@@ -654,6 +654,16 @@ def calc_time_differences(
     total_time = None
     today = datetime.datetime.now()
     today = today.replace(microsecond=0)  # remove unnecessary microseconds
+
+    # calculate the time difference to last year,
+    # if the date is higher that today of running jobs
+    # this means the execution started before newyear
+    if termination_date is None:
+        if submission_date and submission_date > today:
+            submission_date = submission_date.replace(year=submission_date.year-1)
+        if execution_date and execution_date > today:
+            execution_date = execution_date.replace(year=execution_date.year-1)
+
     if execution_date:
         if submission_date:
             waiting_time = execution_date - submission_date
@@ -770,9 +780,9 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
                 # put the data in the dict
                 res_dict = {
                     "Resources": ["Cpu", "Disk", "Memory"],
-                    "Usage": [cpu_usage, disk_usage, memory_usage],
-                    "Requested": [cpu_requested, disk_requested, memory_requested],
-                    "Allocated": [cpu_allocated, disk_allocated, memory_allocated]
+                    "Usage": np.array([cpu_usage, disk_usage, memory_usage]),
+                    "Requested": np.array([cpu_requested, disk_requested, memory_requested]),
+                    "Allocated": np.array([cpu_allocated, disk_allocated, memory_allocated])
                 }
                 normal_termination = event.get('TerminatedNormally')
                 # differentiate between normal and abnormal termination
@@ -792,8 +802,8 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
                 # termination_date = date
                 time_dict["Termination date"] = date
 
-                reason = event.get('Reason')
-                job_events.insert(0, ("Process was", "Aborted, "+ reason))
+                reason = event.get('Reason')  # TODO: use this information
+                job_events.insert(0, ("Process was", "Aborted"))
 
             # search for errors
             # error_strings = ["error", "err", "warning", "warn", "exception", "fatal"]
@@ -804,11 +814,11 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
                 reason = event.get('HoldReason')
                 # hold_reason_code = event.get('HoldReasonCode')
                 # hold_reason_sub_code = event.get('HoldReasonSubCode')
-                occurred_errors.append([event_type_number, date, jet.JOB_HELD, reason])
+                occurred_errors.append([event_type_number, date, "JOB_HELD", reason])
 
             if event.type == jet.SHADOW_EXCEPTION:
                 reason = event.get('Message')
-                occurred_errors.append((event_type_number, date, jet.SHADOW_EXCEPTION, reason))
+                occurred_errors.append((event_type_number, date, "SHADOW_EXCEPTION", reason))
         else:
             # End of the file
             pass
@@ -830,7 +840,7 @@ def log_to_dict(file: str, sec: int = 1) -> (dict, dict):
     if waiting:
         time_dict['Waiting time'] = waiting
     if runtime:
-        time_dict['Executing runtime'] = runtime
+        time_dict['Execution runtime'] = runtime
     if total:
         time_dict['Total runtime'] = total
 
@@ -1662,7 +1672,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     for file in track(log_files, transient=True, description="Summarizing..."):
         try:
-            job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(file)
+            job_dict, res_dict, time_dict, _, _ = log_to_dict(file)
 
             # continue if Process is still running
             if job_dict['Execution details'][0].__eq__("Process is"):
@@ -1843,257 +1853,28 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     # TODO: rich logging handler
     for file in track(log_files, transient=True, description="Summarizing..."):
 
-        try:
-            job_events, job_raw_information = read_condor_log(file)
-        except NameError as err:
-            logging.exception(err)
-            rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-            break
+        job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(file)
+        # print(job_dict)
+        # print(res_dict)
+        # print(time_dict)
+        # print(ram_history)
+        # print(occurred_errors)
 
-        log = log_to_dict(file)
-        for i in range(len(log)):
-            print(log[i])
-
-        # initialise with empty values
-        event_number_order = []
-        to_host = ""
-        submitted_date, executed_date, terminated_date = None, None, None
-        ram_histroy = list()
-        occurred_errors = list()
-        resource_dict = dict()
-
-        # analyse
-        for job, job_inf in zip(job_events, job_raw_information):
-            event_number = job[0]
-            event_number_order.append(event_number)
-
-            # job submitted
-            if event_number == "000":
-                submitted_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-
-                match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job[5])
-                if match_host:
-                    from_host = match_host[1]
-                    # port = match_host[2]
-
-            # job executing
-            elif event_number == "001":
-                executed_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-                match_host = re.match(r".<([0-9]{1,3}(?:\.[0-9]{1,3}){2,3}):([0-9]{,5})\?.*", job[5])
-                if match_host:
-                    to_host = match_host[1]
-                    # if resolve ip to hostname, change the ip to cpu: last number
-                    if reverse_dns_lookup:
-                        to_host = gethostbyaddr(to_host)
-                    port = match_host[2]
-
-                else:
-                    logging.exception("Host and port haven't been matched correctly")
-                    rprint("[red]your log file has faulty values for the host ip,"
-                           " make sure it's a valid IPv4[/red]")
-
-            # job terminated
-            elif event_number == "005":  # if the last job event is : Job terminated
-                terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-
-                # check if termination state is normal or abnormal
-                match_termination_state = re.match(r"[\t ]+\([0-9]+\) ((?:\w+ )*)", job_inf[0])
-                if match_termination_state:
-                    termination_state = match_termination_state[1]
-                    # Normal termination
-                    if "Normal termination" in termination_state:
-                        match_return_value = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
-                        return_value = match_return_value[1] if match_return_value else "None"
-                        if return_value == "None":
-                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
-
-                    # Abnormal Termination
-                    elif "Abnormal termination" in termination_state:
-
-                        match_signal = re.match(r"[\t ]+\([0-9]+\) (?:\w+ )*\((?:\w+ )*([0-9]+)\)", job_inf[0])
-                        signal = match_signal[1] if match_signal else "None"
-                        if signal == "None":
-                            logging.debug(f"Not a valid return value in the HTCondor log file: {file}")
-                            rprint(f"[red]Not a valid return value in the HTCondor log file: {file}[/red]")
-
-                    else:
-                        logging.debug(f"Don't know this Termination State: {match_termination_state[1]} yet")
-
-                else:
-                    termination_state = "Not valid "
-                    rprint(f"[red]Termination error in HTCondor log file: {file}[/red]")
-
-                # these where the job information now focus on the used resources
-                relevant_str = "\n".join(job_raw_information[-1])  # job information of the last job (Job terminated)
-
-                # next part removes not useful lines
-                if True:  # just for readability
-                    # remove unnecessary lines
-                    lines = relevant_str.splitlines()
-                    # while not lines[0].startswith("\tPartitionable"):
-                    while not re.match(r"[\t ]+Partitionable", lines[0]):
-                        lines.remove(lines[0])
-
-                    lines.remove(lines[0])
-                    partitionable_res = lines
-                    # done, partitionable_resources contain now only information about used resources
-
-                # match all resources
-                # ****************************************************************************************************
-                match = re.match(r"[\t ]+Cpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+)", partitionable_res[0])
-                if match:
-                    cpu_usage, cpu_request, cpu_allocated = match[1], match[2], match[3]
-                else:
-                    logging.debug("Something went wrong reading the cpu information in: " + file)
-                    raise_type_error("Something went wrong reading the cpu information")
-
-                match = re.match(r"[\t ]+Disk \(KB\) *: *([0-9]+) *([0-9]+) *([0-9]+)", partitionable_res[1])
-                if match:
-                    disk_usage, disk_request, disk_allocated = match[1], match[2], match[3]
-                else:
-                    logging.debug("Something went wrong reading the disk information in: " + file)
-                    raise raise_type_error("Something went wrong reading the disk information")
-
-                # check if the log has gpu information in between
-                gpu_match_index = 2  # can be ignored if gpu is given memory has to access the next index
-                gpu_found = False  # easier to check to add information in the dict
-                match = re.match(r'[\t ]+Gpus *: *([0-9]?(?:\.[0-9]{,3})?) *([0-9]+) *([0-9]+) "?(.*)"?',
-                                 partitionable_res[gpu_match_index])
-                if match:
-                    gpu_usage, gpu_request, gpu_allocated, gpu_name = match[1], match[2], match[3], match[4]
-                    gpu_match_index += 1
-                    termination_state += "(GPU)"
-                    gpu_found = True
-                else:
-                    termination_state += "(CPU)"
-
-                match = re.match(r"[\t ]+Memory \(MB\)  *: *([0-9]+) *([0-9]+) *([0-9]+)",
-                                 partitionable_res[gpu_match_index])
-                if match:
-                    memory_usage, memory_request, memory_allocated = match[1], match[2], match[3]
-                else:
-                    logging.debug("Something went wrong reading the memory information in: " + file)
-                    raise_type_error("Something went wrong reading the memory information")
-                # ****************************************************************************************************
-
-                # list of resources and their labels
-                resource_labels = ["Cpu", "Disk (KB)", "Memory (MB)"]
-
-                # Error handling: change empty values to NaN in the first column
-
-                if cpu_usage == "":
-                    cpu_usage = 0
-
-                usage = [float(cpu_usage), int(disk_usage), int(memory_usage)]
-                requested = [float(cpu_request), int(disk_request), int(memory_request)]
-                allocated = [float(cpu_allocated), int(disk_allocated), int(memory_allocated)]
-
-                if gpu_found:
-                    resource_labels.append("Gpus")
-                    usage.append(float(gpu_usage))
-                    requested.append(float(gpu_request))
-                    allocated.append(float(gpu_allocated))
-
-                # create a resource_dict
-                resource_dict = {
-                    "Resources": resource_labels,
-                    "Usage": np.array(usage, dtype=float),
-                    "Requested": np.array(requested, dtype=float),
-                    "Allocated": np.array(allocated, dtype=float)
-                }
-
-                # TODO split different gpus
-                if gpu_found:
-                    resource_dict["Assigned"] = ["", "", "", gpu_name]
-                    if gpu_name not in list_of_gpu_names:  # append new gpus
-                        list_of_gpu_names.append(gpu_name)
-
-            # job image size updated
-            elif event_number == "006":
-                date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-                image_size = job[5]
-                memory_usage = re.match("[\t ]+([0-9]+)", job_inf[0])[1]
-                resident_set_size = re.match("[\t ]+([0-9]+)", job_inf[1])[1]
-                ram_histroy.append([date, int(image_size), int(memory_usage), int(resident_set_size)])
-
-            # job aborted
-            elif event_number == "009":
-                terminated_date = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-
-                aborted_by_user = ((job_inf[0]).split(" ")[-1])[:-1]
-                occurred_errors.append(
-                    [event_number, terminated_date, "aborted", "Terminated by user: " + aborted_by_user])
-
-            else:
-                # search for errors
-                timestamp = datetime.datetime.strptime(job[2] + " " + job[3], "%m/%d %H:%M:%S")
-                error_strings = ["error", "err", "warning", "warn", "exception", "fatal"]
-                for job_desc in job_inf:
-                    for err in error_strings:
-                        if err in job_desc.lower():
-                            occurred_errors.append([event_number, timestamp, err,
-                                                    re.sub(' \t', '', job_desc)])
-                            break  # avoid duplicates
-
-        # managing the time information
-        waiting_time = datetime.timedelta()
-        runtime = datetime.timedelta()
-        total_time = datetime.timedelta()
-        if executed_date and submitted_date:
-            waiting_time = executed_date - submitted_date
-        if terminated_date and executed_date:
-            runtime = terminated_date - executed_date
-        if terminated_date and submitted_date:
-            total_time = terminated_date - submitted_date
-
-        # still running ?
-        if not terminated_date:
-            today = datetime.datetime.now()
-            today = today.replace(year=1900, microsecond=0)  # format the date
-            if executed_date:
-                runtime = today - executed_date
-            if submitted_date:
-                total_time = today - submitted_date
-
-        # show HTCondor errors
-        if len(occurred_errors) > 0:
-            # TODO: is this covering all cases ?
-            event_numbers = []
-            time_list = []
-            err_keyword = []
-            err_reason = []
-
-            for err in occurred_errors:
-                event_numbers.append(err[0])
-                time_list.append(err[1].strftime("%m/%d %H:%M:%S"))
-                err_keyword.append(err[2].lower())
-                # if the line is to long, split it
-                if len(err[3]) > 50:
-                    split = int(len(err[3]) / 2)
-                    while err[3][split] != ' ' and split < len(err[2]) - 1:
-                        split += 1
-                    if split > len(err[3]) - 2:  # if no space was found, change back to normal
-                        split = int(len(err[3]) / 2)
-                    err_reason.append(err[3][0:split] + '\n' + err[3][split:])
-                else:
-                    err_reason.append(err[3])
-
-            # err_dict = {
-            #     "Time": time_list,
-            #     "Event Number": event_numbers,
-            #     "Error": err_keyword,
-            #     "Reason": err_reason
-            # }
-
-        # if last termination was not 005, get last occurred error
-        if event_number_order[-1] in ["002", "003", "004", "007", "009",
-                                      "010", "018", "021", "022", "026", "029"]:
-            termination_type = err_keyword[-1]
-        elif event_number_order[-1].__eq__("005"):
-            termination_type = termination_state
+        termination_type = job_dict["Values"][0]
+        refactor_time_dict = dict(zip(time_dict["Dates and times"], time_dict["Values"]))
+        time_keys = list(refactor_time_dict.keys())
+        if "Waiting time" in time_keys:
+            waiting_time = refactor_time_dict["Waiting time"]
         else:
-            termination_type = "running"
+            waiting_time = datetime.timedelta()
+        if "Execution runtime" in time_keys:
+            runtime = refactor_time_dict["Execution runtime"]
+        else:
+            runtime = datetime.timedelta()
+        if "Total runtime" in time_keys:
+            total_time = refactor_time_dict["Total runtime"]
+        else:
+            total_time = datetime.timedelta()
 
         try:
             if termination_type in all_files:
@@ -2105,11 +1886,11 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 if not len(all_files[termination_type][4]) == 0:
                     # add usages
 
-                    all_files[termination_type][4]["Usage"] += resource_dict["Usage"]
+                    all_files[termination_type][4]["Usage"] += np.nan_to_num(res_dict["Usage"])
                     # add requested
-                    all_files[termination_type][4]["Requested"] += resource_dict["Requested"]
+                    all_files[termination_type][4]["Requested"] += np.nan_to_num(res_dict["Requested"])
                     # allocated
-                    all_files[termination_type][4]["Allocated"] += resource_dict["Allocated"]
+                    all_files[termination_type][4]["Allocated"] += np.nan_to_num(res_dict["Allocated"])
 
                 # add cpu
                 if to_host != "":
@@ -2129,13 +1910,20 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
             # else new entry
             else:
                 # if host exists
-                if to_host != "":
+                if "Executing on" in job_dict["Execution details"]:
+                    to_host = job_dict["Values"][2]
                     count_host_nodes = dict()
                     count_host_nodes[to_host] = [1, total_time]
                 else:
                     count_host_nodes = dict()
                     count_host_nodes['Aborted before submission'] = [1, total_time]
-                all_files[termination_type] = [1, waiting_time, runtime, total_time, resource_dict, count_host_nodes]
+
+                # convert nan values to 0
+                if len(res_dict) > 0:
+                    res_dict["Usage"] = np.nan_to_num(res_dict["Usage"])
+                    res_dict["Requested"] = np.nan_to_num(res_dict["Requested"])
+                    res_dict["Allocated"] = np.nan_to_num(res_dict["Allocated"])
+                all_files[termination_type] = [1, waiting_time, runtime, total_time, res_dict, count_host_nodes]
 
         # TODO: test if valid here
         # Error ocurres when Job was aborted
@@ -2155,18 +1943,18 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         result_dict = dict()
 
         # differentiate between terminated and running processes
-        if term_state.__ne__("running"):
+        if not term_state in ["Waiting", "Executing"]:
             result_dict["file-description"] = f"{colors['blue']}" \
                 f"All files summarized with the Termination State: {term_state}" \
                 f"{colors['back_to_default']}"
         else:
             result_dict["file-description"] = f"{colors['blue']}" \
-                f"All files summarized, that are currently running:" \
+                f"All files summarized, that are currently {term_state}:" \
                 f"{colors['back_to_default']}"
 
         n = int(term_info[0])
         desc_dict = {
-            "Description": ["Occurence"],
+            "Description": ["Occurrence"],
             "Values": [n]
         }
 
@@ -2175,7 +1963,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         format_av_times = [datetime.timedelta(days=time.days, seconds=time.seconds) for time in av_times]
 
         time_dict = {
-            "Times": ["Waiting Time", "Runtime", "Total"],
+            "Times": ["Waiting time", "Runtime", "Total"],
             "Total": times,
             "Average": format_av_times
         }
@@ -2186,11 +1974,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         if not len(term_info[4]) == 0:
             total_resources_dict = term_info[4]
+            print(type(total_resources_dict['Usage']))
             avg_dict = {
                 'Resources': ['Average Cpu', ' Average Requested ', 'Average Allocated'],
-                'Usage': np.round(total_resources_dict['Usage'] / term_info[0], 2).tolist(),
-                'Requested': np.round(total_resources_dict['Requested'] / term_info[0], 2).tolist(),
-                'Allocated': np.round(total_resources_dict['Allocated'] / term_info[0], 2).tolist()
+                'Usage': np.round(np.array(total_resources_dict['Usage']) / term_info[0], 2).tolist(),
+                'Requested': np.round(np.array(total_resources_dict['Requested']) / term_info[0], 2).tolist(),
+                'Allocated': np.round(np.array(total_resources_dict['Allocated']) / term_info[0], 2).tolist()
             }
             if 'Assigned' in total_resources_dict.keys():
                 avg_dict['Resources'].append('Gpu')
