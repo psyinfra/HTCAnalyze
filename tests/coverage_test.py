@@ -2,7 +2,6 @@
 import sys
 import io
 import pytest
-import mock
 import imp
 ht = imp.load_source('htcompact', 'script/htcompact')
 
@@ -246,7 +245,6 @@ def test_filter_mode():
     sys.stdin = PseudoTTY(copy_sys_stdin, True)
     sys.stdout = PseudoTTY(copy_sys_stdout, True)
 
-    #monkeypatch.setattr('builtins.input', lambda: "a")
     ht.input = lambda x: 'd'
     args = "--filter gpu tests/test_logs/valid_logs --extend".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
