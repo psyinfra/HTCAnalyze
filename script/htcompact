@@ -384,10 +384,10 @@ def manage_params(args: list):
                 logging.debug("Ignore these information: " + ", ".join(ignore_list))
 
             # TODO: to-csv
-            # elif opt.__eq__("--to-csv"):
-            #     to_csv = True
-            #     rprint("[red]--to-csv not handled yet[/red]")
-            #     sys.exit(0)
+            elif opt.__eq__("--to-csv"):
+                to_csv = True
+                rprint("[red]--to-csv not handled yet[/red]")
+                sys.exit(0)
 
             elif opt.__eq__("--table-format"):
                 types = "plain,simple,github,grid,fancy_grid,pipe," \
@@ -681,7 +681,7 @@ def get_event_information(event_id="") -> str:
 
     out_str = ""
 
-    # print the whoel table
+    # print the whole table
     if event_id == "":
         for event in events:
             for key, value in event.items():
@@ -691,7 +691,7 @@ def get_event_information(event_id="") -> str:
 
     # print a single event
     event_id = int(event_id)
-    if  0 <= event_id <= 34:
+    if 0 <= event_id <= 34:
         for key, value in events[event_id].items():
             out_str += str(key)+ ": " + str(value)
         return out_str
@@ -853,14 +853,11 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
             # convert time to datetime object
             date = datetime.datetime.strptime(event.get('EventTime'), "%Y-%m-%dT%H:%M:%S")
             if event.type == jet.SUBMIT:
-                # submitted_date = date
                 time_dict["Submission date"] = date
 
                 match_from_host = re.match(r"<(.+):[0-9]+\?(.*)>", event.get('SubmitHost'))
                 if match_from_host:
                     submitted_host = match_from_host[1]
-                    from_port = match_from_host[2]
-                    # additional_parms = match_from_host[3]
                     job_events.append(('Submitted from', submitted_host))
                 # ERROR
                 else:
@@ -869,19 +866,13 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                     occurred_errors.append([jet.SUBMIT, "Now", "invalid user address", reason])
                     job_events.append(('Submitted from', "invalid user"))
                     raise_value_error("Submission Host is wrong in file: " + file)
-                # proc_id = event.get('Proc')
-                # cluster_id = event.get('Cluster')
-                # sub_proc_id = event.get('Subproc')
 
             if event.type == jet.EXECUTE:
-                # execution_date = date
                 time_dict["Execution date"] = date
 
                 match_to_host = re.match(r"<(.+):[0-9]+\?(.*)>", event.get('ExecuteHost'))
                 if match_to_host:
                     execution_host = match_to_host[1]
-                    to_port = match_to_host[2]
-                    # additional_parms = match_to_host[3]
                     if reverse_dns_lookup:  # resolve ip to dns if set
                         execution_host = gethostbyaddr(execution_host)
 
@@ -893,8 +884,6 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                     occurred_errors.append([jet.EXECUTE, "Now", "invalid host address", reason])
                     job_events.append(('Executing on', "invalid host"))
                     raise_value_error("Execution host address is wrong in file: " + file)
-                # proc_id = event.get('Proc')
-                # cluster_id = event.get('Cluster')
 
             if event.type == jet.IMAGE_SIZE:
                 size_update = event.get('Size')
@@ -904,8 +893,6 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
 
             if event.type == jet.JOB_TERMINATED:
                 has_terminated = True
-
-                # termination_date = date
                 time_dict["Termination date"] = date
 
                 # get all resources, replace by np.nan if value is None
@@ -941,22 +928,15 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
 
             if event.type == jet.JOB_ABORTED:
                 has_terminated = True
-                # termination_date = date
                 time_dict["Termination date"] = date
 
                 reason = event.get('Reason')  # TODO: use this information
                 occurred_errors.append([jet.JOB_ABORTED, date, "Aborted", reason])
                 job_events.insert(0, ("Process was", "Aborted"))
 
-            # search for errors
-            # error_strings = ["error", "err", "warning", "warn", "exception", "fatal"]
-            # if event_type_number in[2, 3, 4, 7, 9, 10, 18, 21, 22, 26, 29]:
-
             # now filter all known errors
             if event.type == jet.JOB_HELD:
                 reason = event.get('HoldReason')
-                # hold_reason_code = event.get('HoldReasonCode')
-                # hold_reason_sub_code = event.get('HoldReasonSubCode')
                 occurred_errors.append([event_type_number, date, "JOB_HELD", reason])
 
             if event.type == jet.SHADOW_EXCEPTION:
@@ -1092,7 +1072,6 @@ def read_condor_log(file: str) -> (list, list):
                 job_relevant_inf = match_log[6]  # filter the job relevant information
                 log_job_events.append([job_event_number, clusterid_procid_inf,
                                        date, time, job_event_name, job_relevant_inf])
-                # print(job_event_number, clusterid_procid_inf, date, time, job_event_name, job_relevant_inf)
             else:
                 # end of job event
                 if "..." in line:
@@ -1100,7 +1079,6 @@ def read_condor_log(file: str) -> (list, list):
                     temp_job_event_list = list()  # clear list
                     continue
                 # else
-                # if re.match("[\t ]+", line):
                 else:
                     temp_job_event_list.append(line)
     return log_job_events, job_event_information
@@ -1270,7 +1248,6 @@ def show_htcondor_stderr(file: str) -> str:
     except TypeError as err:
         logging.exception(err)
         # we continue here no exit needed
-        # rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
     finally:
         return output_string
 
@@ -1305,7 +1282,6 @@ def show_htcondor_stdout(file: str) -> str:
     except TypeError as err:
         logging.exception(err)
         # we continue here no exit needed
-        # rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
     finally:
 
         return output_string
@@ -1756,8 +1732,6 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                 else:
                     result_dict["ram-history"] = fig.show(legend=True)
             else:
-                # single_date = ram_history[0][0].strftime("%m/%d %H:%M:%S")
-                # single_ram = ram_history[0][2]
                 result_dict["ram-history"] = f"Single memory update found:\n" \
                     f"Memory usage on the {dates[0]} was updatet to {ram[0]} MB"
 
@@ -1846,16 +1820,6 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             total_requested += np.nan_to_num(res_dict["Requested"])
             total_allocated += np.nan_to_num(res_dict["Allocated"])
 
-            # TODO: gpu usage
-            # if len(log_resources['Resources']) == 4:  # this means gpu information is given
-            #     gpu_found = True
-            #     total_gpu_usage += float(log_resources['Usage'][3])
-            #     total_gpu_requested += int(log_resources['Requested'][3])
-            #     if not "allocated-resources" in ignore_list:
-            #         total_gpu_allocated += int(log_resources['Allocated'][3])
-            #     if log_resources['Assigned'][3] not in list_of_gpu_names:  # append new gpus
-            #         list_of_gpu_names.append(log_resources['Assigned'][3])  # TODO:
-
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
             logging.exception(err)
@@ -1871,7 +1835,6 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     average_runtime = normal_runtime / n if n != 0 else normal_runtime
     average_runtime = datetime.timedelta(days=average_runtime.days, seconds=average_runtime.seconds)
-    # total_runtime = normal_runtime + aborted_runtime
 
     exec_dict = {
         "Job types": ["Successful executed jobs"],
@@ -1930,21 +1893,6 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
         average_dict = manage_thresholds(average_dict)
 
-        # if gpu information was found
-        if gpu_found:
-            # gpu_average_dict ={
-            #     "Resources": ['Average Gpu'],
-            #     "Usage": [round(total_gpu_usage / n, 2)],  # TODO: divide by gpu occurrence ????
-            #     "Requested": [round(total_gpu_requested / n, 2)],
-            #     "Allocated": [round(total_gpu_allocated / n, 2)]
-            # }
-            average_dict["Resources"].append('Average Gpu')
-            average_dict["Usage"].append(round(total_gpu_usage / n, 2))
-            average_dict["Requested"].append(round(total_gpu_requested / n, 2))
-            average_dict["Allocated"].append(round(total_gpu_allocated / n, 2))
-            average_dict["Assigned"] = ["", "", "", ", ".join(list_of_gpu_names)]
-            # TODO: each gpu gets a single row
-
         result_dict["all-resources"] = average_dict
 
     # TODO: cpu nodes might change over lifetime of a job
@@ -1979,7 +1927,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         this is meant to give the ultimate output
         about every single log event in average etc.
 
-        Runs through the log files via the read_condor_log function
+        Runs through the log files via the log_to_dict function
 
         :return: string
         """
@@ -1999,11 +1947,6 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     for file in track(log_files, transient=True, description="Summarizing..."):
 
         job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(file)
-        # print(job_dict)
-        # print(res_dict)
-        # print(time_dict)
-        # print(ram_history)
-        # print(occurred_errors)
 
         refactor_job_dict = dict(zip(job_dict["Execution details"], job_dict["Values"]))
         job_keys = list(refactor_job_dict.keys())
@@ -2449,9 +2392,6 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
     if generate_log_file:
         # activate logger if not already activated
         logging.getLogger().disabled = False
-        # logging.basicConfig(filename=log_file,
-        #                     level=logging.DEBUG,
-        #                     format=logging_format)
 
         logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
         file_formatter = logging.Formatter(logging_file_format)
@@ -2467,15 +2407,11 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
     if verbose_mode:
         # activate logger if not already activated
         logging.getLogger().disabled = False
-        # logging.basicConfig(stream=sys.stdout,
-        #                     level=logging.DEBUG,
-        #                     format=logging_stdout_format)
 
         logging_stdout_format = '%(asctime)s - %(levelname)s: %(message)s'
         stdout_formatter = logging.Formatter(logging_stdout_format)
 
         stdout_handler = logging.StreamHandler(sys.stdout)
-        # stdout_handler = rlog.RichHandler(logging.DEBUG, console=sys.stdout)
         stdout_handler.setLevel(logging.DEBUG)
         stdout_handler.setFormatter(stdout_formatter)
         log = logging.getLogger()
