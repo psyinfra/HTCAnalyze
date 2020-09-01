@@ -820,7 +820,7 @@ def gen_time_dict(
     return time_dict
 
 
-def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
+def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
     """
             Read the log file with the use of the htcondor module and filter useful information.
             Structur it in a way, that later two different dictionaries will be retuned.
@@ -828,13 +828,9 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
         :type file: str
         :param file: HTCondor log file
         :param sec: seconds to wait for new events
-        :return: job_dict, res_dict
+        :return: job_dict, res_dict, time_dict, ram_history, errors
 
-                job_dict should never be empty,
-                it holds information like runtime, return value, host, etc.
-
-                res_dict can be empty, it holds all the
-                used, requested and allocated resources
+        Consider that the return values can be None or empty dictionarys
     """
     job_events = list()
     res_dict = dict()
@@ -1003,7 +999,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
         job_events.insert(0, ("Process is", state))
     # file not fully readable
     elif invalid_file:
-        better_time_dict = dict()
+        better_time_dict = dict()  # times should not be returned, because they will make no sense
         job_events.insert(0, ("Error", "Error reading log file"))
 
     job_events_dict = dict()
