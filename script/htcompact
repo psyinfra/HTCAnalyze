@@ -861,9 +861,9 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
                 # put the data in the dict
                 res_dict = {
                     "Resources": ["Cpu", "Disk", "Memory"],
-                    "Usage": np.array([cpu_usage, disk_usage, memory_usage]),
-                    "Requested": np.array([cpu_requested, disk_requested, memory_requested]),
-                    "Allocated": np.array([cpu_allocated, disk_allocated, memory_allocated])
+                    "Usage": np.array([cpu_usage, disk_usage, memory_usage], dtype=float),
+                    "Requested": np.array([cpu_requested, disk_requested, memory_requested], dtype=float),
+                    "Allocated": np.array([cpu_allocated, disk_allocated, memory_allocated], dtype=float)
                 }
                 normal_termination = event.get('TerminatedNormally')
                 # differentiate between normal and abnormal termination
