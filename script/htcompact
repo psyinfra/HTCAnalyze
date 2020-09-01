@@ -708,7 +708,7 @@ def raise_type_error(message: str) -> TypeError:
 
 
 # Todo: time differences over end of year
-def calc_time_differences(
+def gen_time_dict(
         submission_date: date_time,
         execution_date: date_time = None,
         termination_date: date_time = None
@@ -735,24 +735,42 @@ def calc_time_differences(
     today = datetime.datetime.now()
     today = today.replace(microsecond=0)  # remove unnecessary microseconds
 
+    time_desc = list()
+    time_vals = list()
+    running_over_neyear = False
+
     # calculate the time difference to last year,
     # if the date is higher that today of running jobs
     # this means the execution started before newyear
     if termination_date is None:
         if submission_date and submission_date > today:
+            running_over_neyear = True
             submission_date = submission_date.replace(year=submission_date.year-1)
         if execution_date and execution_date > today:
+            running_over_neyear = True
             execution_date = execution_date.replace(year=execution_date.year-1)
 
-    if execution_date:
-        if submission_date:
-            waiting_time = execution_date - submission_date
+    if execution_date and submission_date:
+        execution_date = execution_date
+        # new year ?
+        if submission_date > execution_date:
+            running_over_neyear = True
+            submission_date = submission_date.replace(year=submission_date.year - 1)
+        waiting_time = execution_date - submission_date
     if termination_date:
         if waiting_time:
             pass
         if execution_date:
+            # new year ?
+            if execution_date > termination_date:
+                running_over_neyear = True
+                execution_date = execution_date.replace(year=execution_date.year - 1)
             runtime = termination_date - execution_date
         if submission_date:
+            # new year ?
+            if submission_date > termination_date:
+                running_over_neyear = True
+                submission_date = submission_date.replace(year=submission_date.year - 1)
             total_time = termination_date - submission_date
     # Process still running
     elif waiting_time:
@@ -761,7 +779,45 @@ def calc_time_differences(
     elif submission_date:
         waiting_time = today - submission_date
 
-    return waiting_time, runtime, total_time
+    # now after collecting all available values try to produce a dict
+    # if new year was hitted by one of them, show the year as well
+    if running_over_neyear:
+        if submission_date:
+            time_desc.append("Submission date")
+            time_vals.append(submission_date)
+        if execution_date:
+            time_desc.append("Execution date")
+            time_vals.append(execution_date)
+        if termination_date:
+            time_desc.append("Termination date")
+            time_vals.append(termination_date)
+    else:
+        if submission_date:
+            time_desc.append("Submission date")
+            time_vals.append(submission_date.strftime("%m/%d %H:%M:%S"))
+        if execution_date:
+            time_desc.append("Execution date")
+            time_vals.append(execution_date.strftime("%m/%d %H:%M:%S"))
+        if termination_date:
+            time_desc.append("Termination date")
+            time_vals.append(termination_date.strftime("%m/%d %H:%M:%S"))
+
+    if waiting_time:
+        time_desc.append("Waiting time")
+        time_vals.append(waiting_time)
+    if runtime:
+        time_desc.append("Execution runtime")
+        time_vals.append(runtime)
+    if total_time:
+        time_desc.append("Total runtime")
+        time_vals.append(total_time)
+
+    time_dict = {
+        "Dates and times": time_desc,
+        "Values": time_vals
+    }
+
+    return time_dict
 
 
 def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
@@ -809,9 +865,13 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
                     submitted_host = match_from_host[1]
                     from_port = match_from_host[2]
                     # additional_parms = match_from_host[3]
-                    job_events.append(('Submitted from host', submitted_host))
-
+                    job_events.append(('Submitted from', submitted_host))
+                # ERROR
                 else:
+                    invalid_file = True
+                    reason = f"Can't read user address, please check the file: {file}"
+                    occurred_errors.append([jet.SUBMIT, "Now", "invalid user address", reason])
+                    job_events.append(('Submitted from', "invalid user"))
                     raise_value_error("Submission Host is wrong in file: " + file)
                 # proc_id = event.get('Proc')
                 # cluster_id = event.get('Cluster')
@@ -830,8 +890,13 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
                         execution_host = gethostbyaddr(execution_host)
 
                     job_events.append(('Executing on', execution_host))
+                # ERROR
                 else:
-                    raise_value_error("Execution Host is wrong in file: " + file)
+                    invalid_file = True
+                    reason = f"Can't read host address, please check the file: {file}"
+                    occurred_errors.append([jet.EXECUTE, "Now", "invalid host address", reason])
+                    job_events.append(('Executing on', "invalid host"))
+                    raise_value_error("Execution host address is wrong in file: " + file)
                 # proc_id = event.get('Proc')
                 # cluster_id = event.get('Cluster')
 
@@ -884,6 +949,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
                 time_dict["Termination date"] = date
 
                 reason = event.get('Reason')  # TODO: use this information
+                occurred_errors.append([jet.JOB_ABORTED, date, "Aborted", reason])
                 job_events.insert(0, ("Process was", "Aborted"))
 
             # search for errors
@@ -920,57 +986,38 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
         logging.exception(err)
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
 
+    # generate a better time dict
     time_values = list(time_dict.values())
-    waiting, runtime, total = calc_time_differences(*time_values)
-    if waiting:
-        time_dict['Waiting time'] = waiting
-    if runtime:
-        time_dict['Execution runtime'] = runtime
-    if total:
-        time_dict['Total runtime'] = total
+    better_time_dict = gen_time_dict(*time_values)
 
-    # delete empty values:
-    if time_dict["Submission date"] is None:
-        del time_dict["Submission date"]
-    if time_dict["Execution date"] is None:
-        del time_dict["Execution date"]
-    if time_dict["Termination date"] is None:
-        del time_dict["Termination date"]
-
-    # Job still running adn file valid
+    # Job still running and file valid
     if not invalid_file and not has_terminated:
-        if total:
+        if "Total runtime" in better_time_dict["Dates and times"]:
             rprint("[red]This is not supposed to happen, check your code[/red]")
-        elif runtime:
+        elif "Execution runtime" in better_time_dict["Dates and times"]:
             state = "Executing"
-        elif waiting:
+        elif "Waiting time" in better_time_dict["Dates and times"]:
             state = "Waiting"
         else:
             pass
         job_events.insert(0, ("Process is", state))
     # file not fully readable
     elif invalid_file:
+        better_time_dict = dict()
         job_events.insert(0, ("Error", "Error reading log file"))
 
     job_events_dict = dict()
-    better_time_dict = dict()
     error_dict = dict()
     ram_history_dict = dict()
-    # Now manipulate the output
+    # convert job_events to a nice and simple dictionary
     if len(job_events) > 0:
         desc, val = zip(*job_events)
         job_events_dict = {
             "Execution details": desc,
             "Values": val
         }
-    if len(time_dict) > 0:
-        desc = list(time_dict.keys())
-        val = list(time_dict.values())
-        better_time_dict = {
-            "Dates and times": desc,
-            "Values": val
-        }
 
+    # convert errors into a dictionary
     if len(occurred_errors) > 0:
         event_numbers, time_list, errors, reasons = zip(*occurred_errors)
         reasons = list(reasons)
@@ -989,7 +1036,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
             "Error": list(errors),
             "Reason": list(reasons)
         }
-
+    # convert ram_history to a dictionary
     if len(ram_history) > 0:
         time_list, img_size, mem_usage, res_set_size = zip(*ram_history)
         ram_history_dict = {
@@ -998,6 +1045,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict):
             "Memory usages": list(mem_usage),
             "Resident Set Sizes": list(res_set_size)
         }
+
     return job_events_dict, res_dict, better_time_dict, ram_history_dict, error_dict
 
 
@@ -1928,6 +1976,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 # TODO ram histogram, BUT HOW
 # TODO get files for which the specific termination state appeared ( if not nomral ???)
 # TODO: separate Gpus from another
+# TODO: use occurred errors
 def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     """
         analyse the summarized log files,
@@ -1960,9 +2009,18 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         # print(ram_history)
         # print(occurred_errors)
 
+        refactor_job_dict = dict(zip(job_dict["Execution details"], job_dict["Values"]))
+        job_keys = list(refactor_job_dict.keys())
+        if "Executing on" in job_keys:
+            to_host = refactor_job_dict["Executing on"]
+
         termination_type = job_dict["Values"][0]
-        refactor_time_dict = dict(zip(time_dict["Dates and times"], time_dict["Values"]))
-        time_keys = list(refactor_time_dict.keys())
+
+        # if time dict exists
+        time_keys = list()
+        if time_dict:
+            refactor_time_dict = dict(zip(time_dict["Dates and times"], time_dict["Values"]))
+            time_keys = list(refactor_time_dict.keys())
         if "Waiting time" in time_keys:
             waiting_time = refactor_time_dict["Waiting time"]
         else:
@@ -2000,7 +2058,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                         all_files[termination_type][5][to_host][1] += total_time
                     else:
                         all_files[termination_type][5][to_host] = [1, total_time]
-                elif "Submitted from host" in job_dict["Execution details"]:
+                elif "Submitted from" in job_dict["Execution details"]:
                     # other waiting jobs ???
                     if 'Waiting for execution' in all_files[termination_type][5].keys():
                         all_files[termination_type][5]['Waiting for execution'][0] += 1
@@ -2023,11 +2081,11 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
             else:
                 # if host exists
                 if "Executing on" in job_dict["Execution details"]:
-                    to_host = job_dict["Values"][2]
+                    # to_host = job_dict["Values"][2]
                     count_host_nodes = dict()
                     count_host_nodes[to_host] = [1, total_time]
                 # else if still waiting
-                elif "Submitted from host" in job_dict["Execution details"]:
+                elif "Submitted from" in job_dict["Execution details"]:
                     count_host_nodes = dict()
                     count_host_nodes['Waiting for execution'] = [1, total_time]
                 # else aborted before submission ?
@@ -2536,6 +2594,7 @@ def run(commandline_args):
     :return:
     """
     try:
+        start = datetime.datetime.now()  # startdate
 
         initialize()  # initialize global parameters
 
@@ -2582,6 +2641,10 @@ def run(commandline_args):
         output_str = customize_results(valid_files)
 
         print(output_str)  # write it to the console
+
+        end = datetime.datetime.now()  # enddate
+
+        logging.debug(f"Runtime: {end-start}")  # runtime of this script
 
         logging.debug("-------End of htcompact script-------")
 
