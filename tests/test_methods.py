@@ -23,7 +23,7 @@ class PseudoTTY(object):
 
 def test_initialize():
     ht.initialize()
-    assert ht.accepted_states == ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
+    assert ht.accepted_states == ["true", "yes", "y", "enable", "enabled", "0"]
     assert type(ht.files) == list
     assert ht.option_shorts == "hsavm:"
     assert ht.option_longs == ["help", "version", "verbose", "mode=",

@@ -69,7 +69,7 @@ def initialize():
         show_list, allowed_show_values, mode, allowed_modes
 
     # global parameters, used for dynamical output of information
-    accepted_states = ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
+    accepted_states = ["true", "yes", "y", "enable", "enabled", "0"]
     files = list()
     option_shorts = "hsavm:"
     option_longs = ["help", "version", "verbose", "mode=",

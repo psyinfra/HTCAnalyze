@@ -13,7 +13,7 @@ htcompact.conf
 # there is no need to specify all of them, but it doesn't hurt
 #
 # Values will be accepted as True for :
-# ["true", "yes", "y", "ja", "j", "enable", "enabled", "wahr", "0"]
+# ["true", "yes", "y", "enable", "enabled", "0"]
 # everything else will be interpreted as False
 
 [documents]
