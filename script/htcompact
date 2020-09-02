@@ -862,8 +862,8 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 # ERROR
                 else:
                     invalid_file = True
-                    reason = f"Can't read user address, please check the file: {file}"
-                    occurred_errors.append([jet.SUBMIT, "Now", "invalid user address", reason])
+                    reason = f"Can't read user address"
+                    occurred_errors.append([event_type_number, "Now", "invalid user address", reason])
                     job_events.append(('Submitted from', "invalid user"))
                     raise_value_error("Submission Host is wrong in file: " + file)
 
@@ -880,8 +880,8 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 # ERROR
                 else:
                     invalid_file = True
-                    reason = f"Can't read host address, please check the file: {file}"
-                    occurred_errors.append([jet.EXECUTE, "Now", "invalid host address", reason])
+                    reason = f"Can't read host address"
+                    occurred_errors.append([event_type_number, "Now", "invalid host address", reason])
                     job_events.append(('Executing on', "invalid host"))
                     raise_value_error("Execution host address is wrong in file: " + file)
 
@@ -916,7 +916,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 normal_termination = event.get('TerminatedNormally')
                 # differentiate between normal and abnormal termination
                 if normal_termination:
-                    job_events.insert(0, ("Termination State", "Normal"))
+                    job_events.insert(0, ("Termination State", colors['green'] + "Normal" + colors['back_to_default']))
                     return_value = event.get('ReturnValue')
                     job_events.append(("Return Value", return_value))
                 else:
@@ -931,8 +931,8 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 time_dict["Termination date"] = date
 
                 reason = event.get('Reason')  # TODO: use this information
-                occurred_errors.append([jet.JOB_ABORTED, date, "Aborted", reason])
-                job_events.insert(0, ("Process was", "Aborted"))
+                occurred_errors.append([event_type_number, date, "Aborted", reason])
+                job_events.insert(0, ("Process was", colors['red'] + "Aborted" + colors['back_to_default']))
 
             # now filter all known errors
             if event.type == jet.JOB_HELD:
@@ -976,11 +976,11 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
             state = "Waiting"
         else:
             pass
-        job_events.insert(0, ("Process is", state))
+        job_events.insert(0, ("Process is", colors["blue"] + state + colors["back_to_default"]))
     # file not fully readable
     elif invalid_file:
         better_time_dict = dict()  # times should not be returned, because they will make no sense
-        job_events.insert(0, ("Error", "Error reading log file"))
+        job_events.insert(0, ("Error", colors["red"] + "Error while reading" + colors["back_to_default"]))
 
     job_events_dict = dict()
     error_dict = dict()
@@ -1837,7 +1837,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     average_runtime = datetime.timedelta(days=average_runtime.days, seconds=average_runtime.seconds)
 
     exec_dict = {
-        "Job types": ["Successful executed jobs"],
+        "Job types": ["normal executed jobs"],
         "Occurrence": [n]
     }
     if aborted_files > 0:
@@ -1847,7 +1847,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
         exec_dict["Job types"].append("Still running jobs")
         exec_dict["Occurrence"].append(still_running)
     if error_reading_files > 0:
-        exec_dict["Job types"].append("Error reading log file")
+        exec_dict["Job types"].append("Error while reading")
         exec_dict["Occurrence"].append(error_reading_files)
     if other_exception > 0:
         exec_dict["Job types"].append("Other exceptions")
@@ -1870,10 +1870,10 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     time_desc_list = list()
     time_value_list = list()
     if normal_runtime != datetime.timedelta(0, 0, 0):
-        time_desc_list.append("Total runtime of all jobs")
+        time_desc_list.append("Total runtime")
         time_value_list.append(normal_runtime)
     if average_runtime:
-        time_desc_list.append("Average runtime per job")
+        time_desc_list.append("Average runtime")
         time_value_list.append(average_runtime)
 
     result_dict["times"] = {
@@ -1942,11 +1942,18 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     # fill this dict with information by the execution type of the jobs
     all_files = dict()
     list_of_gpu_names = list()  # list of gpus found
+    occurrence_dict = dict()
 
     # TODO: rich logging handler
     for file in track(log_files, transient=True, description="Summarizing..."):
 
         job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(file)
+
+        if len(occurred_errors) > 0:
+            create_file_list = list()
+            for i in range(len(occurred_errors["Event Number"])):
+                create_file_list.append(file)
+            occurred_errors['File'] = create_file_list
 
         refactor_job_dict = dict(zip(job_dict["Execution details"], job_dict["Values"]))
         job_keys = list(refactor_job_dict.keys())
@@ -1980,6 +1987,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 all_files[termination_type][1] += waiting_time
                 all_files[termination_type][2] += runtime
                 all_files[termination_type][3] += total_time
+
+                # add errors
+                if len(occurred_errors) > 0:
+                    for key in occurred_errors.keys():
+                        all_files[termination_type][6][key].extend(occurred_errors[key])
+
                 if not len(all_files[termination_type][4]) == 0:
                     # add usages
 
@@ -2037,7 +2050,9 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                     res_dict["Usage"] = np.nan_to_num(res_dict["Usage"])
                     res_dict["Requested"] = np.nan_to_num(res_dict["Requested"])
                     res_dict["Allocated"] = np.nan_to_num(res_dict["Allocated"])
-                all_files[termination_type] = [1, waiting_time, runtime, total_time, res_dict, count_host_nodes]
+
+                all_files[termination_type] = [1, waiting_time, runtime, total_time,
+                                               res_dict, count_host_nodes, occurred_errors]
 
         # TODO: test if valid here
         # Error ocurres when Job was aborted
@@ -2057,24 +2072,24 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         result_dict = dict()
 
         # differentiate between terminated and running processes
-        if term_state.__eq__("Error reading log file"):
-            result_dict["file-description"] = f"{colors['blue']}" \
-                f"All files summarized that caused an error while reading:" \
-                f"{colors['back_to_default']}"
+        if "Error while reading" in term_state:
+            result_dict["file-description"] = f"" \
+                f"##################################################\n" \
+                f"## All files, that caused an {colors['red']}error while reading{colors['back_to_default']}\n" \
+                f"##################################################"
         elif not term_state in ["Waiting", "Executing"]:
-            result_dict["file-description"] = f"{colors['blue']}" \
-                f"All files summarized with the Termination State: {term_state}" \
-                f"{colors['back_to_default']}"
+            result_dict["file-description"] = f"" \
+                f"##################################################\n" \
+                f"## All files with the termination state: {term_state}\n" \
+                f"##################################################"
         else:
-            result_dict["file-description"] = f"{colors['blue']}" \
-                f"All files summarized, that are currently {term_state}:" \
-                f"{colors['back_to_default']}"
+            result_dict["file-description"] = f"" \
+                f"###########################################\n" \
+                f"## All files, that are currently {term_state}\n" \
+                f"###########################################"
 
         n = int(term_info[0])
-        desc_dict = {
-            "Description": ["Occurrence"],
-            "Values": [n]
-        }
+        occurrence_dict[term_state] = str(n)
 
         times = np.array([term_info[1], term_info[2], term_info[3]])
         av_times = times / n
@@ -2082,18 +2097,16 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         time_dict = {
             "Times": ["Waiting time", "Runtime", "Total"],
-            "Total": times,
-            "Average": format_av_times
+            "Average": format_av_times,
+            "Total": times
         }
-
-        result_dict["execution-details"] = desc_dict
 
         result_dict["times"] = time_dict
 
         if not len(term_info[4]) == 0:
             total_resources_dict = term_info[4]
             avg_dict = {
-                'Resources': ['Average Cpu', ' Average Requested ', 'Average Allocated'],
+                'Resources': ['Average Cpu', ' Average Disk (KB)', 'Average Allocated'],
                 'Usage': np.round(np.array(total_resources_dict['Usage']) / term_info[0], 2).tolist(),
                 'Requested': np.round(np.array(total_resources_dict['Requested']) / term_info[0], 2).tolist(),
                 'Allocated': np.round(np.array(total_resources_dict['Allocated']) / term_info[0], 2).tolist()
@@ -2120,7 +2133,16 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         result_dict["host-nodes"] = host_nodes_dict
 
+        if len(term_info[6]) > 0:
+            result_dict["errors"] = term_info[6]
+
         result_list.append(result_dict)
+
+    new_occ = {
+        "Termination type": list(occurrence_dict.keys()),
+        "Appearance": list(occurrence_dict.values())
+    }
+    result_list.insert(0, {"execution-details": new_occ})
 
     return result_list
 
@@ -2293,8 +2315,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
             # if path is a directory
             if working_dir_path.__ne__(""):
-                rprint(f"[light_coral]Try to find valid log files in the given directory:[/light_coral]\n"
-                       f"{working_dir_path}")
+                rprint(f"[light_coral]Search: {working_dir_path} for valid log files[/light_coral]")
                 # run through all files and separate the files into log/error and output files
                 valid_dir_files = list()
                 file_dir = os.listdir(working_dir_path)
