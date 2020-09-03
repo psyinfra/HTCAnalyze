@@ -1083,7 +1083,6 @@ def gethostbyaddr(ip):
         return ip
 
 
-# TODO: question about if thresholds for used cpu, gpu should exists
 def manage_thresholds(resources: dict) -> dict:
     """
 
