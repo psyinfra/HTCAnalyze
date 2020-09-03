@@ -1798,10 +1798,6 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     return [result_dict]
 
 
-# TODO more specific control what to print out
-# TODO ram histogram, BUT HOW
-# TODO get files for which the specific termination state appeared ( if not nomral ???)
-# TODO: separate Gpus from another
 def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     """
         analyse the summarized log files,
