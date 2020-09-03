@@ -1821,7 +1821,6 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     list_of_gpu_names = list()  # list of gpus found
     occurrence_dict = dict()
 
-    # TODO: rich logging handler
     for file in track(log_files, transient=True, description="Summarizing..."):
 
         job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(file)
@@ -1931,7 +1930,6 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 all_files[termination_type] = [1, waiting_time, runtime, total_time,
                                                res_dict, count_host_nodes, occurred_errors]
 
-        # TODO: test if valid here
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
             logging.exception(err)
@@ -2086,8 +2084,6 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
                     if re.search(keyword.lower(), line.lower()):
                         if not found_at_least_one:
                             print("Matches:")
-                        # TODO: save numbers of occurence for each keyword, if more than one is given
-                        # TODO: can be commenetd, or maybe should be hidden, if more than like 50 files are found
                         rprint(f"[grey74]{keyword} in:\t{file}[/grey74] ")
                         found = True
                         found_at_least_one = True
