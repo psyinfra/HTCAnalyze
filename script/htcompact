@@ -2145,9 +2145,6 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
     The user will also be informed if a given file was not found.
 
-    TODO: In addition there should be an option --force, that makes the script stop, if the file was not found or marked as valid
-
-    TODO: user should be able to get the option to decide, when the same files appear more than once
     -> my guess: yes or no question, if nothing is given in under 10 seconds, it should go with no
     -> this should prevent, that the script is stucked, if the user is for example running it over night
 
