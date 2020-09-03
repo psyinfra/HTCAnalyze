@@ -1776,7 +1776,6 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
         result_dict["all-resources"] = average_dict
 
-    # TODO: cpu nodes might change over lifetime of a job
     if len(host_nodes) > 0:
 
         executed_jobs = list()
