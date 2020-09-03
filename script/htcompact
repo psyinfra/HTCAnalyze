@@ -1025,65 +1025,6 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
     return job_events_dict, res_dict, better_time_dict, ram_history_dict, error_dict
 
 
-# reads all information, but returns them in two lists
-def read_condor_log(file: str) -> (list, list):
-    """
-
-    reads a given HTCondor std_log file and separates the information in two lists,
-    for further and easier access
-
-    :type file: str
-    :param file:    a HTCondor std_log file
-
-    :raises: :class:'FileNotFoundError': if open does not work
-
-    :return:    (job_event, job_event_information)
-                a list of job_events and a list of job_event-relevant information
-                these are related by the same index like:
-                job_event[1]-> relevant information: job_event_information[1]
-
-                job_event looks like:
-                [event_number, job_id, date, time, description, additional information]
-
-    """
-
-    log_job_events = list()  # saves the job_events
-    job_event_information = list()  # saves the information for each job event, if there are any
-    temp_job_event_list = list()  # just a temporary list, gets inserted into job_event_information
-
-    with open(file) as log_file:
-        # for every line in the log_file
-        for line in log_file:
-
-            line = line.rstrip("\n")  # remove newlines
-            match_log \
-                = re.match(r"([0-9]{3})"  # matches event number
-                           r" (\([0-9]+.[0-9]+.[0-9]{3}\))"  # matches clusterid and process id
-                           r" ([0-9]{2}/[0-9]{2})"  # matches date
-                           r" ([0-9]{2}:[0-9]{2}:[0-9]{2})"  # matches time
-                           r"((?: \w+)*)."  # matches the job event name
-                           r"(.*)", line)  # matches further information
-            if match_log:
-                job_event_number = match_log[1]  # job event number, can be found in job_description.txt
-                clusterid_procid_inf = match_log[2]  # same numbers, that make the name of the file
-                date = match_log[3]  # filter the date in the form Month/Day in numbers
-                time = match_log[4]  # filter the time
-                job_event_name = match_log[5]  # filter the job event name
-                job_relevant_inf = match_log[6]  # filter the job relevant information
-                log_job_events.append([job_event_number, clusterid_procid_inf,
-                                       date, time, job_event_name, job_relevant_inf])
-            else:
-                # end of job event
-                if "..." in line:
-                    job_event_information.append(temp_job_event_list)
-                    temp_job_event_list = list()  # clear list
-                    continue
-                # else
-                else:
-                    temp_job_event_list.append(line)
-    return log_job_events, job_event_information
-
-
 # TODO: maybe less information
 # just read .err files content and return it as a string
 def read_condor_error(file: str) -> str:
