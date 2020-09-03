@@ -2206,7 +2206,6 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
                     if os.path.isfile(file_path):
                         with open(file_path, "r") as read_file:
-                            # TODO: better specification with re
                             if os.path.getsize(file_path) == 0:  # file is empty
                                 continue
 
@@ -2307,7 +2306,6 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
         log.addHandler(stdout_handler)
 
 
-# TODO: a function to format the output
 def customize_results(files: list_of_logs):
     output_string = ""
 
