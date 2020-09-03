@@ -1124,11 +1124,6 @@ def show_htcondor_stderr(file: str) -> str:
     :return: the content of the given file as a string
     """
 
-    # TODO:
-    # - are there errors ? true or false -> maybe print those in any kind of format
-    # - maybe check for file size !!!
-    # - is the file size the same ? what is normal / different errors (feature -> for  -> later)
-
     # accept files without the std_err suffix
     if std_err.__ne__("") and file[-len(std_err):].__eq__(std_err):
         job_spec_id = file[:-len(std_err)]
