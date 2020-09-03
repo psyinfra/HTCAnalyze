@@ -913,8 +913,6 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                     signal = event.get('TerminatedBySignal')
                     job_events.append(("Terminated by Signal", signal))
 
-                    # TODO: is there a way to get the description ?
-
             if event.type == jet.JOB_ABORTED:
                 has_terminated = True
                 time_dict["Termination date"] = date
