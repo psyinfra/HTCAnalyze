@@ -49,10 +49,6 @@ to see for ex. the average runtime and usage of all the logs
 """
 
 
-# TODOs:
-# TODO: summary mode remake
-
-
 def initialize():
     """
     This method initializes all global variables
@@ -371,7 +367,6 @@ def manage_params(args: list):
                             allowed_ignore_values))
                 logging.debug("Ignore these information: " + ", ".join(ignore_list))
 
-            # TODO: to-csv
             elif opt.__eq__("--to-csv"):
                 to_csv = True
                 rprint("[red]--to-csv not handled yet[/red]")
@@ -1218,7 +1213,6 @@ def customize_log(file: str) -> dict:
         res_dict = htcondor_log[1]
         times = htcondor_log[2]
 
-        # TODO: csv style one line
         if to_csv:
             pass
         else:
