@@ -2130,7 +2130,6 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
     return return_dicts
 
 
-# TODO: Use htcondor module (may cost to much time)
 def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
     """
     This method is supposed to take the given log files (by config or command line argument)
