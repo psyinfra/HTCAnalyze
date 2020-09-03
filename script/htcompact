@@ -253,8 +253,7 @@ def manage_prioritized_params(args: list):
                 print(small_help())
                 sys.exit(0)
             if opt.__eq__("--version"):
-                # TODO:
-                print(f"Version: v1.0.7")
+                print(f"Version: v1.1.0")
                 sys.exit(0)
             if opt.__eq__("--print-event-table"):
                 print(get_event_information())
@@ -930,7 +929,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 has_terminated = True
                 time_dict["Termination date"] = date
 
-                reason = event.get('Reason')  # TODO: use this information
+                reason = event.get('Reason')
                 occurred_errors.append([event_type_number, date, "Aborted", reason])
                 job_events.insert(0, ("Process was", colors['red'] + "Aborted" + colors['back_to_default']))
 
@@ -1025,7 +1024,6 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
     return job_events_dict, res_dict, better_time_dict, ram_history_dict, error_dict
 
 
-# TODO: maybe less information
 # just read .err files content and return it as a string
 def read_condor_error(file: str) -> str:
     """
@@ -1140,8 +1138,7 @@ def show_htcondor_stderr(file: str) -> str:
     """
 
     # TODO:
-    # - errors from htcondor are more important (std.err output)
-    # - are there errors ? true or false -> maybe print those in any kind of fromat
+    # - are there errors ? true or false -> maybe print those in any kind of format
     # - maybe check for file size !!!
     # - is the file size the same ? what is normal / different errors (feature -> for  -> later)
 
@@ -1593,8 +1590,6 @@ def default(log_files: list_of_logs) -> log_inf_list:
     return list_of_dicts
 
 
-# TODO: explicitly Job event 000, 001, 005, 006 and 009 are filtered and all other job events that throw errors
-#       until now there is not the need for other filters but it might be needed to extend this function
 def analyse(log_files: list_of_logs) -> log_inf_list:
     logging.info('Starting the analyser mode')
 
@@ -1666,7 +1661,6 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
     return result_list
 
 
-# TODO: what means sucessful executed ?
 def summarize(log_files: list_of_logs) -> log_inf_list:
     """
     Summarises all used resources and the runtime in total and average
@@ -1846,7 +1840,6 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 # TODO ram histogram, BUT HOW
 # TODO get files for which the specific termination state appeared ( if not nomral ???)
 # TODO: separate Gpus from another
-# TODO: use occurred errors
 def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     """
         analyse the summarized log files,
@@ -2074,8 +2067,6 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
 
 # search in the files for the keywords
-# TODO: show which keywords have been found and which not
-# TODO: AND option, ONLY option
 def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf_list:
     """
     Filter for a list of keywords, which can be extended
