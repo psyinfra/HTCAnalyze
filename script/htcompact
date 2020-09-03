@@ -1659,10 +1659,6 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     # if gpu given
     gpu_found = False
-    total_gpu_usage = float(0)
-    total_gpu_requested = int(0)
-    total_gpu_allocated = int(0)
-    list_of_gpu_names = list()
 
     for file in track(log_files, transient=True, description="Summarizing..."):
         try:
