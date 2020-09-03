@@ -50,9 +50,7 @@ to see for ex. the average runtime and usage of all the logs
 
 
 # TODOs:
-# TODO: rich progress bar collision with verbose mode looks ugly
 # TODO: summary mode remake
-# TODO: script is not accepting IPv6 yet
 
 
 def initialize():
@@ -173,13 +171,6 @@ def check_for_redirection():
         }
 
 
-# consider: adjust this method to accept all values,
-#  that are related to an option and interpret
-#  the first one which does not as a file again
-#  -> something like --ignore allocated-resources times ... should be possible
-# TODO: consider regex in this implementation: --ignore alloc tim ...
-#  with focus on longest prefix match
-# may not be needed in future but will be used for now
 def remove_files_from_args(args: list, short_opts: str, long_opts: list):
     """
         I want to make it easier for the user to insert many files at once.
