@@ -1159,25 +1159,10 @@ def gethostbyaddr(ip):
 # TODO: question about if thresholds for used cpu, gpu should exists
 def manage_thresholds(resources: dict) -> dict:
     """
-        Takes a dict which should look like this:
-        average_dict = {
-            "Resources": ['Average Cpu', 'Average Disk (KB)', 'Average Memory (MB)'],
-            "Usage": [round(total_cpu_usage / n, 2),
-                      round(total_disk_usage / n, 2),
-                      round(total_memory_usage / n, 2)],  # necessary
-            "Requested": [round(total_cpu_requested / n, 2),
-                          round(total_disk_requested / n, 2),
-                          round(total_memory_requested / n, 2)],
-            "Allocated": [round(total_cpu_allocated / n, 2),
-                          round(total_disk_allocated / n, 2),
-                          round(total_memory_allocated / n, 2)]
-
-        }
 
         The important part is that the keywords "Usage", "Requested" exists
         and that at least 3 values are given: cpu, disk, memory
 
-        Additionally gpu usage is possible
     :param resources:
     :return:
     """
