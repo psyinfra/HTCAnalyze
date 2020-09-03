@@ -266,7 +266,6 @@ def manage_prioritized_params(args: list):
         sys.exit(1)
 
 
-# TODO: thresholds by command line
 def manage_params(args: list):
     """
     Interprets the given command line arguments and changes the global variables in this scrips
