@@ -1200,23 +1200,7 @@ def customize_log(file: str) -> dict:
     :param header:  Shows the header of the columns
     :param index:   Shows the index of the rows
 
-    :return:        (output_string)
-                    an output string that shows information like:
-                    The job procedure of : ../logs/454_199.log
-                    +-------------------+--------------------+
-                    | Executing on Host |      10.0.9.1      |
-                    |       Port        |        9618        |
-                    |      Runtime      |      1:12:20       |
-                    | Termination State | Normal termination |
-                    |   Return Value    |         0          |
-                    +-------------------+--------------------+
-                    +--------+-------+-----------+-----------+
-                    |        | Usage | Requested | Allocated |
-                    +--------+-------+-----------+-----------+
-                    |  Cpu   | 0.30  |     1     |     1     |
-                    |  Disk  |  200  |    200    |  3770656  |
-                    | Memory |   3   |     1     |    128    |
-                    +--------+-------+-----------+-----------+
+    :return:        dict
 
     """
     # accept files without the std_log suffix
@@ -1627,7 +1611,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
 
                 # this will use the self written function _num_formatter, to convert the y-label to int values
                 fig.register_label_formatter(float, _int_formatter)
-                fig.plot(dates, ram, lc='green', label="Continuous Graph")  # TODO: implement a way to show thresholds
+                fig.plot(dates, ram, lc='green', label="Continuous Graph")
                 fig.scatter(dates, ram, lc='red', label="Single Values")
 
                 if redirecting_output:  # if redirected, the Legend is useless
