@@ -25,6 +25,8 @@ htcompact. This is especially useful when installing system-wide, or for
 adjusting various warning/error thresholds. See
 [CONFIG.md](https://github.com/psyinfra/htcompact/blob/master/CONFIG.md) for
 more information
+#### Notice:
+- The script is using the python module htcondor 8.9.8, which is not working on MacOS devices.
 
 ## Getting Started
 - *htcompact --help* for detailed description
