@@ -2397,9 +2397,6 @@ def customize_results(files: list_of_logs):
 
     return output_string
 
-    # these might be added in future:
-    # TODO: gpus, cpu, warnings
-
 
 def run(commandline_args):
     """
