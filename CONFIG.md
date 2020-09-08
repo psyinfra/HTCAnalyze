@@ -31,17 +31,19 @@ stdlog = .log
 stderr = .err
 stdout = .out
 
+# only for default mode
 [show-more]
-show_std_errors = no
-show_std_output = no
-show_std_warnings = no
+show_list = None
+# valid values are: "std-err, std-out"
+# This is checking for errors and warnings inside the stderr output of a job
+# if a .err file is found, same with output, which will just return stdout in .out files
 
 # ignore HTCondor related information that is gained within the process
 [ignore]
 ignore_list = None
-# valid values are: "allocated-resources, execution-details, all-resources"
-# these might be added in future:
-# used-resources, requested-resources, times, gpus, cpu, errors, warnings
+# valid values are:
+# "used-resources, requested-resources, allocated-resources,
+# execution-details, all-resources, times, errors, host-nodes"
 
 [thresholds]
  # everything under 75% is considered "wasting sources"
@@ -51,8 +53,8 @@ bad_usage = 1.2
 
 [modes]
 filter_mode = False
-summarizer_mode = False
-analyser_mode = False
+mode = None
+# valid modes: [summarize, analyse, analysed-summary, default]
 
 # if filter_mode set true, this section must be set,
 # else the script does not know what to filter for

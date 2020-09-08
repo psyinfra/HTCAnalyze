@@ -80,7 +80,7 @@ def initialize():
                      "d": "default"}
 
     show_list = list()
-    allowed_show_values = ["errors", "warnings", "output"]
+    allowed_show_values = ["std-err", "std-out"]
 
     # ignore information
     ignore_list = list()
@@ -1140,10 +1140,11 @@ def show_htcondor_stderr(file: str) -> str:
 
         error_content = read_condor_error(job_spec_id + std_err)
         for line in error_content.split("\n"):
-            if "err" in line.lower() and 'errors' in show_list:
-                output_string += colors['red'] + line + colors['back_to_default'] + "\n"
-            elif "warn" in line.lower() and 'warnings' in show_list:
-                output_string += colors['yellow'] + line + colors['back_to_default'] + "\n"
+            if 'std-err' in show_list:
+                if "err" in line.lower():
+                    output_string += colors['red'] + line + colors['back_to_default'] + "\n"
+                elif "warn" in line.lower():
+                    output_string += colors['yellow'] + line + colors['back_to_default'] + "\n"
 
     except NameError as err:
         logging.exception(err)
@@ -1237,9 +1238,9 @@ def customize_log(file: str) -> dict:
 
                 result_dict["all-resources"] = res_dict
 
-        if 'errors' in show_list or 'warnings' in show_list:
+        if 'std-err' in show_list:
             result_dict['stderr'] = show_htcondor_stderr(job_spec_id + std_err)
-        if 'output' in show_list:
+        if 'std-out' in show_list:
             result_dict['stdout'] = show_htcondor_stdout(job_spec_id + std_out)
 
     except NameError as err:
