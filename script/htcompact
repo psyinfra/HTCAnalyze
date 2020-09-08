@@ -1527,7 +1527,7 @@ def default(log_files: list_of_logs) -> log_inf_list:
     list_of_dicts = list()
     current_path = os.getcwd()
     # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
-    for i, file in enumerate(log_files):
+    for file in track(log_files, transient=True, description="Processing..."):
 
         # for the * operation it should skip std_err and std_out files
         if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
@@ -1575,7 +1575,7 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
 
     result_list = list()
 
-    for file in log_files:
+    for file in track(log_files, transient=True, description="Analysing..."):
         result_dict = dict()
 
         logging.debug(f"Analysing the HTCondor log file: {file}")
@@ -2078,7 +2078,7 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
     # now search
     found_at_least_one = False
     found_logs = []
-    for file in log_files:
+    for file in track(log_files, transient=True, description="Filtering..."):
         found = False
         with open(file, "r") as read_file:
             for line in read_file:
