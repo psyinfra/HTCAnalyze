@@ -200,10 +200,19 @@ def remove_files_from_args(args: list, short_opts: str, long_opts: list):
                 arg = arg[1:]
 
             # skip the argument if getopt arguments are setable
-            if arg + ":" in short_opts:
-                index += 1
-            elif arg + "=" in long_opts:
-                index += 1
+            for s_arg in short_opts:
+                if s_arg.startswith(arg) and s_arg.endswith(":"):
+                    index += 1
+                    break
+            for l_arg in long_opts:
+                if l_arg.startswith(arg) and l_arg.endswith("="):
+                    index += 1
+                    break
+
+            # if arg + ":" in short_opts:
+            #     index += 1
+            # elif arg + "=" in long_opts:
+            #     index += 1
         else:
             generate_files.append(arg)
             new_args.remove(arg)
