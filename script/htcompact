@@ -2416,6 +2416,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
                                   read_file.readlines()[0]):
                         logging.debug(
                             f"{read_file.name} is a valid HTCondor log file")
+
                         valid_files.append(working_file_path)
                     else:
                         logging.debug(
