@@ -1,7 +1,6 @@
 
 import sys
 import pytest
-import mock
 import io
 import imp
 ht = imp.load_source('htcompact', 'script/htcompact')
@@ -39,7 +38,7 @@ def test_initialize():
                                 "d": "default"}
 
     assert type(ht.show_list) == list
-    assert ht.allowed_show_values == ["errors", "warnings", "output"]
+    assert ht.allowed_show_values == ["std-err", "std-out"]
 
     assert type(ht.ignore_list) == list
     assert ht.allowed_ignore_values == ["execution-details", "times", "host-nodes",
@@ -75,8 +74,8 @@ def test_initialize():
     }
 
     # thresholds for bad and low usage of resources
-    assert ht.low_usage_threshold == 0.75
-    assert ht.bad_usage_threshold == 1.2
+    assert ht.tolerated_usage_threshold == 0.1
+    assert ht.bad_usage_threshold == 0.25
 
     # global variables with default values for err/log/out files
     assert ht.std_log == ""
@@ -252,11 +251,11 @@ def test_manage_params():
     assert ht.std_out == ".output"
     assert ht.std_err == ".error"
 
-    args = "--show-more output,errors,warnings --ignore execution-details," \
+    args = "--show-more std-err,std-out --ignore execution-details," \
            "times,errors,host-nodes,used-resources," \
            "requested-resources,allocated-resources,all-resources".split()
     ht.manage_params(args)
-    assert ht.show_list == "output,errors,warnings".split(',')
+    assert ht.show_list == "std-err,std-out".split(',')
     assert ht.ignore_list == "execution-details,times,errors,host-nodes," \
                              "used-resources,requested-resources," \
                              "allocated-resources,all-resources".split(',')
