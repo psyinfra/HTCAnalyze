@@ -46,9 +46,9 @@ ignore_list = None
 # execution-details, all-resources, times, errors, host-nodes"
 
 [thresholds]
- # everything under 75% is considered "wasting sources"
-low_usage = 0.75
-# everything over 120% is considered "overusing sources"
+ # everything with a deviation of more than 10% is tolerated
+tolerated_usage = 0.1
+# everything with a deviation of more than 25% is considered bad
 bad_usage = 1.2
 
 [modes]

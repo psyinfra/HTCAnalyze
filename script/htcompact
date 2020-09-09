@@ -58,7 +58,7 @@ def initialize():
         ignore_list, allowed_ignore_values, no_config, reverse_dns_lookup, \
         store_dns_lookups, verbose_mode, \
         to_csv, generate_log_file, filter_mode, filter_keywords, filter_extended, \
-        colors, low_usage_threshold, bad_usage_threshold, std_log, std_err, std_out, \
+        colors, tolerated_usage_threshold, bad_usage_threshold, std_log, std_err, std_out, \
         default_configfile, table_format, reading_stdin, redirecting_output, \
         show_list, allowed_show_values, mode, allowed_modes
 
@@ -119,8 +119,8 @@ def initialize():
     }
 
     # thresholds for bad and low usage of resources
-    low_usage_threshold = 0.75
-    bad_usage_threshold = 1.2
+    tolerated_usage_threshold = 0.1
+    bad_usage_threshold = 0.25
 
     # global variables with default values for err/log/out files
     std_log = ""
@@ -1095,27 +1095,24 @@ def manage_thresholds(resources: dict) -> dict:
     :param resources:
     :return:
     """
-    resources.update(Usage=list(resources["Usage"]))  # change to list, to avoid numpy type errors
-    # thresholds used vs. requested disk
-    if float(resources['Requested'][1]) != 0:
-        if float(resources['Usage'][1]) / float(resources['Requested'][1]) > bad_usage_threshold:
-            resources['Usage'][1] = colors['red'] + str(resources['Usage'][1]) + colors['back_to_default']
-        elif float(resources['Usage'][1]) / float(resources['Requested'][1]) < low_usage_threshold:
-            resources['Usage'][1] = colors['yellow'] + str(resources['Usage'][1]) + colors['back_to_default']
-    # thresholds used vs. requested memory
-    if float(resources['Requested'][2]) != 0:
-        if float(resources['Usage'][2]) / float(resources['Requested'][2]) > bad_usage_threshold:
-            resources['Usage'][2] = colors['red'] + str(resources['Usage'][2]) + colors['back_to_default']
-        elif float(resources['Usage'][2]) / float(resources['Requested'][2]) < low_usage_threshold:
-            resources['Usage'][2] = colors['yellow'] + str(resources['Usage'][2]) + colors['back_to_default']
 
-    # # Gpu Usage found
-    # if len(resources['Usage']) == 4 and len(resources['Requested']) == 4:
-    #     # thresholds used vs. requested gpu
-    #     if resources['Usage'][3] / resources['Requested'][3] > bad_usage_threshold:
-    #         resources['Usage'][3] = colors['red'] + str(resources['Usage'][3]) + colors['back_to_default']
-    #     elif resources['Usage'][3] / resources['Requested'][3] < low_usage_threshold:
-    #         resources['Usage'][3] = colors['yellow'] + str(resources['Usage'][3]) + colors['back_to_default']
+    resources.update(Usage=list(resources["Usage"]))  # change to list, to avoid numpy type errors
+    for i in range(len(resources['Resources'])):
+        # thresholds used vs. requested
+        if float(resources['Requested'][i]) != 0:
+
+            deviation = float(resources['Usage'][i]) / float(resources['Requested'][i])
+
+            # color red if more than bad_usage_thresholds % away from the requested value
+            if deviation >= 1+bad_usage_threshold or deviation <= 1-bad_usage_threshold:
+                resources['Usage'][i] = colors['red'] + str(resources['Usage'][i]) + colors['back_to_default']
+
+            # color yellow if more than low_usage_threhold % away from requested value
+            elif deviation >= 1+tolerated_usage_threshold or deviation <= 1-tolerated_usage_threshold:
+                resources['Usage'][i] = colors['yellow'] + str(resources['Usage'][i]) + colors['back_to_default']
+            # else it's okay, color green
+            else:
+                resources['Usage'][i] = colors['green'] + str(resources['Usage'][i]) + colors['back_to_default']
 
     return resources
 
@@ -1443,10 +1440,10 @@ def load_config(config_file: str):
                 logging.debug(f"Changed default show-more statements to: {ignore_list}")
 
         if 'thresholds' in sections:
-            global low_usage_threshold, bad_usage_threshold
-            if 'low_usage' in config['thresholds']:
-                low_usage_threshold = float(config['thresholds']['low_usage'])
-                logging.debug(f"Changed default low_usage to: {low_usage_threshold}")
+            global tolerated_usage_threshold, bad_usage_threshold
+            if 'tolerated_usage' in config['thresholds']:
+                tolerated_usage_threshold = float(config['thresholds']['tolerated_usage'])
+                logging.debug(f"Changed default tolerated_usage to: {tolerated_usage_threshold}")
             if 'bad_usage' in config['thresholds']:
                 bad_usage_threshold = float(config['thresholds']['bad_usage'])
                 logging.debug(f"Changed default bad_usage to: {bad_usage_threshold}")
