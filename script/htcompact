@@ -2011,7 +2011,9 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         result_dict["host-nodes"] = host_nodes_dict
 
         if len(term_info[6]) > 0:
-            result_dict["errors"] = term_info[6]
+            temp_err = term_info[6]
+            del temp_err["Reason"]  # remove reason, cause thats just too much information
+            result_dict["errors"] = temp_err
 
         result_list.append(result_dict)
 
