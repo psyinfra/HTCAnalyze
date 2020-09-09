@@ -261,7 +261,6 @@ def manage_prioritized_params(args: list):
                 no_config = True
             elif opt.__eq__("--generate-log-file"):
                 generate_log_file = True
-                logging.getLogger().disabled = False
 
     # print error messages
     except Exception as err:
@@ -2281,6 +2280,7 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
         # activate logger if not already activated
         logging.getLogger().disabled = False
 
+        # more specific view into the script itself
         logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
         file_formatter = logging.Formatter(logging_file_format)
 
