@@ -13,7 +13,6 @@ import numpy as np
 import htcondor
 from htcondor import JobEventType as jet
 from rich import print as rprint
-from rich import logging as rlog
 from rich.progress import track, Progress
 from tabulate import tabulate
 from plotille import Figure
@@ -253,7 +252,7 @@ def manage_prioritized_params(args: list):
                 print(small_help())
                 sys.exit(0)
             if opt.__eq__("--version"):
-                print(f"Version: v1.1.0")
+                print("Version: v1.1.0")
                 sys.exit(0)
             if opt.__eq__("--print-event-table"):
                 print(get_event_information())
@@ -858,7 +857,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 # ERROR
                 else:
                     invalid_file = True
-                    reason = f"Can't read user address"
+                    reason = "Can't read user address"
                     occurred_errors.append([event_type_number, "Now", "invalid user address", reason])
                     job_events.append(('Submitted from', "invalid user"))
                     raise_value_error("Submission Host is wrong in file: " + file)
@@ -876,7 +875,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 # ERROR
                 else:
                     invalid_file = True
-                    reason = f"Can't read host address"
+                    reason = "Can't read host address"
                     occurred_errors.append([event_type_number, "Now", "invalid host address", reason])
                     job_events.append(('Executing on', "invalid host"))
                     raise_value_error("Execution host address is wrong in file: " + file)
@@ -1661,9 +1660,6 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     total_requested = np.array([0, 0, 0], dtype=float)
     total_allocated = np.array([0, 0, 0], dtype=float)
 
-    # if gpu given
-    gpu_found = False
-
     for file in track(log_files, transient=True, description="Summarizing..."):
         try:
             job_dict, res_dict, time_dict, _, _ = log_to_dict(file)
@@ -2066,9 +2062,9 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
 
         keyword_list.extend(err_list)  # extend search
 
-        rprint(f"[green]Keyword List was extended, now search for these keywords:[/green]", keyword_list)
+        rprint("[green]Keyword List was extended, now search for these keywords:[/green]", keyword_list)
     else:
-        rprint(f"[green]Search for these keywords:[/green]", keyword_list)
+        rprint("[green]Search for these keywords:[/green]", keyword_list)
 
     if len(keyword_list) == 1 and keyword_list[0] == "":
         logging.debug("Empty filter, don't know what to do")
@@ -2099,8 +2095,8 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
 
     return_dicts = None
     if not found_at_least_one:
-        rprint(f"[red]Unable to find these keywords:[/red]", keyword_list)
-        rprint(f"[red]maybe try again with similar expressions[/red]")
+        rprint("[red]Unable to find these keywords:[/red]", keyword_list)
+        rprint("[red]maybe try again with similar expressions[/red]")
 
     elif mode is not None:
         print(f"Total count: {len(found_logs)}")
