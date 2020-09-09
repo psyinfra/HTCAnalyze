@@ -194,20 +194,25 @@ def remove_files_from_args(args: list, short_opts: str, long_opts: list):
 
         arg = args[index]
 
+        is_long_arg = False
+
         if arg.startswith("-"):  # for short_args
             arg = arg[1:]
             if arg.startswith("-"):  # for long_args
                 arg = arg[1:]
+                is_long_arg = True
 
-            # skip the argument if getopt arguments are setable
-            for s_arg in short_opts:
-                if s_arg.startswith(arg) and s_arg.endswith(":"):
-                    index += 1
-                    break
-            for l_arg in long_opts:
-                if l_arg.startswith(arg) and l_arg.endswith("="):
-                    index += 1
-                    break
+             # skip the argument if getopt arguments are setable
+            if not is_long_arg:
+                for i, s_arg in enumerate(short_opts):
+                    if s_arg == arg and i < len(short_opts)-1 and short_opts[i+1] == ":":
+                        index += 1
+                        break
+            else:
+                for l_arg in long_opts:
+                    if l_arg.startswith(arg) and l_arg.endswith("="):
+                        index += 1
+                        break
 
             # if arg + ":" in short_opts:
             #     index += 1
