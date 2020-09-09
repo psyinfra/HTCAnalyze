@@ -132,7 +132,7 @@ def test_wrong_opts_or_args():
 
 
 def test_show_values():
-    args = "--show-more errors,warnings,output".split()
+    args = "--show-more std-err,std-out".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert ht.show_list == args[1].split(',')
@@ -429,8 +429,8 @@ def test_config():
     assert len(ht.show_list) == 0
     assert len(ht.ignore_list) == 0
 
-    assert ht.low_usage_threshold == 0.75
-    assert ht.bad_usage_threshold == 1.2
+    assert ht.tolerated_usage_threshold == 0.1
+    assert ht.bad_usage_threshold == 0.25
 
     assert ht.filter_mode is False
     assert ht.mode is None
@@ -459,8 +459,8 @@ def test_config():
     assert len(ht.show_list) == 2
     assert len(ht.ignore_list) == 2
 
-    assert ht.low_usage_threshold == 0.75
-    assert ht.bad_usage_threshold == 1.2
+    assert ht.tolerated_usage_threshold == 0.1
+    assert ht.bad_usage_threshold == 0.25
 
     assert ht.filter_mode is True
     assert ht.mode == "analysed-summary"
