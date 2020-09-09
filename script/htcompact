@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-import re
-import sys
-import os
-import getopt
+import configparser
 import datetime
+import getopt
 import logging
+import os
+import re
+import socket
+import sys
 from logging.handlers import RotatingFileHandler
 
-import socket
-import configparser
-import numpy as np
 import htcondor
+import numpy as np
 from htcondor import JobEventType as jet
 from rich import print as rprint
 from rich.progress import track, Progress
@@ -68,7 +68,8 @@ def initialize():
     option_longs = ["help", "version", "verbose", "mode=",
                     "std-log=", "std-err=", "std-out=",
                     "ignore=", "show-more=", "no-config", "to-csv",
-                    "generate-log-file", "filter=", "extend", "print-event-table",
+                    "generate-log-file", "filter=", "extend",
+                    "print-event-table",
                     "reverse-dns-lookup", "table-format="]
 
     # show more information, mostly given by HTCompact .err and .out files
@@ -201,10 +202,11 @@ def remove_files_from_args(args: list, short_opts: str, long_opts: list):
                 arg = arg[1:]
                 is_long_arg = True
 
-             # skip the argument if getopt arguments are setable
+            # skip the argument if getopt arguments are setable
             if not is_long_arg:
                 for i, s_arg in enumerate(short_opts):
-                    if s_arg == arg and i < len(short_opts)-1 and short_opts[i+1] == ":":
+                    if s_arg == arg and i < len(short_opts) - 1 and short_opts[
+                        i + 1] == ":":
                         index += 1
                         break
             else:
@@ -269,7 +271,8 @@ def manage_prioritized_params(args: list):
     # print error messages
     except Exception as err:
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        rprint("[dark_olive_green1]Use '--help' or 'man htcompact' for help [/dark_olive_green1]")
+        rprint(
+            "[dark_olive_green1]Use '--help' or 'man htcompact' for help [/dark_olive_green1]")
         sys.exit(1)
 
 
@@ -324,8 +327,10 @@ def manage_params(args: list):
                 else:
                     raise_value_error("Invalid argument '" + arg + "'\n"
                                                                    "Valid arguments:\n" +
-                                      ", ".join("'{}' or '{}'".format(key, value)
-                                                for key, value in allowed_modes.items()))
+                                      ", ".join(
+                                          "'{}' or '{}'".format(key, value)
+                                          for key, value in
+                                          allowed_modes.items()))
 
                 logging.debug("Starting the: " + mode + " mode")
 
@@ -362,10 +367,12 @@ def manage_params(args: list):
                     if keyword in allowed_show_values:
                         show_list.append(keyword)
                     else:
-                        raise_value_error("Invalid argument '" + keyword + "'\n"
-                                                                           "Valid arguments:\n" + ", ".join(
-                            allowed_show_values))
-                logging.debug("Show these information: " + ", ".join(show_list))
+                        raise_value_error(
+                            "Invalid argument '" + keyword + "'\n"
+                                                             "Valid arguments:\n" + ", ".join(
+                                allowed_show_values))
+                logging.debug(
+                    "Show these information: " + ", ".join(show_list))
 
             # all variables to ignore unwanted information
             elif opt.__eq__("--ignore"):
@@ -374,10 +381,12 @@ def manage_params(args: list):
                     if keyword in allowed_ignore_values:
                         ignore_list.append(keyword)
                     else:
-                        raise_value_error("Invalid argument '" + keyword + "'\n"
-                                                                           "Valid arguments:\n" + ", ".join(
-                            allowed_ignore_values))
-                logging.debug("Ignore these information: " + ", ".join(ignore_list))
+                        raise_value_error(
+                            "Invalid argument '" + keyword + "'\n"
+                                                             "Valid arguments:\n" + ", ".join(
+                                allowed_ignore_values))
+                logging.debug(
+                    "Ignore these information: " + ", ".join(ignore_list))
 
             elif opt.__eq__("--to-csv"):
                 to_csv = True
@@ -411,9 +420,11 @@ def manage_params(args: list):
                 sys.exit(0)
     # print error messages
     except Exception as err:
-        logging.exception(err)  # write a detailed description in the stdout.log file
+        logging.exception(
+            err)  # write a detailed description in the stdout.log file
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        rprint("[dark_olive_green1]Use '--help' or 'man htcompact' for help [/dark_olive_green1]")
+        rprint(
+            "[dark_olive_green1]Use '--help' or 'man htcompact' for help [/dark_olive_green1]")
         sys.exit(1)
 
     if summarizer_mode and analyser_mode:
@@ -688,7 +699,7 @@ def get_event_information(event_id="") -> str:
     event_id = int(event_id)
     if 0 <= event_id <= 34:
         for key, value in events[event_id].items():
-            out_str += str(key)+ ": " + str(value)
+            out_str += str(key) + ": " + str(value)
         return out_str
     else:
         return "This event number does not exist, Valid event numbers range from 0 to 34"
@@ -740,17 +751,20 @@ def gen_time_dict(
     if termination_date is None:
         if submission_date and submission_date > today:
             running_over_neyear = True
-            submission_date = submission_date.replace(year=submission_date.year-1)
+            submission_date = submission_date.replace(
+                year=submission_date.year - 1)
         if execution_date and execution_date > today:
             running_over_neyear = True
-            execution_date = execution_date.replace(year=execution_date.year-1)
+            execution_date = execution_date.replace(
+                year=execution_date.year - 1)
 
     if execution_date and submission_date:
         execution_date = execution_date
         # new year ?
         if submission_date > execution_date:
             running_over_neyear = True
-            submission_date = submission_date.replace(year=submission_date.year - 1)
+            submission_date = submission_date.replace(
+                year=submission_date.year - 1)
         waiting_time = execution_date - submission_date
     if termination_date:
         if waiting_time:
@@ -759,13 +773,15 @@ def gen_time_dict(
             # new year ?
             if execution_date > termination_date:
                 running_over_neyear = True
-                execution_date = execution_date.replace(year=execution_date.year - 1)
+                execution_date = execution_date.replace(
+                    year=execution_date.year - 1)
             runtime = termination_date - execution_date
         if submission_date:
             # new year ?
             if submission_date > termination_date:
                 running_over_neyear = True
-                submission_date = submission_date.replace(year=submission_date.year - 1)
+                submission_date = submission_date.replace(
+                    year=submission_date.year - 1)
             total_time = termination_date - submission_date
     # Process still running
     elif waiting_time:
@@ -846,11 +862,13 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
         for event in jel.events(sec):
             event_type_number = event.get('EventTypeNumber')
             # convert time to datetime object
-            date = datetime.datetime.strptime(event.get('EventTime'), "%Y-%m-%dT%H:%M:%S")
+            date = datetime.datetime.strptime(event.get('EventTime'),
+                                              "%Y-%m-%dT%H:%M:%S")
             if event.type == jet.SUBMIT:
                 time_dict["Submission date"] = date
 
-                match_from_host = re.match(r"<(.+):[0-9]+\?(.*)>", event.get('SubmitHost'))
+                match_from_host = re.match(r"<(.+):[0-9]+\?(.*)>",
+                                           event.get('SubmitHost'))
                 if match_from_host:
                     submitted_host = match_from_host[1]
                     job_events.append(('Submitted from', submitted_host))
@@ -858,14 +876,18 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 else:
                     invalid_file = True
                     reason = "Can't read user address"
-                    occurred_errors.append([event_type_number, "Now", "invalid user address", reason])
+                    occurred_errors.append(
+                        [event_type_number, "Now", "invalid user address",
+                         reason])
                     job_events.append(('Submitted from', "invalid user"))
-                    raise_value_error("Submission Host is wrong in file: " + file)
+                    raise_value_error(
+                        "Submission Host is wrong in file: " + file)
 
             if event.type == jet.EXECUTE:
                 time_dict["Execution date"] = date
 
-                match_to_host = re.match(r"<(.+):[0-9]+\?(.*)>", event.get('ExecuteHost'))
+                match_to_host = re.match(r"<(.+):[0-9]+\?(.*)>",
+                                         event.get('ExecuteHost'))
                 if match_to_host:
                     execution_host = match_to_host[1]
                     if reverse_dns_lookup:  # resolve ip to dns if set
@@ -876,46 +898,68 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 else:
                     invalid_file = True
                     reason = "Can't read host address"
-                    occurred_errors.append([event_type_number, "Now", "invalid host address", reason])
+                    occurred_errors.append(
+                        [event_type_number, "Now", "invalid host address",
+                         reason])
                     job_events.append(('Executing on', "invalid host"))
-                    raise_value_error("Execution host address is wrong in file: " + file)
+                    raise_value_error(
+                        "Execution host address is wrong in file: " + file)
 
             if event.type == jet.IMAGE_SIZE:
                 size_update = event.get('Size')
                 memory_usage = event.get('MemoryUsage')
                 resident_set_size = event.get('ResidentSetSize')
-                ram_history.append((date, size_update, memory_usage, resident_set_size))  # append to ram_history list
+                ram_history.append((date, size_update, memory_usage,
+                                    resident_set_size))  # append to ram_history list
 
             if event.type == jet.JOB_TERMINATED:
                 has_terminated = True
                 time_dict["Termination date"] = date
 
                 # get all resources, replace by np.nan if value is None
-                cpu_usage = event.get('CpusUsage') if event.get('CpusUsage') is not None else np.nan
-                cpu_requested = event.get('RequestCpus') if event.get('RequestCpus') is not None else np.nan
-                cpu_allocated = event.get('Cpus') if event.get('Cpus') is not None else np.nan
-                disk_usage = event.get('DiskUsage') if event.get('DiskUsage') is not None else np.nan
-                disk_requested = event.get('RequestDisk') if event.get('RequestDisk') is not None else np.nan
-                disk_allocated = event.get("Disk") if event.get('Disk') is not None else np.nan
-                memory_usage = event.get('MemoryUsage') if event.get('MemoryUSage') is not None else np.nan
-                memory_requested = event.get('RequestMemory') if event.get('RequestMemory') is not None else np.nan
-                memory_allocated = event.get('Memory') if event.get('Memory') is not None else np.nan
+                cpu_usage = event.get('CpusUsage') if event.get(
+                    'CpusUsage') is not None else np.nan
+                cpu_requested = event.get('RequestCpus') if event.get(
+                    'RequestCpus') is not None else np.nan
+                cpu_allocated = event.get('Cpus') if event.get(
+                    'Cpus') is not None else np.nan
+                disk_usage = event.get('DiskUsage') if event.get(
+                    'DiskUsage') is not None else np.nan
+                disk_requested = event.get('RequestDisk') if event.get(
+                    'RequestDisk') is not None else np.nan
+                disk_allocated = event.get("Disk") if event.get(
+                    'Disk') is not None else np.nan
+                memory_usage = event.get('MemoryUsage') if event.get(
+                    'MemoryUSage') is not None else np.nan
+                memory_requested = event.get('RequestMemory') if event.get(
+                    'RequestMemory') is not None else np.nan
+                memory_allocated = event.get('Memory') if event.get(
+                    'Memory') is not None else np.nan
 
                 # put the data in the dict
                 res_dict = {
                     "Resources": ["Cpu", "Disk", "Memory"],
-                    "Usage": np.array([cpu_usage, disk_usage, memory_usage], dtype=float),
-                    "Requested": np.array([cpu_requested, disk_requested, memory_requested], dtype=float),
-                    "Allocated": np.array([cpu_allocated, disk_allocated, memory_allocated], dtype=float)
+                    "Usage": np.array([cpu_usage, disk_usage, memory_usage],
+                                      dtype=float),
+                    "Requested": np.array(
+                        [cpu_requested, disk_requested, memory_requested],
+                        dtype=float),
+                    "Allocated": np.array(
+                        [cpu_allocated, disk_allocated, memory_allocated],
+                        dtype=float)
                 }
                 normal_termination = event.get('TerminatedNormally')
                 # differentiate between normal and abnormal termination
                 if normal_termination:
-                    job_events.insert(0, ("Termination State", colors['green'] + "Normal" + colors['back_to_default']))
+                    job_events.insert(0, ("Termination State",
+                                          colors['green'] + "Normal" + colors[
+                                              'back_to_default']))
                     return_value = event.get('ReturnValue')
                     job_events.append(("Return Value", return_value))
                 else:
-                    job_events.insert(0, ("Termination State", colors['red'] + "Abnormal" + colors['back_to_default']))
+                    job_events.insert(0, ("Termination State",
+                                          colors['red'] + "Abnormal" + colors[
+                                              'back_to_default']))
                     signal = event.get('TerminatedBySignal')
                     job_events.append(("Terminated by Signal", signal))
 
@@ -924,17 +968,25 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 time_dict["Termination date"] = date
 
                 reason = event.get('Reason')
-                occurred_errors.append([event_type_number, date.strftime("%m/%d %H:%M:%S"), "Aborted", reason])
-                job_events.insert(0, ("Process was", colors['red'] + "Aborted" + colors['back_to_default']))
+                occurred_errors.append(
+                    [event_type_number, date.strftime("%m/%d %H:%M:%S"),
+                     "Aborted", reason])
+                job_events.insert(0, ("Process was",
+                                      colors['red'] + "Aborted" + colors[
+                                          'back_to_default']))
 
             # now filter all known errors
             if event.type == jet.JOB_HELD:
                 reason = event.get('HoldReason')
-                occurred_errors.append([event_type_number, date.strftime("%m/%d %H:%M:%S"), "JOB_HELD", reason])
+                occurred_errors.append(
+                    [event_type_number, date.strftime("%m/%d %H:%M:%S"),
+                     "JOB_HELD", reason])
 
             if event.type == jet.SHADOW_EXCEPTION:
                 reason = event.get('Message')
-                occurred_errors.append((event_type_number, date.strftime("%m/%d %H:%M:%S"), "SHADOW_EXCEPTION", reason))
+                occurred_errors.append((event_type_number,
+                                        date.strftime("%m/%d %H:%M:%S"),
+                                        "SHADOW_EXCEPTION", reason))
         else:
             # End of the file
             pass
@@ -962,18 +1014,22 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
     # Job still running and file valid
     if not invalid_file and not has_terminated:
         if "Total runtime" in better_time_dict["Dates and times"]:
-            rprint("[red]This is not supposed to happen, check your code[/red]")
+            rprint(
+                "[red]This is not supposed to happen, check your code[/red]")
         elif "Execution runtime" in better_time_dict["Dates and times"]:
             state = "Executing"
         elif "Waiting time" in better_time_dict["Dates and times"]:
             state = "Waiting"
         else:
             pass
-        job_events.insert(0, ("Process is", colors["blue"] + state + colors["back_to_default"]))
+        job_events.insert(0, (
+        "Process is", colors["blue"] + state + colors["back_to_default"]))
     # file not fully readable
     elif invalid_file:
         better_time_dict = dict()  # times should not be returned, because they will make no sense
-        job_events.insert(0, ("Error", colors["red"] + "Error while reading" + colors["back_to_default"]))
+        job_events.insert(0, ("Error",
+                              colors["red"] + "Error while reading" + colors[
+                                  "back_to_default"]))
 
     job_events_dict = dict()
     error_dict = dict()
@@ -996,7 +1052,8 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 split = int(len(tmp_reason) / 2)
                 while tmp_reason[split] != ' ' and split < len(tmp_reason) - 1:
                     split += 1
-                if split > len(tmp_reason) - 2:  # if no space was found, change back to normal
+                if split > len(
+                        tmp_reason) - 2:  # if no space was found, change back to normal
                     split = int(len(tmp_reason) / 2)
                 reasons[i] = tmp_reason[0:split] + '\n' + tmp_reason[split:]
         error_dict = {
@@ -1032,7 +1089,8 @@ def read_condor_error(file: str) -> str:
 
     """
     if not file.endswith(std_err):
-        raise NameError("The read_condor_error method is only for " + std_err + " files")
+        raise NameError(
+            "The read_condor_error method is only for " + std_err + " files")
 
     try:
         err_file = open(file)
@@ -1057,7 +1115,8 @@ def read_condor_output(file: str) -> str:
 
         """
     if not file.endswith(std_out):
-        raise NameError("The read_condor_output method is only for " + std_out + " files")
+        raise NameError(
+            "The read_condor_output method is only for " + std_out + " files")
     try:
         out_file = open(file)
     except FileNotFoundError as err:
@@ -1077,7 +1136,8 @@ def gethostbyaddr(ip):
             return store_dns_lookups[ip]
         # else lookup
         reversed_dns = socket.gethostbyaddr(ip)
-        logging.debug('Lookup successful ' + ip + ' resolved as: ' + reversed_dns[0])
+        logging.debug(
+            'Lookup successful ' + ip + ' resolved as: ' + reversed_dns[0])
         # store
         store_dns_lookups[ip] = reversed_dns[0]
         # return
@@ -1099,23 +1159,28 @@ def manage_thresholds(resources: dict) -> dict:
     :return:
     """
 
-    resources.update(Usage=list(resources["Usage"]))  # change to list, to avoid numpy type errors
+    resources.update(Usage=list(
+        resources["Usage"]))  # change to list, to avoid numpy type errors
     for i in range(len(resources['Resources'])):
         # thresholds used vs. requested
         if float(resources['Requested'][i]) != 0:
 
-            deviation = float(resources['Usage'][i]) / float(resources['Requested'][i])
+            deviation = float(resources['Usage'][i]) / float(
+                resources['Requested'][i])
 
             # color red if more than bad_usage_thresholds % away from the requested value
-            if deviation >= 1+bad_usage_threshold or deviation <= 1-bad_usage_threshold:
-                resources['Usage'][i] = colors['red'] + str(resources['Usage'][i]) + colors['back_to_default']
+            if deviation >= 1 + bad_usage_threshold or deviation <= 1 - bad_usage_threshold:
+                resources['Usage'][i] = colors['red'] + str(
+                    resources['Usage'][i]) + colors['back_to_default']
 
             # color yellow if more than low_usage_threhold % away from requested value
-            elif deviation >= 1+tolerated_usage_threshold or deviation <= 1-tolerated_usage_threshold:
-                resources['Usage'][i] = colors['yellow'] + str(resources['Usage'][i]) + colors['back_to_default']
+            elif deviation >= 1 + tolerated_usage_threshold or deviation <= 1 - tolerated_usage_threshold:
+                resources['Usage'][i] = colors['yellow'] + str(
+                    resources['Usage'][i]) + colors['back_to_default']
             # else it's okay, color green
             else:
-                resources['Usage'][i] = colors['green'] + str(resources['Usage'][i]) + colors['back_to_default']
+                resources['Usage'][i] = colors['green'] + str(
+                    resources['Usage'][i]) + colors['back_to_default']
 
     return resources
 
@@ -1142,18 +1207,22 @@ def show_htcondor_stderr(file: str) -> str:
         for line in error_content.split("\n"):
             if 'std-err' in show_list:
                 if "err" in line.lower():
-                    output_string += colors['red'] + line + colors['back_to_default'] + "\n"
+                    output_string += colors['red'] + line + colors[
+                        'back_to_default'] + "\n"
                 elif "warn" in line.lower():
-                    output_string += colors['yellow'] + line + colors['back_to_default'] + "\n"
+                    output_string += colors['yellow'] + line + colors[
+                        'back_to_default'] + "\n"
 
     except NameError as err:
         logging.exception(err)
-        rprint("[red]The smart_output_error method requires a " + std_err + " file as parameter[/red]")
+        rprint(
+            "[red]The smart_output_error method requires a " + std_err + " file as parameter[/red]")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
         match = re.match(r".*?([0-9]{3,}_[0-9]+)" + std_err, relevant[1])
-        rprint(f"[yellow]There is no related {std_err} file: {relevant[1]} in the directory:\n[/yellow]"
-               f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
+        rprint(
+            f"[yellow]There is no related {std_err} file: {relevant[1]} in the directory:\n[/yellow]"
+            f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
     except TypeError as err:
         logging.exception(err)
         # we continue here no exit needed
@@ -1182,12 +1251,14 @@ def show_htcondor_stdout(file: str) -> str:
         output_string += output_content
     except NameError as err:
         logging.exception(err)
-        rprint("[red]The smart_output_output method requires a " + std_out + " file as parameter[/red]")
+        rprint(
+            "[red]The smart_output_output method requires a " + std_out + " file as parameter[/red]")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
         match = re.match(r".*?([0-9]{3,}_[0-9]+)" + std_out, relevant[1])
-        rprint(f"[yellow]There is no related {std_out} file: {relevant[1]} in the directory:\n[/yellow]"
-               f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
+        rprint(
+            f"[yellow]There is no related {std_out} file: {relevant[1]} in the directory:\n[/yellow]"
+            f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
     except TypeError as err:
         logging.exception(err)
         # we continue here no exit needed
@@ -1245,7 +1316,8 @@ def customize_log(file: str) -> dict:
 
     except NameError as err:
         logging.exception(err)
-        rprint(f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
+        rprint(
+            f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
     except ValueError as err:
         logging.exception(err)
         rprint(f"[red]{err}[/red]")
@@ -1299,7 +1371,8 @@ def find_config(args: list) -> (str, list):
             if os.path.isfile(file) and config.read(file):
                 # only use the file if given, means the default config should be ignored,
                 # even if it's in cwd, this will exclude misbehaviour, when cwd is changed
-                if not (file.__eq__(default_configfile) and i == len(arguments) - 1):
+                if not (file.__eq__(default_configfile) and i == len(
+                        arguments) - 1):
                     found_config = True
                     arguments.remove(file)
                 else:
@@ -1308,7 +1381,8 @@ def find_config(args: list) -> (str, list):
                 found_config_file = file
 
             # try to find the config file in the current environment hierarchy
-            elif os.path.isfile(f"{sys.prefix}/config/{file}") and config.read(f"{sys.prefix}/config/{file}"):
+            elif os.path.isfile(f"{sys.prefix}/config/{file}") and config.read(
+                    f"{sys.prefix}/config/{file}"):
                 found_config = True
                 arguments.remove(file)
                 found_config_file = f"{sys.prefix}/config/{file}"  # remember the file
@@ -1321,13 +1395,15 @@ def find_config(args: list) -> (str, list):
                 found_config_file = f"~/.config/{script_name}/{file}"  # remember the file
 
             # try to find config file in /etc
-            elif os.path.isfile(f"/etc/{file}") and config.read(f"/etc/{file}"):
+            elif os.path.isfile(f"/etc/{file}") and config.read(
+                    f"/etc/{file}"):
                 found_config = True
                 arguments.remove(file)
                 found_config_file = f"/etc/{file}"  # remember the file
 
             else:
-                logging.debug(f"{file} not found or is not a valid config file")
+                logging.debug(
+                    f"{file} not found or is not a valid config file")
 
             # do not search any longer if found
             if found_config:
@@ -1340,7 +1416,8 @@ def find_config(args: list) -> (str, list):
             rprint(f"[red]{err}[/red]")
 
     try:
-        arguments.remove(default_configfile)  # remove again, if other config file was found
+        arguments.remove(
+            default_configfile)  # remove again, if other config file was found
     except ValueError:
         pass
 
@@ -1354,10 +1431,11 @@ def find_config(args: list) -> (str, list):
                f"-> using default settings[/yellow]")
         return None, args
     elif found_default_in_cwd:
-        rprint(f"[yellow]Found default {default_configfile} in the current working directory.\n"
-               f"It will be ignore, to use this, make sure to pass it as an argument like:\n"
-               f"htcompact {default_configfile} [logs] [options]\n"
-               f"-> using default settings[/yellow]")
+        rprint(
+            f"[yellow]Found default {default_configfile} in the current working directory.\n"
+            f"It will be ignore, to use this, make sure to pass it as an argument like:\n"
+            f"htcompact {default_configfile} [logs] [options]\n"
+            f"-> using default settings[/yellow]")
         return None, args
 
     config.read(found_config_file)
@@ -1367,7 +1445,8 @@ def find_config(args: list) -> (str, list):
         if 'generate_log_file' in config['features']:
             global generate_log_file
             if not generate_log_file:  # if already set, do NOT overwrite
-                generate_log_file = config['features']['generate_log_file'].lower() in accepted_states
+                generate_log_file = config['features'][
+                                        'generate_log_file'].lower() in accepted_states
                 logging.getLogger().disabled = not generate_log_file
 
     return found_config_file, arguments
@@ -1400,7 +1479,8 @@ def load_config(config_file: str):
             global table_format
             if 'table_format' in config['formats']:
                 table_format = config['formats']['table_format']
-                logging.debug(f"Changed default table_format to: {table_format}")
+                logging.debug(
+                    f"Changed default table_format to: {table_format}")
 
         # all basic HTCondor file endings like .log, .err, .out
         if 'htc-files' in sections:
@@ -1408,53 +1488,65 @@ def load_config(config_file: str):
 
             if 'stdlog' in config['htc-files']:
                 std_log = config['htc-files']['stdlog']
-                logging.debug(f"Changed default for HTCondor .log files to: {std_log}")
+                logging.debug(
+                    f"Changed default for HTCondor .log files to: {std_log}")
 
             if 'stderr' in config['htc-files']:
                 std_err = config['htc-files']['stderr']
-                logging.debug(f"Changed default for HTCondor .err files to: {std_err}")
+                logging.debug(
+                    f"Changed default for HTCondor .err files to: {std_err}")
 
             if 'stdout' in config['htc-files']:
                 std_out = config['htc-files']['stdout']
-                logging.debug(f"Changed default for HTCondor .out files to: {std_out}")
+                logging.debug(
+                    f"Changed default for HTCondor .out files to: {std_out}")
 
         # if show variables are set for further output
         if 'show-more' in sections:
             global show_list
 
             if 'show_list' in config['show-more']:
-                for arg in " ".join(re.split(',| ', config['show-more']['show_list'])).split():
+                for arg in " ".join(re.split(',| ', config['show-more'][
+                    'show_list'])).split():
                     if arg in allowed_show_values:
                         show_list.append(arg)
                     else:
-                        logging.debug("Don't know this ignore statement: " + arg)
-                logging.debug(f"Changed default ignore statements to: {show_list}")
+                        logging.debug(
+                            "Don't know this ignore statement: " + arg)
+                logging.debug(
+                    f"Changed default ignore statements to: {show_list}")
 
         # what information should to be ignored
         if 'ignore' in sections:
             global ignore_list  # sources to ignore
 
             if 'ignore_list' in config['ignore']:
-                for arg in " ".join(re.split(',| ', config['ignore']['ignore_list'])).split():
+                for arg in " ".join(re.split(',| ', config['ignore'][
+                    'ignore_list'])).split():
                     if arg in allowed_ignore_values:
                         ignore_list.append(arg)
                     else:
                         logging.debug("Don't know this show statement: " + arg)
-                logging.debug(f"Changed default show-more statements to: {ignore_list}")
+                logging.debug(
+                    f"Changed default show-more statements to: {ignore_list}")
 
         if 'thresholds' in sections:
             global tolerated_usage_threshold, bad_usage_threshold
             if 'tolerated_usage' in config['thresholds']:
-                tolerated_usage_threshold = float(config['thresholds']['tolerated_usage'])
-                logging.debug(f"Changed default tolerated_usage to: {tolerated_usage_threshold}")
+                tolerated_usage_threshold = float(
+                    config['thresholds']['tolerated_usage'])
+                logging.debug(
+                    f"Changed default tolerated_usage to: {tolerated_usage_threshold}")
             if 'bad_usage' in config['thresholds']:
                 bad_usage_threshold = float(config['thresholds']['bad_usage'])
-                logging.debug(f"Changed default bad_usage to: {bad_usage_threshold}")
+                logging.debug(
+                    f"Changed default bad_usage to: {bad_usage_threshold}")
 
         if "modes" in sections:
             global filter_mode, mode
             if 'filter_mode' in config['modes']:
-                filter_mode = config['modes']['filter_mode'].lower() in accepted_states
+                filter_mode = config['modes'][
+                                  'filter_mode'].lower() in accepted_states
                 logging.debug(f"Changed filter_mode to: {filter_mode}")
 
             if 'mode' in config['modes']:
@@ -1470,22 +1562,29 @@ def load_config(config_file: str):
         if "filter" in sections:
             global filter_keywords, filter_extended
             if 'filter_keywords' in config['filter']:
-                filter_keywords = " ".join(re.split(',| ', config['filter']['filter_keywords'])).split()
-                logging.debug(f"Changed default filter_keywords to: {filter_keywords}")
+                filter_keywords = " ".join(re.split(',| ', config['filter'][
+                    'filter_keywords'])).split()
+                logging.debug(
+                    f"Changed default filter_keywords to: {filter_keywords}")
             if 'filter_extended' in config['filter']:
-                filter_extended = config['filter']['filter_extended'].lower() in accepted_states
-                logging.debug(f"Changed default filter_extended to: {filter_extended}")
+                filter_extended = config['filter'][
+                                      'filter_extended'].lower() in accepted_states
+                logging.debug(
+                    f"Changed default filter_extended to: {filter_extended}")
 
         if 'features' in sections:
             global reverse_dns_lookup, to_csv  # extra parameters
             # the first thing to check should be if logging is turend on
 
             if 'reverse_dns_lookup' in config['features']:
-                reverse_dns_lookup = config['features']['reverse_dns_lookup'].lower() in accepted_states
-                logging.debug(f"Changed default reverse_dns_lookup to: {reverse_dns_lookup}")
+                reverse_dns_lookup = config['features'][
+                                         'reverse_dns_lookup'].lower() in accepted_states
+                logging.debug(
+                    f"Changed default reverse_dns_lookup to: {reverse_dns_lookup}")
 
             if 'to_csv' in config['features']:
-                to_csv = config['features']['to_csv'].lower() in accepted_states
+                to_csv = config['features'][
+                             'to_csv'].lower() in accepted_states
                 logging.debug(f"Changed default to_csv to: {to_csv}")
 
         return True
@@ -1530,7 +1629,8 @@ def default(log_files: list_of_logs) -> log_inf_list:
     for file in track(log_files, transient=True, description="Processing..."):
 
         # for the * operation it should skip std_err and std_out files
-        if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(std_out) and not std_out.__eq__(""):
+        if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(
+                std_out) and not std_out.__eq__(""):
             continue
 
         # else check if file is a valid file
@@ -1541,12 +1641,14 @@ def default(log_files: list_of_logs) -> log_inf_list:
         elif not file.endswith(std_log):
             new_path = file + std_log
             # is this now a valid file ?
-            if os.path.isfile(new_path) or os.path.isfile(current_path + "/" + new_path):
+            if os.path.isfile(new_path) or os.path.isfile(
+                    current_path + "/" + new_path):
                 list_of_dicts.append(customize_log(new_path))
             # no file or directory found, even after manipulating the string
             else:
                 logging.error(f"No such file with that name or prefix: {file}")
-                rprint(f"[red]No such file with that name or prefix: {file}[/red]")
+                rprint(
+                    f"[red]No such file with that name or prefix: {file}[/red]")
 
         # The given .log file was not found
         else:
@@ -1554,7 +1656,9 @@ def default(log_files: list_of_logs) -> log_inf_list:
             rprint(f"[red]No such file: {file}[/red]")
 
     if len(list_of_dicts) == 0:
-        rprint("[yellow]Nothing found, please use \"man htcompact\" or \"htcompact -h\" for help[/yellow]", end="")
+        rprint(
+            "[yellow]Nothing found, please use \"man htcompact\" or \"htcompact -h\" for help[/yellow]",
+            end="")
 
     return list_of_dicts
 
@@ -1565,8 +1669,9 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
     if len(log_files) == 0:
         return "No files to analyse"
     elif len(log_files) > 1 and not redirecting_output:
-        print("More than one file is given, this mode is meant to be used for single job analysis.\n"
-              "This will change nothing, but you should rather do it just for a file one by one")
+        print(
+            "More than one file is given, this mode is meant to be used for single job analysis.\n"
+            "This will change nothing, but you should rather do it just for a file one by one")
         if not reading_stdin:
             x = input("Want to continue (y/n): ")
             if x != "y":
@@ -1579,9 +1684,11 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
         result_dict = dict()
 
         logging.debug(f"Analysing the HTCondor log file: {file}")
-        result_dict["file-description"] = f"{colors['green']}Job analysis of: {file}{colors['back_to_default']}"
+        result_dict[
+            "file-description"] = f"{colors['green']}Job analysis of: {file}{colors['back_to_default']}"
 
-        job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(file)
+        job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(
+            file)
 
         if len(job_dict) != 0:
             result_dict["execution-details"] = job_dict
@@ -1683,7 +1790,8 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
                        f"it will be ignored for this summation[/orange3]")
                 continue
             elif len(job_dict) == 0:
-                logging.error("if this even get's printed out, more work is needed")
+                logging.error(
+                    "if this even get's printed out, more work is needed")
                 rprint(f"[orange3]Process of {file} is strange, \n"
                        f"don't know how to handle this yet[/orange3]")
                 other_exception += 1
@@ -1716,7 +1824,8 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     n = valid_files - aborted_files - still_running - other_exception - error_reading_files
 
     average_runtime = normal_runtime / n if n != 0 else normal_runtime
-    average_runtime = datetime.timedelta(days=average_runtime.days, seconds=average_runtime.seconds)
+    average_runtime = datetime.timedelta(days=average_runtime.days,
+                                         seconds=average_runtime.seconds)
 
     exec_dict = {
         "Job types": ["normal executed jobs"],
@@ -1766,7 +1875,8 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
     if n != 0:  # do nothing, if all valid jobs were aborted
 
         average_dict = {
-            "Resources": ['Average Cpu', 'Average Disk (KB)', 'Average Memory (MB)'],
+            "Resources": ['Average Cpu', 'Average Disk (KB)',
+                          'Average Memory (MB)'],
             "Usage": np.round(total_usages / n, 4),
             "Requested": np.round(total_requested / n, 2),
             "Allocated": np.round(total_allocated / n, 2)
@@ -1784,7 +1894,9 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
         for val in host_nodes.values():
             executed_jobs.append(val[0])
             average_job_duration = val[1] / val[0]
-            runtime_per_node.append(datetime.timedelta(average_job_duration.days, average_job_duration.seconds))
+            runtime_per_node.append(
+                datetime.timedelta(average_job_duration.days,
+                                   average_job_duration.seconds))
 
         cpu_dict = {
             "Host Nodes": list(host_nodes.keys()),
@@ -1822,7 +1934,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
     for file in track(log_files, transient=True, description="Summarizing..."):
 
-        job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(file)
+        job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(
+            file)
 
         if len(occurred_errors) > 0:
             create_file_list = list()
@@ -1830,7 +1943,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 create_file_list.append(file)
             occurred_errors['File'] = create_file_list
 
-        refactor_job_dict = dict(zip(job_dict["Execution details"], job_dict["Values"]))
+        refactor_job_dict = dict(
+            zip(job_dict["Execution details"], job_dict["Values"]))
         job_keys = list(refactor_job_dict.keys())
         if "Executing on" in job_keys:
             to_host = refactor_job_dict["Executing on"]
@@ -1840,7 +1954,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         # if time dict exists
         time_keys = list()
         if time_dict:
-            refactor_time_dict = dict(zip(time_dict["Dates and times"], time_dict["Values"]))
+            refactor_time_dict = dict(
+                zip(time_dict["Dates and times"], time_dict["Values"]))
             time_keys = list(refactor_time_dict.keys())
         if "Waiting time" in time_keys:
             waiting_time = refactor_time_dict["Waiting time"]
@@ -1866,42 +1981,56 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 # add errors
                 if len(occurred_errors) > 0:
                     for key in occurred_errors.keys():
-                        all_files[termination_type][6][key].extend(occurred_errors[key])
+                        all_files[termination_type][6][key].extend(
+                            occurred_errors[key])
 
                 if not len(all_files[termination_type][4]) == 0:
                     # add usages
 
-                    all_files[termination_type][4]["Usage"] += np.nan_to_num(res_dict["Usage"])
+                    all_files[termination_type][4]["Usage"] += np.nan_to_num(
+                        res_dict["Usage"])
                     # add requested
-                    all_files[termination_type][4]["Requested"] += np.nan_to_num(res_dict["Requested"])
+                    all_files[termination_type][4][
+                        "Requested"] += np.nan_to_num(res_dict["Requested"])
                     # allocated
-                    all_files[termination_type][4]["Allocated"] += np.nan_to_num(res_dict["Allocated"])
+                    all_files[termination_type][4][
+                        "Allocated"] += np.nan_to_num(res_dict["Allocated"])
 
                 # add cpu
                 if to_host != "":
                     # cpu known ???
                     if to_host in all_files[termination_type][5].keys():
                         all_files[termination_type][5][to_host][0] += 1
-                        all_files[termination_type][5][to_host][1] += total_time
+                        all_files[termination_type][5][to_host][
+                            1] += total_time
                     else:
-                        all_files[termination_type][5][to_host] = [1, total_time]
+                        all_files[termination_type][5][to_host] = [1,
+                                                                   total_time]
                 elif "Submitted from" in job_dict["Execution details"]:
                     # other waiting jobs ???
-                    if 'Waiting for execution' in all_files[termination_type][5].keys():
-                        all_files[termination_type][5]['Waiting for execution'][0] += 1
-                        all_files[termination_type][5]['Waiting for execution'][1] += total_time
+                    if 'Waiting for execution' in all_files[termination_type][
+                        5].keys():
+                        all_files[termination_type][5][
+                            'Waiting for execution'][0] += 1
+                        all_files[termination_type][5][
+                            'Waiting for execution'][1] += total_time
                     else:
                         count_host_nodes = dict()
-                        count_host_nodes['Waiting for execution'] = [1, total_time]
+                        count_host_nodes['Waiting for execution'] = [1,
+                                                                     total_time]
                         all_files[termination_type][5] = count_host_nodes
                 else:
                     # other aborted before submission jobs ???
-                    if 'Aborted before submission' in all_files[termination_type][5].keys():
-                        all_files[termination_type][5]['Aborted before submission'][0] += 1
-                        all_files[termination_type][5]['Aborted before submission'][1] += total_time
+                    if 'Aborted before submission' in \
+                            all_files[termination_type][5].keys():
+                        all_files[termination_type][5][
+                            'Aborted before submission'][0] += 1
+                        all_files[termination_type][5][
+                            'Aborted before submission'][1] += total_time
                     else:
                         count_host_nodes = dict()
-                        count_host_nodes['Aborted before submission'] = [1, total_time]
+                        count_host_nodes['Aborted before submission'] = [1,
+                                                                         total_time]
                         all_files[termination_type][5] = count_host_nodes
 
             # else new entry
@@ -1918,16 +2047,21 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 # else aborted before submission ?
                 else:
                     count_host_nodes = dict()
-                    count_host_nodes['Aborted before submission'] = [1, total_time]
+                    count_host_nodes['Aborted before submission'] = [1,
+                                                                     total_time]
 
                 # convert nan values to 0
                 if len(res_dict) > 0:
                     res_dict["Usage"] = np.nan_to_num(res_dict["Usage"])
-                    res_dict["Requested"] = np.nan_to_num(res_dict["Requested"])
-                    res_dict["Allocated"] = np.nan_to_num(res_dict["Allocated"])
+                    res_dict["Requested"] = np.nan_to_num(
+                        res_dict["Requested"])
+                    res_dict["Allocated"] = np.nan_to_num(
+                        res_dict["Allocated"])
 
-                all_files[termination_type] = [1, waiting_time, runtime, total_time,
-                                               res_dict, count_host_nodes, occurred_errors]
+                all_files[termination_type] = [1, waiting_time, runtime,
+                                               total_time,
+                                               res_dict, count_host_nodes,
+                                               occurred_errors]
 
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
@@ -1967,7 +2101,9 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         times = np.array([term_info[1], term_info[2], term_info[3]])
         av_times = times / n
-        format_av_times = [datetime.timedelta(days=time.days, seconds=time.seconds) for time in av_times]
+        format_av_times = [
+            datetime.timedelta(days=time.days, seconds=time.seconds) for time
+            in av_times]
 
         time_dict = {
             "Times": ["Waiting time", "Runtime", "Total"],
@@ -1980,14 +2116,22 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         if not len(term_info[4]) == 0:
             total_resources_dict = term_info[4]
             avg_dict = {
-                'Resources': ['Average Cpu', ' Average Disk (KB)', 'Average Allocated'],
-                'Usage': np.round(np.array(total_resources_dict['Usage']) / term_info[0], 2).tolist(),
-                'Requested': np.round(np.array(total_resources_dict['Requested']) / term_info[0], 2).tolist(),
-                'Allocated': np.round(np.array(total_resources_dict['Allocated']) / term_info[0], 2).tolist()
+                'Resources': ['Average Cpu', ' Average Disk (KB)',
+                              'Average Allocated'],
+                'Usage': np.round(
+                    np.array(total_resources_dict['Usage']) / term_info[0],
+                    2).tolist(),
+                'Requested': np.round(
+                    np.array(total_resources_dict['Requested']) / term_info[0],
+                    2).tolist(),
+                'Allocated': np.round(
+                    np.array(total_resources_dict['Allocated']) / term_info[0],
+                    2).tolist()
             }
             if 'Assigned' in total_resources_dict.keys():
                 avg_dict['Resources'].append('Gpu')
-                avg_dict['Assigned'] = ['', '', '', ", ".join(list_of_gpu_names)]
+                avg_dict['Assigned'] = ['', '', '',
+                                        ", ".join(list_of_gpu_names)]
 
             avg_dict = manage_thresholds(avg_dict)
             result_dict["all-resources"] = avg_dict
@@ -1997,7 +2141,9 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         for val in term_info[5].values():
             executed_jobs.append(val[0])
             average_job_duration = val[1] / val[0]
-            runtime_per_node.append(datetime.timedelta(average_job_duration.days, average_job_duration.seconds))
+            runtime_per_node.append(
+                datetime.timedelta(average_job_duration.days,
+                                   average_job_duration.seconds))
 
         host_nodes_dict = {
             "Host Nodes": list(term_info[5].keys()),
@@ -2009,7 +2155,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         if len(term_info[6]) > 0:
             temp_err = term_info[6]
-            del temp_err["Reason"]  # remove reason, cause thats just too much information
+            del temp_err[
+                "Reason"]  # remove reason, cause thats just too much information
             result_dict["errors"] = temp_err
 
         result_list.append(result_dict)
@@ -2024,7 +2171,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
 
 # search in the files for the keywords
-def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf_list:
+def filter_for(log_files: list_of_logs, keywords: list,
+               extend=False) -> log_inf_list:
     """
     Filter for a list of keywords, which can be extended
     and print out every file which matches the pattern (not case sensitive)
@@ -2045,15 +2193,18 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
     if type(keywords) == list:
         keyword_list = keywords
     elif type(keywords) == str:
-        keyword_list = " ".join(re.split(',| ', keywords)).split()  # remove spaces and commas from string
+        keyword_list = " ".join(re.split(',| ',
+                                         keywords)).split()  # remove spaces and commas from string
     else:
-        logging.debug(f"Filter mode only accepts a string or list with keywords, not {keywords}")
+        logging.debug(
+            f"Filter mode only accepts a string or list with keywords, not {keywords}")
         raise_type_error("Expecting a list or a string")
 
     # if extend is set, keywords like err will also look for keywords like warn exception, aborted, etc.
     if extend:  # apply some rules
         # the error list
-        err_list = ["err", "warn", "exception", "aborted", "abortion", "abnormal", "fatal"]
+        err_list = ["err", "warn", "exception", "aborted", "abortion",
+                    "abnormal", "fatal"]
 
         # remove keyword if already in err_list
         for i in range(len(keyword_list)):
@@ -2062,7 +2213,9 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
 
         keyword_list.extend(err_list)  # extend search
 
-        rprint("[green]Keyword List was extended, now search for these keywords:[/green]", keyword_list)
+        rprint(
+            "[green]Keyword List was extended, now search for these keywords:[/green]",
+            keyword_list)
     else:
         rprint("[green]Search for these keywords:[/green]", keyword_list)
 
@@ -2103,7 +2256,8 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
         if mode.__eq__("default"):
             return_dicts = default(found_logs)
         elif mode.__eq__("analysed-summary"):
-            rprint("[magenta]Try to give an analysed summary for these files[/magenta]")
+            rprint(
+                "[magenta]Try to give an analysed summary for these files[/magenta]")
             return_dicts = analysed_summary(found_logs)
         elif mode.__eq__("summarize"):
             rprint("[magenta]Try to summarize these files[/magenta]")
@@ -2113,7 +2267,8 @@ def filter_for(log_files: list_of_logs, keywords: list, extend=False) -> log_inf
             return_dicts = analyse(found_logs)
     elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
         rprint("[blue]Want do do more?[/blue]")
-        x = input("default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
+        x = input(
+            "default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
         if x == "d":
             return_dicts = default(found_logs)
         elif x == "s":
@@ -2183,7 +2338,8 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
             # if path is a directory
             if working_dir_path.__ne__(""):
-                rprint(f"[light_coral]Search: {working_dir_path} for valid log files[/light_coral]")
+                rprint(
+                    f"[light_coral]Search: {working_dir_path} for valid log files[/light_coral]")
                 # run through all files and separate the files into log/error and output files
                 valid_dir_files = list()
                 file_dir = os.listdir(working_dir_path)
@@ -2193,7 +2349,8 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
                     # ---- if std_log is set ignore other log files with a different suffix ----
                     if std_log.__ne__("") and not file.endswith(std_log):
-                        logging.debug("Ignoring this file, " + file + ", because std_log is set to: " + std_log)
+                        logging.debug(
+                            "Ignoring this file, " + file + ", because std_log is set to: " + std_log)
                         continue
 
                     # ignore hidden files
@@ -2207,48 +2364,66 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
                     if os.path.isfile(file_path):
                         with open(file_path, "r") as read_file:
-                            if os.path.getsize(file_path) == 0:  # file is empty
+                            if os.path.getsize(
+                                    file_path) == 0:  # file is empty
                                 continue
 
-                            if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
+                            if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
+                                        read_file.readlines()[0]):
                                 # logging.debug(f"{read_file.name} is a valid HTCondor log file")
                                 valid_dir_files.append(file_path)
 
                     else:
-                        logging.debug(f"Found a subfolder: {working_dir_path}/{file}, it will be ignored")
-                        progress.console.print(f"[yellow]Found a subfolder: {working_dir_path}/{file},"
-                                               f" it will be ignored[/yellow]")
+                        logging.debug(
+                            f"Found a subfolder: {working_dir_path}/{file}"
+                            f", it will be ignored")
+                        progress.console.print(
+                            f"[yellow]Found a subfolder: {working_dir_path}/{file},"
+                            f" it will be ignored[/yellow]")
 
                 valid_files.extend(valid_dir_files)
-                rprint(f"[green]Found {len(valid_dir_files)} valid log files out of "
-                       f"{len(file_dir)} files[/green]\n")
+                rprint(
+                    f"[green]Found {len(valid_dir_files)} valid log files out of "
+                    f"{len(file_dir)} files[/green]\n")
             # else if path "might" be a valid HTCondor file
             elif working_file_path.__ne__(""):
                 progress.update(task, advance=1)
 
                 # ---- if std_log is set ignore other log files with a different suffix ----
-                if std_log.__ne__("") and not working_file_path.endswith(std_log):
+                if std_log.__ne__("") and not working_file_path.endswith(
+                        std_log):
                     logging.debug("Ignoring this file, " +
                                   working_file_path + ", because std_log is set to: " + std_log)
                     continue
 
-                if std_err.__ne__("") and working_file_path.endswith(std_err) or \
-                        std_out.__ne__("") and working_file_path.endswith(std_out):
-                    logging.debug(f"Only log files accepted, ignored this file: {working_file_path}")
+                if std_err.__ne__("") and working_file_path.endswith(
+                        std_err) or \
+                        std_out.__ne__("") and working_file_path.endswith(
+                    std_out):
+                    logging.debug(
+                        f"Only log files accepted, ignored this file: {working_file_path}")
                     continue
 
                 with open(working_file_path, "r") as read_file:
 
-                    if os.path.getsize(working_file_path) == 0:  # file is empty
-                        progress.console.print(f"[red]How dare you, the file is empty: {read_file.name} :([/red]")
+                    if os.path.getsize(
+                            working_file_path) == 0:  # file is empty
+                        progress.console.print(
+                            f"[red]How dare you, the file is empty:"
+                            f" {read_file.name} :([/red]")
 
-                    elif re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)", read_file.readlines()[0]):
-                        logging.debug(f"{read_file.name} is a valid HTCondor log file")
+                    elif re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
+                                  read_file.readlines()[0]):
+                        logging.debug(
+                            f"{read_file.name} is a valid HTCondor log file")
                         valid_files.append(working_file_path)
                     else:
-                        logging.debug(f"The given file {read_file.name} is not a valid HTCondor log file")
-                        progress.console.print(f"[yellow]The given file {read_file.name} "
-                                               f"is not a valid HTCondor log file[/yellow]", )
+                        logging.debug(
+                            f"The given file {read_file.name}"
+                            f" is not a valid HTCondor log file")
+                        progress.console.print(
+                            f"[yellow]The given file {read_file.name} "
+                            f"is not a valid HTCondor log file[/yellow]")
             else:
                 logging.error(f"The given file: {arg} does not exist")
                 rprint(f"[red]The given file: {arg} does not exist[/red]")
@@ -2285,7 +2460,8 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
         logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
         file_formatter = logging.Formatter(logging_file_format)
 
-        handler = RotatingFileHandler(log_file, maxBytes=1000000, backupCount=1)
+        handler = RotatingFileHandler(log_file, maxBytes=1000000,
+                                      backupCount=1)
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(file_formatter)
 
@@ -2341,14 +2517,17 @@ def customize_results(files: list_of_logs):
             if "execution-details" in ignore_list:
                 del mystery["execution-details"]
             else:
-                mystery["execution-details"] = tabulate(mystery["execution-details"],
-                                                        headers='keys', tablefmt=table_format)
+                mystery["execution-details"] = tabulate(
+                    mystery["execution-details"],
+                    headers='keys', tablefmt=table_format)
 
         if "times" in mystery:
             if "times" in ignore_list:
                 del mystery["times"]
             else:
-                mystery["times"] = tabulate(mystery["times"], showindex=False, headers='keys', tablefmt=table_format)
+                mystery["times"] = tabulate(mystery["times"], showindex=False,
+                                            headers='keys',
+                                            tablefmt=table_format)
 
         if "all-resources" in mystery:
             resources = mystery["all-resources"]
@@ -2362,7 +2541,8 @@ def customize_results(files: list_of_logs):
                 if "allocated-resources" in ignore_list:
                     del mystery["all-resources"]["Allocated"]
 
-                mystery["all-resources"] = tabulate(resources, showindex=False, headers='keys',
+                mystery["all-resources"] = tabulate(resources, showindex=False,
+                                                    headers='keys',
                                                     tablefmt=table_format)
 
         if "errors" in mystery:
@@ -2370,14 +2550,18 @@ def customize_results(files: list_of_logs):
                 del mystery["errors"]
             else:
                 mystery["errors"] = "Occurred errors: \n" + \
-                                    tabulate(mystery["errors"], showindex=False, headers='keys', tablefmt='grid')
+                                    tabulate(mystery["errors"],
+                                             showindex=False, headers='keys',
+                                             tablefmt='grid')
 
         if "host-nodes" in mystery:
             if "host-nodes" in ignore_list:
                 del mystery["host-nodes"]
             else:
-                mystery["host-nodes"] = tabulate(mystery["host-nodes"], showindex=False,
-                                                 headers='keys', tablefmt=table_format)
+                mystery["host-nodes"] = tabulate(mystery["host-nodes"],
+                                                 showindex=False,
+                                                 headers='keys',
+                                                 tablefmt=table_format)
 
         # TODO: show-more section
 
@@ -2386,7 +2570,8 @@ def customize_results(files: list_of_logs):
                 output_string += mystery[_i]
             else:
                 logging.debug("This musst be fixed, NoneType found.")
-                rprint("[red]NoneType object found, this should not happen[/red]")
+                rprint(
+                    "[red]NoneType object found, this should not happen[/red]")
 
             if mystery[_i] == mystery[list(mystery.keys())[-1]]:
                 output_string += "\n"
@@ -2449,7 +2634,8 @@ def run(commandline_args):
         manage_params(commandline_args)
 
         global files
-        valid_files = validate_given_logs(files)  # validate the files, make a list of all valid config files
+        valid_files = validate_given_logs(
+            files)  # validate the files, make a list of all valid config files
 
         if len(valid_files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
@@ -2461,7 +2647,7 @@ def run(commandline_args):
 
         end = datetime.datetime.now()  # enddate
 
-        logging.debug(f"Runtime: {end-start}")  # runtime of this script
+        logging.debug(f"Runtime: {end - start}")  # runtime of this script
 
         logging.debug("-------End of htcompact script-------")
 
@@ -2485,6 +2671,3 @@ if __name__ == "__main__":
     :return:
     """
     run(sys.argv[1:])
-
-
-
