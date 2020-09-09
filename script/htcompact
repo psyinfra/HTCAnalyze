@@ -921,17 +921,17 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 time_dict["Termination date"] = date
 
                 reason = event.get('Reason')
-                occurred_errors.append([event_type_number, date, "Aborted", reason])
+                occurred_errors.append([event_type_number, date.strftime("%m/%d %H:%M:%S"), "Aborted", reason])
                 job_events.insert(0, ("Process was", colors['red'] + "Aborted" + colors['back_to_default']))
 
             # now filter all known errors
             if event.type == jet.JOB_HELD:
                 reason = event.get('HoldReason')
-                occurred_errors.append([event_type_number, date, "JOB_HELD", reason])
+                occurred_errors.append([event_type_number, date.strftime("%m/%d %H:%M:%S"), "JOB_HELD", reason])
 
             if event.type == jet.SHADOW_EXCEPTION:
                 reason = event.get('Message')
-                occurred_errors.append((event_type_number, date, "SHADOW_EXCEPTION", reason))
+                occurred_errors.append((event_type_number, date.strftime("%m/%d %H:%M:%S"), "SHADOW_EXCEPTION", reason))
         else:
             # End of the file
             pass
