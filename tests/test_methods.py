@@ -3,7 +3,7 @@ import sys
 import pytest
 import io
 import imp
-ht = imp.load_source('htcompact', 'script/htcompact')
+ht = imp.load_source('htcompact', 'htcompact')
 
 
 # To make a copy of stdin and stdout

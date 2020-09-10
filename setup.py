@@ -29,10 +29,10 @@ setup(name='htcompact',
             'https://github.com/astanin/python-tabulate.git'
       ],
       scripts=[
-            'script/htcompact'
+            'htcompact'
       ],
       data_files=[
-            ('config', ['script/htcompact.conf']),
+            ('config', ['config/htcompact.conf']),
             ('share/man/man1', ['man/man1/htcompact.1'])
       ],
       )

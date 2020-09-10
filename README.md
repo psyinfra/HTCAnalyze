@@ -23,7 +23,7 @@ pip install git+https://github.com/psyinfra/htcompact.git
 A config file (`setup.conf`) is also provided, to control the default behavior of
 htcompact. This is especially useful when installing system-wide, or for
 adjusting various warning/error thresholds. See
-[CONFIG.md](https://github.com/psyinfra/htcompact/blob/master/CONFIG.md) for
+[CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md) for
 more information
 #### Notice:
 - The script is using the python module htcondor 8.9.8, which is not working on MacOS devices.
@@ -64,7 +64,7 @@ htcompact path_to_logs/job_5991_* -s  (summarize all files starting with: job_59
 htcompact path_to_logs/395_2.log --table-format=pretty
 ```
 
-lets consider we also have a config file (see: [CONFIG.md](https://github.com/psyinfra/htcompact/blob/master/CONFIG.md)) \
+lets consider we also have a config file (see: [CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md)) \
 a default setup.conf should already exist inside the project folder
 
 possible configurations could be reduced to something like:
@@ -74,8 +74,14 @@ or
 htcompact [files/directories] setup.conf (ignores files/directories set inside the config file)
 ```
 
+### Testing:
+you'll find the tests in: /tests \\
+to simply run the tests:
+- pytest tests 
+More details see: [TESTS](https://github.com/psyinfra/htcompact/blob/master/tests/README.md)
+
 where all arguments, files and directories can be set inside that config file \
-see: [CONFIG.md](https://github.com/psyinfra/htcompact/blob/master/CONFIG.md)
+see: [CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md)
 
 Examples:
 
