@@ -2,6 +2,7 @@
 import configparser
 import datetime
 import getopt
+import argparse
 import logging
 import os
 import re
@@ -55,16 +56,18 @@ option_longs = ["help", "version", "verbose", "mode=",
                 "generate-log-file", "filter=", "extend",
                 "print-event-table", "reverse-dns-lookup", "table-format="]
 
-allowed_modes = {"a": "analyse",
-                 "s": "summarize",
-                 "as": "analysed-summary",
-                 "d": "default"}
+allowed_modes = ["a", "analyse", "s", "summarize",
+                 "as", "analysed-summary", "d", "default"]
 
 allowed_show_values = ["std-err", "std-out"]
 allowed_ignore_values = ["execution-details", "times", "host-nodes",
                          "used-resources", "requested-resources",
                          "allocated-resources", "all-resources",
                          "errors"]
+valid_table_formats= ["plain", "simple", "github", "grid",
+                      "fancy_grid", "pipe","orgtbl", "rst",
+                      "mediawiki", "html", "latex", "latex_raw",
+                      "latex_booktabs", "tsv", "simple"]
 
 default_configfile = "htcompact.conf"
 accepted_states = ["true", "yes", "y", "enable", "enabled", "0"]
@@ -139,6 +142,77 @@ def initialize():
 
     reading_stdin = False
     redirecting_output = False
+
+
+def define_parser(args) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("File or Directory", nargs="*", action="append",
+                        help="any path to log or config file(s)",)
+
+    parser.add_argument("--version",
+                        help="Print out extended execution details",
+                        action="store_true")
+
+    parser.add_argument("-v", "--verbose",
+                        help="Print out extended execution details",
+                        action="store_true")
+
+    parser.add_argument("-m", "--mode", help="Specifiy an interpretation mode",
+                        choices=allowed_modes)
+    parser.add_argument("-s",
+                        help="Short for --mode summarize,"
+                             " combine with -a for analysed-summary mode",
+                        action="store_true")
+
+    parser.add_argument("-a",
+                        help="Short for --mode analyse,"
+                             " combine with -s for analysed-summary mode",
+                        action="store_true")
+
+    parser.add_argument("--std-log", help="Specify the log file suffix",
+                        default="", type=str)
+    parser.add_argument("--std-out", help="Specify the output file suffix",
+                        default=".out", type=str)
+    parser.add_argument("--std-err", help="Specify the error file suffix",
+                        default=".err", type=str)
+
+    parser.add_argument("--ignore", nargs="+", action="append",
+                        choices=allowed_ignore_values,
+                        help="Ignore a section to not be printed")
+    parser.add_argument("--show", nargs="+", action="append",
+                        choices=allowed_show_values,
+                        help="Show more details")
+    parser.add_argument("--no-config", action="store_true",
+                        help="Ignore the config file "
+                             "and run with script defaults")
+
+    parser.add_argument("--filter", nargs="+",
+                        help="Filter for the given keywords",
+                        action="append", type=str)
+    parser.add_argument("--extend", action="store_true",
+                        help="extend the filter keyword list "
+                             "by specific error keywords")
+
+    parser.add_argument("--print-event-table", action="store_true",
+                        help="Prints out the event table")
+
+    parser.add_argument("--reverse-dns-lookup",
+                        help="Resolve the ip-address of an execution nodes"
+                             " to their dns entry")
+    parser.add_argument("--table-format",
+                        choices=valid_table_formats)
+
+
+    cmd_parse = parser.parse_args(args)
+
+    return cmd_parse
+
+
+def _manage_params(args):
+    cmd_parser = define_parser(args)
+    print(cmd_parser)
+    configuration = {}
 
 
 def check_for_redirection():
@@ -406,11 +480,11 @@ def manage_params(args: list):
                 sys.exit(0)
 
             elif opt.__eq__("--table-format"):
-                types = "plain,simple,github,grid,fancy_grid,pipe," \
-                        "orgtbl,rst,mediawiki,html,latex,latex_raw," \
-                        "latex_booktabs,tsv,pretty"
+                # types = "plain,simple,github,grid,fancy_grid,pipe," \
+                #         "orgtbl,rst,mediawiki,html,latex,latex_raw," \
+                #         "latex_booktabs,tsv,pretty"
                 # only valid arguments
-                if arg in types.split(","):
+                if arg in valid_table_formats:
                     table_format = arg
                 else:
                     logging.debug("The given table format doesn't exist")
@@ -2290,19 +2364,21 @@ def filter_for(log_files: list_of_logs, keywords: list,
         if mode.__eq__("default"):
             return_dicts = default(found_logs)
         elif mode.__eq__("analysed-summary"):
-            rprint(
-                "[magenta]Try to give an analysed summary for these files[/magenta]")
+            rprint("[magenta]Give an analysed summary"
+                   " for these files[/magenta]")
             return_dicts = analysed_summary(found_logs)
         elif mode.__eq__("summarize"):
-            rprint("[magenta]Try to summarize these files[/magenta]")
+            rprint("[magenta]Summarize these files[/magenta]")
             return_dicts = summarize(found_logs)
         elif mode.__eq__("analyse"):
-            rprint("[magenta]Try to analyse these files[/magenta]")
+            rprint("[magenta]Analyse these files[/magenta]")
             return_dicts = analyse(found_logs)
-    elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
+    # if not reading from stdin or redirected
+    elif not reading_stdin and not redirecting_output:
         rprint("[blue]Want do do more?[/blue]")
         x = input(
-            "default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
+            "default(d), summarize(s), analyse(a),"
+            " analysed summary(as), exit(e): ")
         if x == "d":
             return_dicts = default(found_logs)
         elif x == "s":
@@ -2322,21 +2398,20 @@ def filter_for(log_files: list_of_logs, keywords: list,
 
 def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
     """
-    This method is supposed to take the given log files (by config or command line argument)
-    and tries to determine if these are valid log files, ignoring the std_log specification, if std_log = "".
+    This method is supposed to take the given log files
+    (by config or command line argument)
+    and tries to determine if these are valid log files,
+     ignoring the std_log specification, if std_log = "".
 
-    It will run through given directories and check every single file, if accessible, for the
-    HTCondor log file standard, valid log files should start with lines like:
+    It will run through given directories and check every single file,
+    if accessible, for the
+    HTCondor log file standard,
+    valid log files should start with lines like:
 
-    000 (5989.000.000) 03/30 15:48:47 Job submitted from host: <10.0.8.10:9618?addrs=10.0.8.10-9618&noUDP&sock=3775629_0774_3>
+    000 (5989.000.000) 03/30 15:48:47
 
-    if done, it will change the global files list and store only valid log files.
-    The user will be remind, what files were accepted as "valid".
 
-    The user will also be informed if a given file was not found.
-
-    -> my guess: yes or no question, if nothing is given in under 10 seconds, it should go with no
-    -> this should prevent, that the script is stucked, if the user is for example running it over night
+    The user will also be informed if a single given file was not found.
 
     """
     valid_files = list()
@@ -2349,7 +2424,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
         for arg in file_list:
 
-            path = os.getcwd()  # current working directory , should be condor job summarizer script
+            path = os.getcwd()  # mainly search in current working directory
             logs_path = path + "/" + arg  # absolute path
 
             working_dir_path = ""
@@ -2364,7 +2439,8 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
                 working_file_path = arg
             elif os.path.isfile(logs_path):
                 working_file_path = logs_path
-            # check if only the id was given and resolve it with the std_log specification
+            # check if only the id was given
+            # and resolve it with the std_log specification
             elif os.path.isfile(arg + std_log):
                 working_file_path = arg + std_log
             elif os.path.isfile(logs_path + std_log):
@@ -2373,18 +2449,20 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
             # if path is a directory
             if working_dir_path.__ne__(""):
                 rprint(
-                    f"[light_coral]Search: {working_dir_path} for valid log files[/light_coral]")
-                # run through all files and separate the files into log/error and output files
+                    f"[light_coral]Search: {working_dir_path} "
+                    f"for valid log files[/light_coral]")
+                # run through all files and
+                # separate the files into log, error and output files
                 valid_dir_files = list()
                 file_dir = os.listdir(working_dir_path)
                 total += len(file_dir) - 1
                 for file in file_dir:
                     progress.update(task, total=total, advance=1)
 
-                    # ---- if std_log is set ignore other log files with a different suffix ----
+                    # if std_log is set, ignore other log files
                     if std_log.__ne__("") and not file.endswith(std_log):
-                        logging.debug(
-                            "Ignoring this file, " + file + ", because std_log is set to: " + std_log)
+                        logging.debug("Ignoring this file, " + file +
+                                      ", because std-log is: " + std_log)
                         continue
 
                     # ignore hidden files
@@ -2404,30 +2482,33 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
                             if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
                                         read_file.readlines()[0]):
-                                # logging.debug(f"{read_file.name} is a valid HTCondor log file")
                                 valid_dir_files.append(file_path)
 
                     else:
                         logging.debug(
-                            f"Found a subfolder: {working_dir_path}/{file}"
+                            f"Found a subfolder: "
+                            f"{working_dir_path}/{file}"
                             f", it will be ignored")
                         progress.console.print(
-                            f"[yellow]Found a subfolder: {working_dir_path}/{file},"
+                            f"[yellow]Found a subfolder:"
+                            f" {working_dir_path}/{file},"
                             f" it will be ignored[/yellow]")
 
                 valid_files.extend(valid_dir_files)
                 rprint(
-                    f"[green]Found {len(valid_dir_files)} valid log files out of "
+                    f"[green]Found {len(valid_dir_files)}"
+                    f" valid log files out of "
                     f"{len(file_dir)} files[/green]\n")
             # else if path "might" be a valid HTCondor file
             elif working_file_path.__ne__(""):
                 progress.update(task, advance=1)
 
-                # ---- if std_log is set ignore other log files with a different suffix ----
+                # if std_log is set, ignore other log files
                 if std_log.__ne__("") and not working_file_path.endswith(
                         std_log):
                     logging.debug("Ignoring this file, " +
-                                  working_file_path + ", because std_log is set to: " + std_log)
+                                  working_file_path +
+                                  ", because std_log is set to: " + std_log)
                     continue
 
                 if std_err.__ne__("") and working_file_path.endswith(
@@ -2435,7 +2516,8 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
                         std_out.__ne__("") and working_file_path.endswith(
                     std_out):
                     logging.debug(
-                        f"Only log files accepted, ignored this file: {working_file_path}")
+                        f"Only log files accepted,"
+                        f" ignored this file: {working_file_path}")
                     continue
 
                 with open(working_file_path, "r") as read_file:
@@ -2492,7 +2574,8 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
         logging.getLogger().disabled = False
 
         # more specific view into the script itself
-        logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
+        logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d]' \
+                              ' %(levelname)s : %(message)s'
         file_formatter = logging.Formatter(logging_file_format)
 
         handler = RotatingFileHandler(log_file, maxBytes=1000000,
@@ -2519,7 +2602,8 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
         log.addHandler(stdout_handler)
 
 
-def customize_results(files: list_of_logs):
+def customize_results(files: list_of_logs,
+                      ignore_list=[], show_list=[]) -> str:
     output_string = ""
 
     if filter_mode:
@@ -2631,20 +2715,20 @@ def run(commandline_args):
     :return:
     """
     try:
-        start = datetime.datetime.now()  # startdate
+        start = datetime.datetime.now()  # start date for runtime
 
         initialize()  # initialize global parameters
 
         check_for_redirection()  # set the color sequenzes to ""
 
-        # if exit parameters are given that will interrupt this script, like --help,
+        # if exit parameters are given that will interrupt this script,
         # catch them here so the config won't be unnecessary loaded
         manage_prioritized_params(commandline_args)
 
         # if not --no-config is set:
-        # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
-        # (you will see when you try, files will be interpreted as HTCondor log files)
-        # so it's not possible to give multiple config files
+        # remove the first file, that can be interpreted as a config file,
+        # all other files will be interpreted as log files,
+        # so DON'T apply more than one config file to the script
         found_conf = None
         if not no_config:
             found_conf, commandline_args = find_config(commandline_args)
@@ -2664,23 +2748,23 @@ def run(commandline_args):
         if found_conf is not None:
             load_config(found_conf)
 
-        # after that, interpret the command line arguments, these will have a higher priority, than the config setup
+        # after that, interpret the command line arguments,
+        # these will have a higher priority, than the config setup
         # and by that arguments set in the config file, will be ignored
         manage_params(commandline_args)
 
         global files
-        valid_files = validate_given_logs(
-            files)  # validate the files, make a list of all valid config files
+        valid_files = validate_given_logs(files)  # validate the files
 
         if len(valid_files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(2)
 
-        output_str = customize_results(valid_files)
+        output_str = customize_results(valid_files, ignore_list, show_list)
 
         print(output_str)  # write it to the console
 
-        end = datetime.datetime.now()  # enddate
+        end = datetime.datetime.now()  # end date for runtime
 
         logging.debug(f"Runtime: {end - start}")  # runtime of this script
 
@@ -2701,8 +2785,10 @@ def run(commandline_args):
 
 if __name__ == "__main__":
     """
-    This is the main function, which runs the script, if not imported as a module
+    This is the main function, 
+    which runs the script, if not imported as a module
 
-    :return:
+    :return: exit status 0-4
     """
-    run(sys.argv[1:])
+    # run(sys.argv[1:])
+    _manage_params(sys.argv[1:])
