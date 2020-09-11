@@ -325,12 +325,12 @@ def manage_params(args: list):
                 elif arg in allowed_modes.values():
                     mode = arg
                 else:
-                    raise_value_error("Invalid argument '" + arg + "'\n"
-                                                                   "Valid arguments:\n" +
-                                      ", ".join(
-                                          "'{}' or '{}'".format(key, value)
-                                          for key, value in
-                                          allowed_modes.items()))
+                    err_msg = "Invalid argument '" + arg + \
+                              "'\nValid arguments:\n" + \
+                              ", ".join("'{}' or '{}'".format(key, value)
+                                        for key, value
+                                        in allowed_modes.items())
+                    raise_value_error(err_msg)
 
                 logging.debug("Starting the: " + mode + " mode")
 
@@ -343,10 +343,9 @@ def manage_params(args: list):
                 filter_keywords = " ".join(re.split(',| ', arg)).split()
             elif opt in ["--extend"]:
                 filter_extended = True
-            # all HTCondor files, given by the user if they are not saved in .log/.err/.out files
             elif opt.__eq__("--std-log"):
                 # if std_log is empty,
-                # every file will be interpreted as log file
+                # every given file will be interpreted as log file
                 if arg != "" and arg[0] != '.':
                     arg = "." + arg  # add point if missing
                 std_log = arg
@@ -371,11 +370,13 @@ def manage_params(args: list):
                         show_list.append(keyword)
                     else:
                         raise_value_error(
-                            "Invalid argument '" + keyword + "'\n"
-                                                             "Valid arguments:\n" + ", ".join(
-                                allowed_show_values))
-                logging.debug(
-                    "Show these information: " + ", ".join(show_list))
+                            "Invalid argument '"
+                            + keyword
+                            + "'\nValid arguments:\n"
+                            + ", ".join(allowed_show_values))
+
+                logging.debug("Show these information: "
+                              + ", ".join(show_list))
 
             # all variables to ignore unwanted information
             elif opt.__eq__("--ignore"):
@@ -385,11 +386,13 @@ def manage_params(args: list):
                         ignore_list.append(keyword)
                     else:
                         raise_value_error(
-                            "Invalid argument '" + keyword + "'\n"
-                                                             "Valid arguments:\n" + ", ".join(
-                                allowed_ignore_values))
-                logging.debug(
-                    "Ignore these information: " + ", ".join(ignore_list))
+                            "Invalid argument '"
+                            + keyword
+                            + "'\nValid arguments:\n"
+                            + ", ".join(allowed_ignore_values))
+
+                logging.debug("Ignore these information: "
+                              + ", ".join(ignore_list))
 
             elif opt.__eq__("--to-csv"):
                 to_csv = True
@@ -426,8 +429,9 @@ def manage_params(args: list):
         logging.exception(
             err)  # write a detailed description in the stdout.log file
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        rprint(
-            "[dark_olive_green1]Use '--help' or 'man htcompact' for help [/dark_olive_green1]")
+        rprint("[dark_olive_green1]"
+               "Use '--help' or 'man htcompact' for help"
+               "[/dark_olive_green1]")
         sys.exit(1)
 
     if summarizer_mode and analyser_mode:
@@ -705,7 +709,7 @@ def get_event_information(event_id="") -> str:
             out_str += str(key) + ": " + str(value)
         return out_str
     else:
-        return "This event number does not exist, Valid event numbers range from 0 to 34"
+        return "This event number does not exist."
 
 
 def raise_value_error(message: str) -> ValueError:
@@ -836,15 +840,16 @@ def gen_time_dict(
 
 def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
     """
-            Read the log file with the use of the htcondor module and filter useful information.
-            Structur it in a way, that later two different dictionaries will be retuned.
+    Read the log file with the htcondor module.
+    Return five dicts holding information about:
+    execution node, used resources, times, used ram history, errors .
 
-        :type file: str
-        :param file: HTCondor log file
-        :param sec: seconds to wait for new events
-        :return: job_dict, res_dict, time_dict, ram_history, errors
+    :type file: str
+    :param file: HTCondor log file
+    :param sec: seconds to wait for new events
+    :return: job_dict, res_dict, time_dict, ram_history, errors
 
-        Consider that the return values can be None or empty dictionarys
+    Consider that the return values can be None or empty dictionarys
     """
     job_events = list()
     res_dict = dict()
@@ -861,12 +866,14 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
 
     try:
         jel = htcondor.JobEventLog(file)
-        # Read all currently-available events waiting for 'sec' seconds for the next event.
+        # Read all currently-available events
+        # waiting for 'sec' seconds for the next event.
         for event in jel.events(sec):
             event_type_number = event.get('EventTypeNumber')
             # convert time to datetime object
             date = datetime.datetime.strptime(event.get('EventTime'),
                                               "%Y-%m-%dT%H:%M:%S")
+            # update submit date, submission host
             if event.type == jet.SUBMIT:
                 time_dict["Submission date"] = date
 
@@ -886,6 +893,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                     raise_value_error(
                         "Submission Host is wrong in file: " + file)
 
+            # update execution date, execution node
             if event.type == jet.EXECUTE:
                 time_dict["Execution date"] = date
 
@@ -908,13 +916,15 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                     raise_value_error(
                         "Execution host address is wrong in file: " + file)
 
+            # update ram history dict
             if event.type == jet.IMAGE_SIZE:
                 size_update = event.get('Size')
                 memory_usage = event.get('MemoryUsage')
                 resident_set_size = event.get('ResidentSetSize')
                 ram_history.append((date, size_update, memory_usage,
-                                    resident_set_size))  # append to ram_history list
+                                    resident_set_size))
 
+            # update resource dict and termination date
             if event.type == jet.JOB_TERMINATED:
                 has_terminated = True
                 time_dict["Termination date"] = date
@@ -966,6 +976,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                     signal = event.get('TerminatedBySignal')
                     job_events.append(("Terminated by Signal", signal))
 
+            # update error dict and termination date
             if event.type == jet.JOB_ABORTED:
                 has_terminated = True
                 time_dict["Termination date"] = date
@@ -978,13 +989,14 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                                       colors['red'] + "Aborted" + colors[
                                           'back_to_default']))
 
-            # now filter all known errors
+            # update error dict
             if event.type == jet.JOB_HELD:
                 reason = event.get('HoldReason')
                 occurred_errors.append(
                     [event_type_number, date.strftime("%m/%d %H:%M:%S"),
                      "JOB_HELD", reason])
 
+            # update error dict
             if event.type == jet.SHADOW_EXCEPTION:
                 reason = event.get('Message')
                 occurred_errors.append((event_type_number,
@@ -999,7 +1011,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
         if err.args[0] == "ULOG_RD_ERROR":
             rprint(f"[red]{err}: Not a valid htcondor logfile: {file}[/red]")
             reason = "Error while reading log file. " \
-                     "This happens if the file was manipulated or contains gpu usage."
+                     "File was manipulated or contains gpu usage."
             occurred_errors.append(["None", "Now", "ULOG_RD_ERROR", reason])
         else:
             rprint(f"[red]Not able to open the file: {file}[/red]")
@@ -1025,14 +1037,14 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
             state = "Waiting"
         else:
             pass
-        job_events.insert(0, (
-        "Process is", colors["blue"] + state + colors["back_to_default"]))
+        job_events.insert(0, ("Process is", colors["blue"]
+                              + state + colors["back_to_default"]))
     # file not fully readable
     elif invalid_file:
-        better_time_dict = dict()  # times should not be returned, because they will make no sense
-        job_events.insert(0, ("Error",
-                              colors["red"] + "Error while reading" + colors[
-                                  "back_to_default"]))
+        better_time_dict = dict()  # times have no meaning here
+        job_events.insert(0, ("Error", colors["red"]
+                              + "Error while reading"
+                              + colors["back_to_default"]))
 
     job_events_dict = dict()
     error_dict = dict()
@@ -1055,8 +1067,8 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 split = int(len(tmp_reason) / 2)
                 while tmp_reason[split] != ' ' and split < len(tmp_reason) - 1:
                     split += 1
-                if split > len(
-                        tmp_reason) - 2:  # if no space was found, change back to normal
+                # if no space was found, change back to normal
+                if split > len(tmp_reason) - 2:
                     split = int(len(tmp_reason) / 2)
                 reasons[i] = tmp_reason[0:split] + '\n' + tmp_reason[split:]
         error_dict = {
@@ -1075,7 +1087,8 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
             "Resident Set Sizes": list(res_set_size)
         }
 
-    return job_events_dict, res_dict, better_time_dict, ram_history_dict, error_dict
+    return job_events_dict, res_dict, better_time_dict, \
+           ram_history_dict, error_dict
 
 
 # just read .err files content and return it as a string
@@ -1374,8 +1387,9 @@ def find_config(args: list) -> (str, list):
         # try to find the given file in the current directory,
         # in /etc or in ~/.config/htcompact/
         try:
-            # search in current working directory
-            if os.path.isfile(file) and config.read(file):
+            # check if the file is not empty, readable and acceptable
+            if os.path.isfile(file) and os.path.getsize(file) != 0 \
+                    and config.read(file):
                 # only use the file if given,
                 # means the default config should be ignored,
                 # even if it's in cwd,
