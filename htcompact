@@ -47,47 +47,54 @@ to see for ex. the average runtime and usage of all the logs
  Keyboard interruption: 4
 """
 
+# global variables
+option_shorts = "hsavm:"
+option_longs = ["help", "version", "verbose", "mode=",
+                "std-log=", "std-err=", "std-out=",
+                "ignore=", "show-more=", "no-config", "to-csv",
+                "generate-log-file", "filter=", "extend",
+                "print-event-table", "reverse-dns-lookup", "table-format="]
+
+allowed_modes = {"a": "analyse",
+                 "s": "summarize",
+                 "as": "analysed-summary",
+                 "d": "default"}
+
+allowed_show_values = ["std-err", "std-out"]
+allowed_ignore_values = ["execution-details", "times", "host-nodes",
+                         "used-resources", "requested-resources",
+                         "allocated-resources", "all-resources",
+                         "errors"]
+
+default_configfile = "htcompact.conf"
+accepted_states = ["true", "yes", "y", "enable", "enabled", "0"]
+
 
 def initialize():
     """
     This method initializes all global variables
     :return:
     """
-    global accepted_states, files, option_shorts, option_longs, \
-        ignore_list, allowed_ignore_values, no_config, reverse_dns_lookup, \
+    global files, ignore_list, allowed_ignore_values, \
+        no_config, reverse_dns_lookup, \
         store_dns_lookups, verbose_mode, \
-        to_csv, generate_log_file, filter_mode, filter_keywords, filter_extended, \
-        colors, tolerated_usage_threshold, bad_usage_threshold, std_log, std_err, std_out, \
-        default_configfile, table_format, reading_stdin, redirecting_output, \
-        show_list, allowed_show_values, mode, allowed_modes
+        to_csv, generate_log_file, \
+        filter_mode, filter_keywords, filter_extended, \
+        colors, tolerated_usage_threshold, bad_usage_threshold, \
+        std_log, std_err, std_out, \
+        table_format, reading_stdin, redirecting_output, \
+        show_list, allowed_show_values, mode
 
     # global parameters, used for dynamical output of information
-    accepted_states = ["true", "yes", "y", "enable", "enabled", "0"]
     files = list()
-    option_shorts = "hsavm:"
-    option_longs = ["help", "version", "verbose", "mode=",
-                    "std-log=", "std-err=", "std-out=",
-                    "ignore=", "show-more=", "no-config", "to-csv",
-                    "generate-log-file", "filter=", "extend",
-                    "print-event-table",
-                    "reverse-dns-lookup", "table-format="]
 
     # show more information, mostly given by HTCompact .err and .out files
     mode = None
-    allowed_modes = {"a": "analyse",
-                     "s": "summarize",
-                     "as": "analysed-summary",
-                     "d": "default"}
 
     show_list = list()
-    allowed_show_values = ["std-err", "std-out"]
 
     # ignore information
     ignore_list = list()
-    allowed_ignore_values = ["execution-details", "times", "host-nodes",
-                             "used-resources", "requested-resources",
-                             "allocated-resources", "all-resources",
-                             "errors"]
 
     # if set do not use a config file, even if one was found
     no_config = False
@@ -128,7 +135,6 @@ def initialize():
     std_out = ".out"
 
     # global defaults
-    default_configfile = "htcompact.conf"
     table_format = "pretty"  # ascii by default
 
     reading_stdin = False
