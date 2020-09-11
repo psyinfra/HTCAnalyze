@@ -20,7 +20,7 @@ class PseudoTTY(object):
         return self.__isset
 
 
-#print("Stdin is set: ",sys.stdin.isatty())
+# print("Stdin is set: ",sys.stdin.isatty())
 # sdtin and stdout isatty should return true
 copy_sys_stdin = sys.stdin
 copy_sys_stdout = sys.stdout
@@ -46,7 +46,7 @@ def _event_table():
     ht.get_event_information(30)
     with pytest.raises(ValueError):
         ht.get_event_information("hallo")
-    assert ht.get_event_information("066") == "This event number does not exist, Valid event numbers range from 0 to 34"
+    assert ht.get_event_information("066") == "This event number does not exist."
 
 
 # Todo: change when implemented
