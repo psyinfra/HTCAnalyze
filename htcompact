@@ -56,8 +56,10 @@ option_longs = ["help", "version", "verbose", "mode=",
                 "generate-log-file", "filter=", "extend",
                 "print-event-table", "reverse-dns-lookup", "table-format="]
 
-allowed_modes = ["a", "analyse", "s", "summarize",
-                 "as", "analysed-summary", "d", "default"]
+allowed_modes = {"a": "analyse",
+                 "s": "summarize",
+                 "as": "analysed-summary",
+                 "d": "default"}
 
 allowed_show_values = ["std-err", "std-out"]
 allowed_ignore_values = ["execution-details", "times", "host-nodes",
@@ -144,7 +146,7 @@ def initialize():
     redirecting_output = False
 
 
-def define_parser(args) -> argparse.ArgumentParser:
+def define_parser(args: list) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
 
     parser.add_argument("File or Directory", nargs="*", action="append",
@@ -157,15 +159,27 @@ def define_parser(args) -> argparse.ArgumentParser:
     parser.add_argument("-v", "--verbose",
                         help="Print out extended execution details",
                         action="store_true")
+    parser.add_argument("--generate-log-file", nargs="?",
+                        const="htcompact.log", default=None,
+                        help="generates output about the process,"
+                             " which is mostly useful for developers, "
+                             "if no file is specified, default: htcompact.log")
 
-    parser.add_argument("-m", "--mode", help="Specifiy an interpretation mode",
-                        choices=allowed_modes)
-    parser.add_argument("-s",
+    all_vals = []
+    for item in allowed_modes.items():
+        all_vals.extend(list(item))
+
+    parser.add_argument("-m", help="Specifiy an interpretation mode",
+                        choices=all_vals)
+    parser.add_argument("--mode", help="Specifiy an interpretation mode",
+                        choices=all_vals)
+
+    parser.add_argument("-s", dest="summarizer_mode",
                         help="Short for --mode summarize,"
                              " combine with -a for analysed-summary mode",
                         action="store_true")
 
-    parser.add_argument("-a",
+    parser.add_argument("-a", dest="analyser_mode",
                         help="Short for --mode analyse,"
                              " combine with -s for analysed-summary mode",
                         action="store_true")
@@ -177,17 +191,21 @@ def define_parser(args) -> argparse.ArgumentParser:
     parser.add_argument("--std-err", help="Specify the error file suffix",
                         default=".err", type=str)
 
+    ignore_metavar = "{"+allowed_ignore_values[0]+" ... "\
+                     + allowed_ignore_values[-1]+"}"
     parser.add_argument("--ignore", nargs="+", action="append",
                         choices=allowed_ignore_values,
+                        metavar=ignore_metavar,
                         help="Ignore a section to not be printed")
     parser.add_argument("--show", nargs="+", action="append",
                         choices=allowed_show_values,
                         help="Show more details")
+
     parser.add_argument("--no-config", action="store_true",
                         help="Ignore the config file "
                              "and run with script defaults")
 
-    parser.add_argument("--filter", nargs="+",
+    parser.add_argument("--filter", nargs="+", metavar="keywords",
                         help="Filter for the given keywords",
                         action="append", type=str)
     parser.add_argument("--extend", action="store_true",
@@ -197,22 +215,86 @@ def define_parser(args) -> argparse.ArgumentParser:
     parser.add_argument("--print-event-table", action="store_true",
                         help="Prints out the event table")
 
-    parser.add_argument("--reverse-dns-lookup",
+    parser.add_argument("--reverse-dns-lookup", action="store_true",
                         help="Resolve the ip-address of an execution nodes"
                              " to their dns entry")
-    parser.add_argument("--table-format",
-                        choices=valid_table_formats)
 
+    table_metavar = "{"+valid_table_formats[0]+" ... "\
+                    + valid_table_formats[-1]+ "}"
+    parser.add_argument("--table-format", metavar=table_metavar,
+                        default="pretty",
+                        choices=valid_table_formats)
 
     cmd_parse = parser.parse_args(args)
 
     return cmd_parse
 
 
-def _manage_params(args):
+def manage_params(args: list) -> dict:
+    """
+    Uses the argparse parser defined in define_parser()
+    returns a dict looking like
+    {'verbose': True,
+     'generate_log_file': 'htcompact.log',
+     'mode': None,
+     'std_log': '',
+     'std_out': '.out',
+     'std_err': '.err',
+     'ignore': None,
+     'show': None,
+     'no_config': False,
+     'filter': None,
+     'extend': False,
+     'print_event_table': False,
+     'reverse_dns_lookup': False,
+     'table_format': 'pretty',
+     'files': []
+     }
+
+    :param args: list of args
+    :return: dict with params
+    """
+
     cmd_parser = define_parser(args)
-    print(cmd_parser)
-    configuration = {}
+
+    # first of all check for prioritised/exit params
+    if cmd_parser.version:
+        print("Version: v1.1.0")
+        sys.exit(0)
+    if cmd_parser.print_event_table:
+        print(get_event_information())
+        sys.exit(0)
+
+
+    # parse the mode correctly
+    if cmd_parser.analyser_mode and cmd_parser.summarizer_mode:
+        mode = "analysed-summary"
+    elif cmd_parser.analyser_mode:
+        mode = "analyse"
+    elif cmd_parser.summarizer_mode:
+        mode = "summarize"
+    elif cmd_parser.mode is not None:
+        if cmd_parser.mode in allowed_modes.keys():
+            mode = allowed_modes[cmd_parser.mode]
+        else:
+            mode = cmd_parser.mode
+    else:
+        mode = None  # will result in default mode
+
+    cmd_dict = vars(cmd_parser)
+    
+    # rename to files
+    cmd_dict["files"] = cmd_dict["File or Directory"][0]
+    del cmd_dict["File or Directory"]
+    
+    # delete unneseccary information
+    del cmd_dict["m"]
+    del cmd_dict["summarizer_mode"]
+    del cmd_dict["analyser_mode"]
+    del cmd_dict["version"]
+    
+    cmd_dict["mode"] = mode
+    return cmd_dict
 
 
 def check_for_redirection():
@@ -223,11 +305,10 @@ def check_for_redirection():
     by setting them to ""
     :return:
     """
-    # if output gets redirected with > or | or other redirection tools, ignore escape sequences
-    global reading_stdin, redirecting_output, stdin_input  # it is easier to save this globaly, because if whe change
 
-    reading_stdin = not sys.stdin.isatty()
     redirecting_output = not sys.stdout.isatty()
+    reading_stdin = not sys.stdin.isatty()
+    stdin_input = None
 
     if reading_stdin:
         stdin_input = sys.stdin.readlines()
@@ -244,6 +325,8 @@ def check_for_redirection():
             'light_grey': "",
             'back_to_default': ""
         }
+
+    return redirecting_output, reading_stdin, stdin_input
 
 
 def remove_files_from_args(args: list, short_opts: str, long_opts: list):
@@ -356,175 +439,175 @@ def manage_prioritized_params(args: list):
         sys.exit(1)
 
 
-def manage_params(args: list):
-    """
-    Interprets the given command line arguments and changes the global variables in this scrips
-
-    """
-    global files  # list of files and directories
-    global mode  # what mode are we on
-    global std_log, std_err, std_out  # all default values for the HTCondor files
-    global show_list  # show more
-    global ignore_list  # ignore information variables
-    global to_csv
-    global filter_mode, filter_keywords, filter_extended  # search features
-    global table_format  # table_format can be changed
-    global reverse_dns_lookup  # if set host ip's will be looked up in dns server
-
-    global option_shorts, option_longs
-
-    summarizer_mode = False
-    analyser_mode = False
-
-    all_args = args
-
-    # listen to stdin and add these files
-    if reading_stdin:  # else the script will be waiting fro stdin
-        logging.debug("Listening to arguments from stdin")
-        for line in stdin_input:
-            all_args.append(line.rstrip('\n'))
-
-    better_args = remove_files_from_args(all_args, option_shorts, option_longs)
-
-    try:
-        opts, args = getopt.getopt(better_args, option_shorts, option_longs)
-
-        for opt, arg in opts:
-
-            # catch unusual but not wrong parameters starting with -
-            if arg.startswith("-"):
-                rprint("[yellow]The argument for {0} is {1}, "
-                       "is that wanted?[/yellow]".format(opt, arg))
-                logging.warning("The argument for {0} is {1}, "
-                                "is that wanted?".format(opt, arg))
-
-            elif opt in ["-m", "--mode"]:
-
-                if arg in allowed_modes.keys():
-                    mode = allowed_modes.get(arg)
-                elif arg in allowed_modes.values():
-                    mode = arg
-                else:
-                    err_msg = "Invalid argument '" + arg + \
-                              "'\nValid arguments:\n" + \
-                              ", ".join("'{}' or '{}'".format(key, value)
-                                        for key, value
-                                        in allowed_modes.items())
-                    raise_value_error(err_msg)
-
-                logging.debug("Starting the: " + mode + " mode")
-
-            elif opt.__eq__("-s"):
-                summarizer_mode = True
-            elif opt.__eq__("-a"):
-                analyser_mode = True
-            elif opt in ["--filter"]:
-                filter_mode = True
-                filter_keywords = " ".join(re.split(',| ', arg)).split()
-            elif opt in ["--extend"]:
-                filter_extended = True
-            elif opt.__eq__("--std-log"):
-                # if std_log is empty,
-                # every given file will be interpreted as log file
-                if arg != "" and arg[0] != '.':
-                    arg = "." + arg  # add point if missing
-                std_log = arg
-            elif opt.__eq__("--std-err"):
-                if arg == "":
-                    raise_value_error("Empty string only allowed for std-log")
-                if arg[0] != '.':
-                    arg = "." + arg  # add point if missing
-                std_err = arg
-            elif opt.__eq__("--std-out"):
-                if arg == "":
-                    raise_value_error("Empty string only allowed for std-log")
-                if arg[0] != '.':
-                    arg = "." + arg  # add point if missing
-                std_out = arg
-
-            # show more specific information
-            elif opt.__eq__("--show-more"):
-                keywords = " ".join(re.split(',| ', arg)).split()
-                for keyword in keywords:
-                    if keyword in allowed_show_values:
-                        show_list.append(keyword)
-                    else:
-                        raise_value_error(
-                            "Invalid argument '"
-                            + keyword
-                            + "'\nValid arguments:\n"
-                            + ", ".join(allowed_show_values))
-
-                logging.debug("Show these information: "
-                              + ", ".join(show_list))
-
-            # all variables to ignore unwanted information
-            elif opt.__eq__("--ignore"):
-                keywords = " ".join(re.split(',| ', arg)).split()
-                for keyword in keywords:
-                    if keyword in allowed_ignore_values:
-                        ignore_list.append(keyword)
-                    else:
-                        raise_value_error(
-                            "Invalid argument '"
-                            + keyword
-                            + "'\nValid arguments:\n"
-                            + ", ".join(allowed_ignore_values))
-
-                logging.debug("Ignore these information: "
-                              + ", ".join(ignore_list))
-
-            elif opt.__eq__("--to-csv"):
-                to_csv = True
-                rprint("[red]--to-csv not handled yet[/red]")
-                sys.exit(0)
-
-            elif opt.__eq__("--table-format"):
-                # types = "plain,simple,github,grid,fancy_grid,pipe," \
-                #         "orgtbl,rst,mediawiki,html,latex,latex_raw," \
-                #         "latex_booktabs,tsv,pretty"
-                # only valid arguments
-                if arg in valid_table_formats:
-                    table_format = arg
-                else:
-                    logging.debug("The given table format doesn't exist")
-
-            elif opt.__eq__("--reverse-dns-lookup"):
-                reverse_dns_lookup = True
-
-            # these are already managed in manage_prioritized_params
-            # need to be caught, cause of exception cases
-            elif opt.__eq__("--no-config"):
-                pass
-            elif opt.__eq__("--generate-log-file"):
-                pass
-            elif opt in ["-v", "--verbose"]:
-                pass
-
-            else:
-                rprint("[red]Option not handled yet[/red]")
-                sys.exit(0)
-    # print error messages
-    except Exception as err:
-        logging.exception(
-            err)  # write a detailed description in the stdout.log file
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        rprint("[dark_olive_green1]"
-               "Use '--help' or 'man htcompact' for help"
-               "[/dark_olive_green1]")
-        sys.exit(1)
-
-    if summarizer_mode and analyser_mode:
-        mode = "analysed-summary"
-    elif summarizer_mode:
-        mode = "summarize"
-    elif analyser_mode:
-        mode = "analyse"
-
-    if len(files) == 0:
-        logging.debug("No files given")
-        rprint("[red]No files given[/red]")
-        sys.exit(2)
+# def manage_params(args: list):
+#     """
+#     Interprets the given command line arguments and changes the global variables in this scrips
+#
+#     """
+#     global files  # list of files and directories
+#     global mode  # what mode are we on
+#     global std_log, std_err, std_out  # all default values for the HTCondor files
+#     global show_list  # show more
+#     global ignore_list  # ignore information variables
+#     global to_csv
+#     global filter_mode, filter_keywords, filter_extended  # search features
+#     global table_format  # table_format can be changed
+#     global reverse_dns_lookup  # if set host ip's will be looked up in dns server
+#
+#     global option_shorts, option_longs
+#
+#     summarizer_mode = False
+#     analyser_mode = False
+#
+#     all_args = args
+#
+#     # listen to stdin and add these files
+#     if reading_stdin:  # else the script will be waiting fro stdin
+#         logging.debug("Listening to arguments from stdin")
+#         for line in stdin_input:
+#             all_args.append(line.rstrip('\n'))
+#
+#     better_args = remove_files_from_args(all_args, option_shorts, option_longs)
+#
+#     try:
+#         opts, args = getopt.getopt(better_args, option_shorts, option_longs)
+#
+#         for opt, arg in opts:
+#
+#             # catch unusual but not wrong parameters starting with -
+#             if arg.startswith("-"):
+#                 rprint("[yellow]The argument for {0} is {1}, "
+#                        "is that wanted?[/yellow]".format(opt, arg))
+#                 logging.warning("The argument for {0} is {1}, "
+#                                 "is that wanted?".format(opt, arg))
+#
+#             elif opt in ["-m", "--mode"]:
+#
+#                 if arg in allowed_modes.keys():
+#                     mode = allowed_modes.get(arg)
+#                 elif arg in allowed_modes.values():
+#                     mode = arg
+#                 else:
+#                     err_msg = "Invalid argument '" + arg + \
+#                               "'\nValid arguments:\n" + \
+#                               ", ".join("'{}' or '{}'".format(key, value)
+#                                         for key, value
+#                                         in allowed_modes.items())
+#                     raise_value_error(err_msg)
+#
+#                 logging.debug("Starting the: " + mode + " mode")
+#
+#             elif opt.__eq__("-s"):
+#                 summarizer_mode = True
+#             elif opt.__eq__("-a"):
+#                 analyser_mode = True
+#             elif opt in ["--filter"]:
+#                 filter_mode = True
+#                 filter_keywords = " ".join(re.split(',| ', arg)).split()
+#             elif opt in ["--extend"]:
+#                 filter_extended = True
+#             elif opt.__eq__("--std-log"):
+#                 # if std_log is empty,
+#                 # every given file will be interpreted as log file
+#                 if arg != "" and arg[0] != '.':
+#                     arg = "." + arg  # add point if missing
+#                 std_log = arg
+#             elif opt.__eq__("--std-err"):
+#                 if arg == "":
+#                     raise_value_error("Empty string only allowed for std-log")
+#                 if arg[0] != '.':
+#                     arg = "." + arg  # add point if missing
+#                 std_err = arg
+#             elif opt.__eq__("--std-out"):
+#                 if arg == "":
+#                     raise_value_error("Empty string only allowed for std-log")
+#                 if arg[0] != '.':
+#                     arg = "." + arg  # add point if missing
+#                 std_out = arg
+#
+#             # show more specific information
+#             elif opt.__eq__("--show-more"):
+#                 keywords = " ".join(re.split(',| ', arg)).split()
+#                 for keyword in keywords:
+#                     if keyword in allowed_show_values:
+#                         show_list.append(keyword)
+#                     else:
+#                         raise_value_error(
+#                             "Invalid argument '"
+#                             + keyword
+#                             + "'\nValid arguments:\n"
+#                             + ", ".join(allowed_show_values))
+#
+#                 logging.debug("Show these information: "
+#                               + ", ".join(show_list))
+#
+#             # all variables to ignore unwanted information
+#             elif opt.__eq__("--ignore"):
+#                 keywords = " ".join(re.split(',| ', arg)).split()
+#                 for keyword in keywords:
+#                     if keyword in allowed_ignore_values:
+#                         ignore_list.append(keyword)
+#                     else:
+#                         raise_value_error(
+#                             "Invalid argument '"
+#                             + keyword
+#                             + "'\nValid arguments:\n"
+#                             + ", ".join(allowed_ignore_values))
+#
+#                 logging.debug("Ignore these information: "
+#                               + ", ".join(ignore_list))
+#
+#             elif opt.__eq__("--to-csv"):
+#                 to_csv = True
+#                 rprint("[red]--to-csv not handled yet[/red]")
+#                 sys.exit(0)
+#
+#             elif opt.__eq__("--table-format"):
+#                 # types = "plain,simple,github,grid,fancy_grid,pipe," \
+#                 #         "orgtbl,rst,mediawiki,html,latex,latex_raw," \
+#                 #         "latex_booktabs,tsv,pretty"
+#                 # only valid arguments
+#                 if arg in valid_table_formats:
+#                     table_format = arg
+#                 else:
+#                     logging.debug("The given table format doesn't exist")
+#
+#             elif opt.__eq__("--reverse-dns-lookup"):
+#                 reverse_dns_lookup = True
+#
+#             # these are already managed in manage_prioritized_params
+#             # need to be caught, cause of exception cases
+#             elif opt.__eq__("--no-config"):
+#                 pass
+#             elif opt.__eq__("--generate-log-file"):
+#                 pass
+#             elif opt in ["-v", "--verbose"]:
+#                 pass
+#
+#             else:
+#                 rprint("[red]Option not handled yet[/red]")
+#                 sys.exit(0)
+#     # print error messages
+#     except Exception as err:
+#         logging.exception(
+#             err)  # write a detailed description in the stdout.log file
+#         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+#         rprint("[dark_olive_green1]"
+#                "Use '--help' or 'man htcompact' for help"
+#                "[/dark_olive_green1]")
+#         sys.exit(1)
+#
+#     if summarizer_mode and analyser_mode:
+#         mode = "analysed-summary"
+#     elif summarizer_mode:
+#         mode = "summarize"
+#     elif analyser_mode:
+#         mode = "analyse"
+#
+#     if len(files) == 0:
+#         logging.debug("No files given")
+#         rprint("[red]No files given[/red]")
+#         sys.exit(2)
 
 
 def small_help() -> str:
@@ -2548,7 +2631,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
     return valid_files
 
 
-def setup_logging_tool(log_file=sys.argv[0] + '.log'):
+def setup_logging_tool(log_file=None, verbose_mode=False):
     """
         Set up the logging device,
         to generate a log file, with --generate-log-file
@@ -2569,7 +2652,7 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
         logging.root.removeHandler(default_handler)
 
     # if logging tool is set to use
-    if generate_log_file:
+    if log_file is not None:
         # activate logger if not already activated
         logging.getLogger().disabled = False
 
@@ -2719,21 +2802,24 @@ def run(commandline_args):
 
         initialize()  # initialize global parameters
 
-        check_for_redirection()  # set the color sequenzes to ""
+        redirecting_output, reading_stdin, stdin_input\
+            = check_for_redirection()
 
         # if exit parameters are given that will interrupt this script,
         # catch them here so the config won't be unnecessary loaded
-        manage_prioritized_params(commandline_args)
+        param_dict = manage_params(commandline_args)
+        print(param_dict)
 
         # if not --no-config is set:
         # remove the first file, that can be interpreted as a config file,
         # all other files will be interpreted as log files,
         # so DON'T apply more than one config file to the script
         found_conf = None
-        if not no_config:
+        if not param_dict["no_config"]:
             found_conf, commandline_args = find_config(commandline_args)
 
-        setup_logging_tool()  # set up the logging device
+        setup_logging_tool(param_dict["generate_log_file"],
+                           param_dict["verbose"])
 
         logging.debug("-------Start of htcompact scipt-------")
 
@@ -2790,5 +2876,4 @@ if __name__ == "__main__":
 
     :return: exit status 0-4
     """
-    # run(sys.argv[1:])
-    _manage_params(sys.argv[1:])
+    run(sys.argv[1:])
