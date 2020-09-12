@@ -49,12 +49,12 @@ to see for ex. the average runtime and usage of all the logs
 """
 
 # global variables
-option_shorts = "hsavm:"
-option_longs = ["help", "version", "verbose", "mode=",
-                "std-log=", "std-err=", "std-out=",
-                "ignore=", "show-more=", "no-config", "to-csv",
-                "generate-log-file", "filter=", "extend",
-                "print-event-table", "reverse-dns-lookup", "table-format="]
+# option_shorts = "hsavm:"
+# option_longs = ["help", "version", "verbose", "mode=",
+#                 "std-log=", "std-err=", "std-out=",
+#                 "ignore=", "show-more=", "no-config", "to-csv",
+#                 "generate-log-file", "filter=", "extend",
+#                 "print-event-table", "reverse-dns-lookup", "table-format="]
 
 allowed_modes = {"a": "analyse",
                  "s": "summarize",
@@ -66,7 +66,7 @@ allowed_ignore_values = ["execution-details", "times", "host-nodes",
                          "used-resources", "requested-resources",
                          "allocated-resources", "all-resources",
                          "errors"]
-valid_table_formats= ["plain", "simple", "github", "grid",
+valid_table_formats = ["plain", "simple", "github", "grid",
                       "fancy_grid", "pipe","orgtbl", "rst",
                       "mediawiki", "html", "latex", "latex_raw",
                       "latex_booktabs", "tsv", "simple"]
@@ -75,66 +75,6 @@ default_configfile = "htcompact.conf"
 accepted_states = ["true", "yes", "y", "enable", "enabled", "0"]
 
 colors = {
-            'red': "",
-            'green': "",
-            'yellow': "",
-            'magenta': "",
-            'cyan': "",
-            'blue': "",
-            'light_grey': "",
-            'back_to_default': ""
-        }
-
-# thresholds for bad and low usage of resources
-tolerated_usage_threshold = 0.1
-bad_usage_threshold = 0.25
-
-
-def initialize():
-    """
-    This method initializes all global variables
-    :return:
-    """
-    global files, ignore_list, allowed_ignore_values, \
-        no_config, reverse_dns_lookup, \
-        store_dns_lookups, verbose_mode, \
-        to_csv, generate_log_file, \
-        filter_mode, filter_keywords, filter_extended, \
-        colors, tolerated_usage_threshold, bad_usage_threshold, \
-        std_log, std_err, std_out, \
-        table_format, reading_stdin, redirecting_output, \
-        show_list, allowed_show_values, mode
-
-    # global parameters, used for dynamical output of information
-    files = list()
-
-    # show more information, mostly given by HTCompact .err and .out files
-    mode = None
-
-    show_list = list()
-
-    # ignore information
-    ignore_list = list()
-
-    # if set do not use a config file, even if one was found
-    no_config = False
-
-    # Features:
-    reverse_dns_lookup = False
-    store_dns_lookups = dict()
-    to_csv = False
-
-    # logging tool
-    generate_log_file = False
-    verbose_mode = False
-
-    # filter mode
-    filter_mode = False
-    filter_keywords = list()
-    filter_extended = False
-
-    # escape sequences for colors
-    colors = {
         'red': "\033[0;31m",
         'green': "\033[0;32m",
         'yellow': "\033[0;33m",
@@ -145,16 +85,128 @@ def initialize():
         'back_to_default': "\033[0;39m"
     }
 
-    # global variables with default values for err/log/out files
-    std_log = ""
-    std_err = ".err"
-    std_out = ".out"
+# thresholds for bad and low usage of resources
+tolerated_usage_threshold = 0.1
+bad_usage_threshold = 0.25
 
-    # global defaults
-    table_format = "pretty"  # ascii by default
 
-    reading_stdin = False
-    redirecting_output = False
+# def initialize():
+#     """
+#     This method initializes all global variables
+#     :return:
+#     """
+#     global files, ignore_list, allowed_ignore_values, \
+#         no_config, reverse_dns_lookup, \
+#         store_dns_lookups, verbose_mode, \
+#         to_csv, generate_log_file, \
+#         filter_mode, filter_keywords, filter_extended, \
+#         colors, tolerated_usage_threshold, bad_usage_threshold, \
+#         std_log, std_err, std_out, \
+#         table_format, reading_stdin, redirecting_output, \
+#         show_list, allowed_show_values, mode
+#
+#     # global parameters, used for dynamical output of information
+#     files = list()
+#
+#     # show more information, mostly given by HTCompact .err and .out files
+#     mode = None
+#
+#     show_list = list()
+#
+#     # ignore information
+#     ignore_list = list()
+#
+#     # if set do not use a config file, even if one was found
+#     no_config = False
+#
+#     # Features:
+#     reverse_dns_lookup = False
+#     store_dns_lookups = dict()
+#     to_csv = False
+#
+#     # logging tool
+#     generate_log_file = False
+#     verbose_mode = False
+#
+#     # filter mode
+#     filter_mode = False
+#     filter_keywords = list()
+#     filter_extended = False
+#
+#     # escape sequences for colors
+#     colors = {
+#         'red': "\033[0;31m",
+#         'green': "\033[0;32m",
+#         'yellow': "\033[0;33m",
+#         'magenta': "\033[0;35m",
+#         'cyan': "\033[0;36m",
+#         'blue': "\033[0;34m",
+#         'light_grey': "\033[37m",
+#         'back_to_default': "\033[0;39m"
+#     }
+#
+#     # global variables with default values for err/log/out files
+#     std_log = ""
+#     std_err = ".err"
+#     std_out = ".out"
+#
+#     # global defaults
+#     table_format = "pretty"  # ascii by default
+#
+#     reading_stdin = False
+#     redirecting_output = False
+
+class GlobalPlayer(object):
+
+    def __init__(self):
+        self.colors = {
+            'red': "\033[0;31m",
+            'green': "\033[0;32m",
+            'yellow': "\033[0;33m",
+            'magenta': "\033[0;35m",
+            'cyan': "\033[0;36m",
+            'blue': "\033[0;34m",
+            'light_grey': "\033[37m",
+            'back_to_default': "\033[0;39m"
+        }
+
+        self.redirecting_stdout = None
+        self.reading_stdin = None
+        self.stdin_input = None
+
+
+###############################
+GlobalServant = GlobalPlayer()
+###############################
+
+
+def check_for_redirection():
+    """
+    This method should be activated first, when output is generated
+    it does nothing, if output is printed to the terminal.
+    If output gets redirected with > or | or other redirection tools, ignore escape sequences
+    by setting them to ""
+    :return:
+    """
+
+    GlobalServant.redirecting_stdout = not sys.stdout.isatty()
+    GlobalServant.reading_stdin = not sys.stdin.isatty()
+
+    if GlobalServant.reading_stdin:
+        GlobalServant.stdin_input = sys.stdin.readlines()
+
+    if GlobalServant.redirecting_stdout:
+
+        GlobalServant.colors = {
+            'red': "",
+            'green': "",
+            'yellow': "",
+            'magenta': "",
+            'cyan': "",
+            'blue': "",
+            'light_grey': "",
+            'back_to_default': ""
+        }
 
 
 def define_parser(args: list) -> argparse.ArgumentParser:
@@ -242,7 +294,7 @@ def define_parser(args: list) -> argparse.ArgumentParser:
     return cmd_parse
 
 
-def manage_params(args: list, stdin_input=None) -> dict:
+def manage_params(args: list) -> dict:
     """
     Uses the argparse parser defined in define_parser()
     returns a dict looking like
@@ -268,9 +320,9 @@ def manage_params(args: list, stdin_input=None) -> dict:
     """
 
     # listen to stdin and add these files
-    if stdin_input is not None:
+    if GlobalServant.reading_stdin:
         logging.debug("Listening to arguments from stdin")
-        for line in stdin_input:
+        for line in GlobalServant.stdin_input:
             args.append(line.rstrip('\n'))
 
     cmd_parser = define_parser(args)
@@ -339,95 +391,75 @@ def manage_params(args: list, stdin_input=None) -> dict:
     return cmd_dict
 
 
-def check_for_redirection():
-    """
-    This method should be activated first, when output is generated
-    it does nothing, if output is printed to the terminal.
-    If output gets redirected with > or | or other redirection tools, ignore escape sequences
-    by setting them to ""
-    :return:
-    """
-
-    redirecting_output = not sys.stdout.isatty()
-    reading_stdin = not sys.stdin.isatty()
-    stdin_input = None
-
-    if reading_stdin:
-        stdin_input = sys.stdin.readlines()
-
-    if redirecting_output:
-        global colors
 
 
-    return redirecting_output, reading_stdin, stdin_input
 
-
-def remove_files_from_args(args: list, short_opts: str, long_opts: list):
-    """
-        I want to make it easier for the user to insert many files at once.
-        The script should detect option arguments and files
-
-        It will filter the given files and remove them from the argument list
-
-        !!!Exactly that is this method doing!!! (because getopt has no such function)
-
-    :param args: is supposed to be a list, in any case it should be the sys.argv[1:] list
-    :param short_opts: the short getopt options
-    :param long_opts: the long getopt options
-    :return: list of getopt arguments
-    """
-    if type(args) != list:
-        raise_value_error("Expecting a list as argument")
-
-    new_args = args.copy()
-    generate_files = list()
-    index = 0
-    # run through the command line arguments,
-    # skip the getopt argument and interpret everything else as a file
-    while True:
-        if index >= len(args):
-            break
-
-        arg = args[index]
-
-        is_long_arg = False
-
-        if arg.startswith("-"):  # for short_args
-            arg = arg[1:]
-            if arg.startswith("-"):  # for long_args
-                arg = arg[1:]
-                is_long_arg = True
-
-            # skip the argument if getopt arguments are setable
-            if not is_long_arg:
-                for i, s_arg in enumerate(short_opts):
-                    if s_arg == arg and i < len(short_opts) - 1 and short_opts[
-                        i + 1] == ":":
-                        index += 1
-                        break
-            else:
-                for l_arg in long_opts:
-                    if l_arg.startswith(arg) and l_arg.endswith("="):
-                        index += 1
-                        break
-
-            # if arg + ":" in short_opts:
-            #     index += 1
-            # elif arg + "=" in long_opts:
-            #     index += 1
-        else:
-            generate_files.append(arg)
-            new_args.remove(arg)
-
-        index += 1
-
-    # change files, if found
-    if len(generate_files) > 0:
-        global files
-        files = generate_files
-
-    # return valid arguments
-    return new_args
+# def remove_files_from_args(args: list, short_opts: str, long_opts: list):
+#     """
+#         I want to make it easier for the user to insert many files at once.
+#         The script should detect option arguments and files
+#
+#         It will filter the given files and remove them from the argument list
+#
+#         !!!Exactly that is this method doing!!! (because getopt has no such function)
+#
+#     :param args: is supposed to be a list, in any case it should be the sys.argv[1:] list
+#     :param short_opts: the short getopt options
+#     :param long_opts: the long getopt options
+#     :return: list of getopt arguments
+#     """
+#     if type(args) != list:
+#         raise_value_error("Expecting a list as argument")
+#
+#     new_args = args.copy()
+#     generate_files = list()
+#     index = 0
+#     # run through the command line arguments,
+#     # skip the getopt argument and interpret everything else as a file
+#     while True:
+#         if index >= len(args):
+#             break
+#
+#         arg = args[index]
+#
+#         is_long_arg = False
+#
+#         if arg.startswith("-"):  # for short_args
+#             arg = arg[1:]
+#             if arg.startswith("-"):  # for long_args
+#                 arg = arg[1:]
+#                 is_long_arg = True
+#
+#             # skip the argument if getopt arguments are setable
+#             if not is_long_arg:
+#                 for i, s_arg in enumerate(short_opts):
+#                     if s_arg == arg and i < len(short_opts) - 1 and short_opts[
+#                         i + 1] == ":":
+#                         index += 1
+#                         break
+#             else:
+#                 for l_arg in long_opts:
+#                     if l_arg.startswith(arg) and l_arg.endswith("="):
+#                         index += 1
+#                         break
+#
+#             # if arg + ":" in short_opts:
+#             #     index += 1
+#             # elif arg + "=" in long_opts:
+#             #     index += 1
+#         else:
+#             generate_files.append(arg)
+#             new_args.remove(arg)
+#
+#         index += 1
+#
+#     # change files, if found
+#     if len(generate_files) > 0:
+#         global files
+#         files = generate_files
+#
+#     # return valid arguments
+#     return new_args
 
 
 # def manage_prioritized_params(args: list):
@@ -1034,9 +1066,10 @@ def gen_time_dict(
     return time_dict
 
 
-def log_to_dict(file: str,
-                sec: int = 0,
-                reverse_dns_lookup=False) -> (dict, dict, dict, dict, dict):
+def log_to_dict(
+        file: str,
+        sec: int = 0,
+        reverse_dns_lookup=False) -> (dict, dict, dict, dict, dict):
     """
     Read the log file with the htcondor module.
     Return five dicts holding information about:
@@ -1234,7 +1267,7 @@ def log_to_dict(file: str,
         elif "Waiting time" in better_time_dict["Dates and times"]:
             state = "Waiting"
         else:
-            pass
+            state = "Unknown"
         job_events.insert(0, ("Process is", colors["blue"]
                               + state + colors["back_to_default"]))
     # file not fully readable
@@ -1899,15 +1932,15 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
 
     if len(log_files) == 0:
         return "No files to analyse"
-    elif len(log_files) > 1 and not redirecting_output:
-        print(
-            "More than one file is given, this mode is meant to be used for single job analysis.\n"
-            "This will change nothing, but you should rather do it just for a file one by one")
-        if not reading_stdin:
-            x = input("Want to continue (y/n): ")
-            if x != "y":
-                rprint('[red]Process stopped[/red]')
-                sys.exit(0)
+    # elif len(log_files) > 1 and not redirecting_stdout:
+    #     print(
+    #         "More than one file is given, this mode is meant to be used for single job analysis.\n"
+    #         "This will change nothing, but you should rather do it just for a file one by one")
+    #     if not reading_stdin:
+    #         x = input("Want to continue (y/n): ")
+    #         if x != "y":
+    #             rprint('[red]Process stopped[/red]')
+    #             sys.exit(0)
 
     result_list = list()
 
@@ -1918,8 +1951,8 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
         result_dict[
             "file-description"] = f"{colors['green']}Job analysis of: {file}{colors['back_to_default']}"
 
-        job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(
-            file)
+        job_dict, res_dict, time_dict, \
+        ram_history, occurred_errors = log_to_dict(file)
 
         if len(job_dict) != 0:
             result_dict["execution-details"] = job_dict
@@ -1950,12 +1983,14 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
                 fig.y_label = "Usage"
                 fig.x_label = "Time"
 
-                # this will use the self written function _num_formatter, to convert the y-label to int values
+                # this will use the self written function _
+                # num_formatter, to convert the y-label to int values
                 fig.register_label_formatter(float, _int_formatter)
                 fig.plot(dates, ram, lc='green', label="Continuous Graph")
                 fig.scatter(dates, ram, lc='red', label="Single Values")
 
-                if redirecting_output:  # if redirected, the Legend is useless
+                # if redirected, the Legend is useless
+                if GlobalServant.redirecting_stdout:
                     result_dict["ram-history"] = fig.show()
                 else:
                     result_dict["ram-history"] = fig.show(legend=True)
@@ -2405,9 +2440,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 def filter_for(log_files: list_of_logs,
                keywords: list,
                extend=False,
-               mode=None,
-               reading_stdin=False,
-               redirecting_stdout=False) -> log_inf_list:
+               mode=None) -> log_inf_list:
     """
     Filter for a list of keywords, which can be extended
     and print out every file which matches the pattern (not case sensitive)
@@ -2428,14 +2461,15 @@ def filter_for(log_files: list_of_logs,
     if type(keywords) == list:
         keyword_list = keywords
     elif type(keywords) == str:
-        keyword_list = " ".join(re.split(',| ',
-                                         keywords)).split()  # remove spaces and commas from string
+        # remove spaces and commas from string
+        keyword_list = " ".join(re.split(',| ',keywords)).split()
     else:
         logging.debug(
             f"Filter mode only accepts a string or list with keywords, not {keywords}")
         raise_type_error("Expecting a list or a string")
 
-    # if extend is set, keywords like err will also look for keywords like warn exception, aborted, etc.
+    # if extend is set, keywords like err will
+    # also look for keywords like warn exception, aborted, etc.
     if extend:  # apply some rules
         # the error list
         err_list = ["err", "warn", "exception", "aborted", "abortion",
@@ -2501,7 +2535,8 @@ def filter_for(log_files: list_of_logs,
             rprint("[magenta]Analyse these files[/magenta]")
             return_dicts = analyse(found_logs)
     # if not reading from stdin or redirected
-    elif not reading_stdin and not redirecting_stdout:
+    elif not GlobalServant.reading_stdin \
+            and not GlobalServant.redirecting_stdout:
         rprint("[blue]Want do do more?[/blue]")
         x = input(
             "default(d), summarize(s), analyse(a),"
@@ -2731,35 +2766,31 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
         log.addHandler(stdout_handler)
 
 
-def customize_results(files: list_of_logs,
+def customize_results(log_files: list_of_logs,
                       mode: str,
                       ignore_list=list,
                       show_list=list,
                       filter_keywords=list,
                       filter_extended=False,
-                      reading_stdin=False,
-                      redirecting_stdout=False,
                       table_format="pretty",
                       **kwargs) -> str:
     output_string = ""
 
     if len(filter_keywords) > 0:
-        results = filter_for(files,
+        results = filter_for(log_files,
                              keywords=filter_keywords,
                              extend=filter_extended,
-                             mode=mode,
-                             reading_stdin=reading_stdin,
-                             redirecting_stdout=redirecting_stdout)
+                             mode=mode)
     elif mode.__eq__("default"):
-        results = default(files)  # force default with -d
+        results = default(log_files)  # force default with -d
     elif mode.__eq__("analysed-summary"):
-        results = analysed_summary(files)  # analysed summary ?
+        results = analysed_summary(log_files)  # analysed summary ?
     elif mode.__eq__("summarize"):
-        results = summarize(files)  # summarize information
+        results = summarize(log_files)  # summarize information
     elif mode.__eq__("analyse"):
-        results = analyse(files)  # analyse the given files
+        results = analyse(log_files)  # analyse the given log_files
     else:
-        results = default(files)  # anyways try to print default output
+        results = default(log_files)  # anyways try to print default output
 
     # This can happen, when for example the filter mode is not forwarded
     if results is None:
@@ -2861,11 +2892,10 @@ def run(commandline_args):
 
         #initialize()  # initialize global parameters
 
-        redirecting_stdout, reading_stdin, stdin_input\
-            = check_for_redirection()
+        check_for_redirection()
         # if exit parameters are given that will interrupt this script,
         # catch them here so the config won't be unnecessary loaded
-        param_dict = manage_params(commandline_args, stdin_input)
+        param_dict = manage_params(commandline_args)
         print(param_dict)
 
         # if not --no-config is set:
@@ -2884,9 +2914,9 @@ def run(commandline_args):
         if param_dict["verbose"]:
             logging.info('Verbose mode turned on')
 
-        if reading_stdin:
+        if GlobalServant.reading_stdin:
             logging.debug("Reading from stdin")
-        if redirecting_stdout:
+        if GlobalServant.redirecting_stdout:
             logging.debug("Output is getting redirected")
 
         if found_conf is not None:
@@ -2897,12 +2927,10 @@ def run(commandline_args):
         # and by that arguments set in the config file, will be ignored
         #manage_params(commandline_args)
 
-        global files
         valid_files = validate_given_logs(param_dict["files"],
                                           std_log=param_dict["std_log"],
                                           std_err=param_dict["std_err"],
                                           std_out=param_dict["std_out"])
-
         if len(valid_files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(2)
@@ -2915,9 +2943,7 @@ def run(commandline_args):
         #                                reading_stdin=reading_stdin,
         #                                redirecting_stdout=redirecting_stdout,
         #                                table_format=param_dict["table_format"])
-        output_str = customize_results(**param_dict,
-                                       reading_stdin=reading_stdin,
-                                       redirecting_stdout=redirecting_stdout)
+        output_str = customize_results(log_files=valid_files,**param_dict)
 
         print(output_str)  # write it to the console
 
