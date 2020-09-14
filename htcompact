@@ -27,8 +27,10 @@ timedelta = datetime.timedelta
 
 """
 
-This script is basically reading information from HTCondor log files and storing them into
-dictionaries. By that its actually pretty simple to analyse the data.
+This script is basically reading information from HTCondor log files,
+by using the htcondor module
+and stores it into dictionaries.
+By that it's simple to analyse the data.
 
 The script makes the information compact and easy to under stand,
 that's the reason for the name htcompact
@@ -128,23 +130,6 @@ class GlobalPlayer(object):
         self.reading_stdin = None
         self.stdin_input = None
 
-        # self.verbose = False
-        # self.generate_log_file = 'htcompact.log'
-        # self.mode = None
-        # self.std_log = ''
-        # self.std_out = '.out'
-        # self.std_err = '.err'
-        # self.ignore_list =  None
-        # self.show_list = None,
-        #  'no_config': False,
-        #  'filter': None,
-        #  'extend': False,
-        #  'print_event_table': False,
-        #  'reverse_dns_lookup': False,
-        #  'table_format': 'pretty',
-        #  'files': []
-
-
 
 ###############################
 GlobalServant = GlobalPlayer()
@@ -182,10 +167,16 @@ def check_for_redirection():
 
 def set_std_files(std_log=None, std_err=None, std_out=None):
     if std_log is not None:
+        if not std_log.startswith('.'):
+            std_log = '.' +std_log
         GlobalServant.std_log = std_log
     if std_err is not None:
+        if not std_err.startswith('.'):
+            std_err = '.' +std_err
         GlobalServant.std_err = std_err
     if std_out is not None:
+        if not std_out.startswith('.'):
+            std_out = '.' +std_out
         GlobalServant.std_out = std_out
 
 
@@ -197,8 +188,13 @@ def define_parser(args: list) -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("File or Directory", nargs="*", action="append",
-                        help="any path to log or config file(s)",default=None)
+    parser.add_argument("path", nargs="*",
+                        action="append", default=[],
+                        help="ANY number of paths to log or config file(s)")
+
+    parser.add_argument("-f", nargs=1, action="append",
+                        dest="more_files", default=[],
+                        help="ONE path to log or config file(s)")
 
     parser.add_argument("--version",
                         help="Print out extended execution details",
@@ -355,9 +351,15 @@ def manage_params(args: list) -> dict:
 
     cmd_dict = vars(cmd_parser)
     
-    # rename to files
-    cmd_dict["files"] = cmd_dict["File or Directory"][0]
-    del cmd_dict["File or Directory"]
+    # concat files
+    new_files_list = list()
+    for li in cmd_dict["path"]:
+        new_files_list.extend(li)
+    for li in cmd_dict["more_files"]:
+        new_files_list.extend(li)
+    cmd_dict["files"] = new_files_list
+    del cmd_dict["path"]
+    del cmd_dict["more_files"]
     
     # delete unnecessary information
     del cmd_dict["m"]
