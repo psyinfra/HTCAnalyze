@@ -204,7 +204,6 @@ class CustomFormatter(argparse.HelpFormatter):
                 return ',\n  '.join(parts)
 
 
-
 # parser for --no-config flag, which avoids -h|--help flag
 def setup_no_config_parser():
     parser = argparse.ArgumentParser(add_help=False)
@@ -494,6 +493,7 @@ def manage_params(args: list) -> dict:
         sys.exit(0)
 
     cmd_dict = vars(commands_parsed).copy()
+    cmd_dict["no_config"] = no_config_parsed.no_config
 
     # concat files
     new_files_list = list()
@@ -566,11 +566,10 @@ def manage_params(args: list) -> dict:
     del cmd_dict["version"]
 
     # if not no config is set, do overwrite every None value, or empty list
-    if not no_config_parsed.no_config:
+    if not cmd_dict["no_config"]:
         config_paths = ['/etc/htcompact.conf',
                         '~/.config/htcompact.conf',
-                        sys.prefix + '/config/htcompact.conf',
-                        'config/htcompact.conf']
+                        sys.prefix + '/config/htcompact.conf']
         # find config file and remove if given
         config_file, new_files_list = find_valid_config(new_files_list,
                                                         config_paths)
@@ -603,6 +602,9 @@ def manage_params(args: list) -> dict:
                         cmd_dict[val].extend(sub_list)
                 elif cmd_dict[val] is None:
                     cmd_dict[val] = conf_dict[val]
+
+        else:
+            rprint("[yellow]No config file found[/yellow]")
 
     # if values are None, assign default values
     if cmd_dict['std_log'] is None:
