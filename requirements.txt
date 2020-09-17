@@ -1,6 +1,6 @@
-plotille
-rich
+plotille>=3.7
+rich>=3.0.3
 numpy
 tabulate
-htcondor
-configargparse
+htcondor>=8.8.6
+configargparse==1.2.3
