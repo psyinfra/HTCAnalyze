@@ -87,6 +87,7 @@ COLORS = {
     }
 
 
+# class to store and change global variables
 class GlobalPlayer(object):
 
     def __init__(self):
@@ -113,7 +114,7 @@ class GlobalPlayer(object):
 
 
 ###############################
-GlobalServant = GlobalPlayer()
+GlobalServant = GlobalPlayer()  # define global variables
 ###############################
 
 
@@ -149,6 +150,8 @@ class CustomFormatter(argparse.HelpFormatter):
                 return ',\n  '.join(parts)
 
 
+# changes global redirection parameter,
+# cause they might get changed during runtime
 def check_for_redirection():
     """
     This method should be activated first, when output is generated
@@ -178,6 +181,7 @@ def check_for_redirection():
         }
 
 
+# set global standard HTCondor log, error and output files
 def set_std_files(std_log=None, std_err=None, std_out=None):
     if std_log is not None:
         if not std_log.startswith('.') and std_log.__ne__(""):
@@ -193,6 +197,7 @@ def set_std_files(std_log=None, std_err=None, std_out=None):
         GlobalServant.std_out = std_out
 
 
+# parser for --no-config flag, which avoids -h|--help flag
 def setup_no_config_parser():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--no-config",
@@ -432,136 +437,6 @@ def setup_commandline_parser() -> configargparse.ArgumentParser:
                         help="Do not search for config")
 
     return parser
-
-
-# def manage_params(args: list) -> dict:
-#     """
-#     Uses the argparse parser defined in define_parser()
-#     returns a dict looking like (default):
-#
-#      {'verbose': False,
-#       'generate_log_file': None,
-#       'mode': None,
-#       'std_log': '',
-#       'std_out': '.out',
-#       'std_err': '.err',
-#       'ignore_list': [],
-#       'show_list': [],
-#       'no_config': False,
-#       'filter_keywords': [],
-#       'extend': False,
-#       'print_event_table': False,
-#       'reverse_dns_lookup': False,
-#       'table_format': 'pretty',
-#       'files': []
-#       }
-#
-#
-#     :param args: list of args
-#     :return: dict with params
-#     """
-#
-#     # listen to stdin and add these files
-#     if GlobalServant.reading_stdin:
-#         logging.debug("Listening to arguments from stdin")
-#         for line in GlobalServant.stdin_input:
-#             args.append(line.rstrip('\n'))
-#
-#     cmd_parser = setup_commandline_parser().parse_args(args)
-#     print(cmd_parser)
-#
-#     # first of all check for prioritised/exit params
-#     if cmd_parser.version:
-#         print("Version: v1.1.0")
-#         sys.exit(0)
-#     if cmd_parser.print_event_table:
-#         print(get_event_information())
-#         sys.exit(0)
-#
-#     cmd_dict = vars(cmd_parser)
-#
-#     # concat files
-#     new_files_list = list()
-#     for li in cmd_dict["path"]:
-#         new_files_list.extend(li)
-#     for li in cmd_dict["more_files"]:
-#         new_files_list.extend(li)
-#
-#     if not cmd_parser.no_config:
-#         config_paths = ['/etc/htcompact.conf',
-#                         '~/.config/htcompact.conf',
-#                         sys.prefix+'/config/htcompact.conf',
-#                         'config/htcompact.conf']
-#         config_file, new_files_list = find_valid_config(new_files_list,
-#                                                         config_paths)
-#         config_parser, _ = setup_config_parser()\
-#             .parse_known_args(["-c", config_file])
-#         print(config_parser)
-#
-#
-#     cmd_dict["files"] = new_files_list
-#     del cmd_dict["path"]
-#     del cmd_dict["more_files"]
-#
-#     # parse the mode correctly
-#     if cmd_parser.analyser_mode and cmd_parser.summarizer_mode:
-#         mode = "analysed-summary"
-#     elif cmd_parser.analyser_mode:
-#         mode = "analyse"
-#     elif cmd_parser.summarizer_mode:
-#         mode = "summarize"
-#     elif cmd_parser.mode is not None:
-#         if cmd_parser.mode in ALLOWED_MODES.keys():
-#             mode = ALLOWED_MODES[cmd_parser.mode]
-#         else:
-#             mode = cmd_parser.mode
-#     else:
-#         mode = None  # will result in default mode
-#
-#     # error handling
-#     try:
-#         if cmd_parser.filter_extended and len(cmd_parser.filter_keywords) == 0:
-#             raise_value_error("--extend not allowed without --filter")
-#         if len(cmd_parser.show_list) > 0:
-#             if mode == "analysed-summary" or mode == "summarize":
-#                 raise_value_error("--show-more only allowed"
-#                                   " with default and analyser mode")
-#     except ValueError as err:
-#         print("htcompact: error: "+str(err))
-#         sys.exit(2)
-#
-#     # set global variables for log/err/out files
-#     set_std_files(cmd_parser.std_log, cmd_parser.std_err, cmd_parser.std_out)
-#     GlobalServant.reverse_dns_lookup = cmd_parser.reverse_dns_lookup
-#
-#     # delete unnecessary information
-#     del cmd_dict["m"]
-#     del cmd_dict["summarizer_mode"]
-#     del cmd_dict["analyser_mode"]
-#     del cmd_dict["version"]
-#
-#     # concat ignore list
-#     new_ignore_list = list()
-#     for li in cmd_dict["ignore_list"]:
-#         new_ignore_list.extend(li)
-#     cmd_dict["ignore_list"] = new_ignore_list
-#
-#     # concat show list
-#     new_show_list = list()
-#     for li in cmd_dict["show_list"]:
-#         new_show_list.extend(li)
-#     cmd_dict["show_list"] = new_show_list
-#
-#     # concat filter list
-#     new_filter_list = list()
-#     for li in cmd_dict["filter_keywords"]:
-#         new_filter_list.extend(li)
-#     cmd_dict["filter_keywords"] = new_filter_list
-#
-#     cmd_dict["mode"] = mode
-#
-#     return cmd_dict
-#
 
 
 def manage_params(args: list) -> dict:
