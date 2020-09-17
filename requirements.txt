@@ -3,3 +3,4 @@ rich
 numpy
 tabulate
 htcondor
+configargparse
