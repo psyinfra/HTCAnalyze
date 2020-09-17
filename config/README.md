@@ -7,67 +7,54 @@ htcompact.conf
 </summary>
 
 ```
+#
 # this is a comment
 # the following lines represent the default htcompact config setup
-# the [] represent sections and the lines below the corresponding attributes
 # there is no need to specify all of them, but it doesn't hurt
 #
-# Values will be accepted as True for :
-# ["true", "yes", "y", "enable", "enabled", "0"]
-# everything else will be interpreted as False
+# lists must be specified like: [var1, var2, var3]
 
-[documents]
-files = check_the_htcompact.conf
+#! Setup of the Config file
 
-[formats]
-table_format = pretty
-#       Available Types:
-#       plain, simple, github, grid, fancy_grid, pipe,
-#       orgtbl, rst, mediawiki, html, latex, latex_raw,
-#       latex_booktabs, tsv, default: simple
+files = [check-the-htcompact.conf]
+table-format = pretty
 
-[htc-files]
-stdlog = .log
-stderr = .err
-stdout = .out
+# if std-log is not set, every file will be interpreted as a log file,
+# except std-err and std-out files
+# std-log = ''
+std-err = .err
+std-out = .out
 
-# only for default mode
-[show-more]
-show_list = None
+# only for default and analyser mode
+show-list = []
 # valid values are: "std-err, std-out"
 # This is checking for errors and warnings inside the stderr output of a job
 # if a .err file is found, same with output, which will just return stdout in .out files
 
 # ignore HTCondor related information that is gained within the process
-[ignore]
-ignore_list = None
+ignore-list = []
 # valid values are:
 # "used-resources, requested-resources, allocated-resources,
 # execution-details, all-resources, times, errors, host-nodes"
 
-[thresholds]
- # everything with a deviation of more than 10% is tolerated
-tolerated_usage = 0.1
-# everything with a deviation of more than 25% is considered bad
-bad_usage = 1.2
 
-[modes]
-filter_mode = False
-mode = None
+# everything with a deviation of more than 10% is tolerated
+tolerated-usage = 0.1
+# everything with a deviation of more than 25% is considered bad
+bad-usage = 0.25
+
+mode = default
 # valid modes: [summarize, analyse, analysed-summary, default]
 
-# if filter_mode set true, this section must be set,
-# else the script does not know what to filter for
-[filter]
-filter_keywords = gpu
-filter_extended = false
+
+filter = []
+filter-extended = false
 ## if set, filter is extended with these keywords:
 ## [err, warn, exception, aborted, abortion, abnormal, fatal]
 
-[features]
-generate_log_file = False
-to_csv = False
-reverse_dns_lookup = disabled
+# more features
+generate-log-file = false
+reverse-dns-lookup = false
 
 ```
 
@@ -123,8 +110,8 @@ htcompact_setup.conf
 </summary>
 
 ```
-[documents]
-files = log_file1 log_directory1
+[documents] # section headers will be ignored
+files = [log_file1 log_directory1]
 
 [htc-files]
 stdlog = .log
@@ -132,7 +119,7 @@ stderr = .err
 stdout = .out
 
 [features]
-summarize = true
+mode = summarize
 ```
 </details>
 
