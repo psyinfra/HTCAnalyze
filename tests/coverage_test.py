@@ -366,26 +366,26 @@ def test_redirection():
 
 
 def _all_modes_by_logfiles(logfile, return_value):
-    args = [logfile]
+    args = [logfile, "--no-config", "-v"]
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == return_value
 
     ht.input = lambda x: 'y'
-    args = ["-a", logfile]
+    args = ["-a", logfile, "--no-config"]
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == return_value
 
-    args = ["-s", logfile]
+    args = ["-s", logfile, "--no-config"]
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == return_value
 
-    args = ["-as", logfile]
+    args = ["-as", logfile, "--no-config"]
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
