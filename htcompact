@@ -74,7 +74,6 @@ VALID_TABLE_FORMATS = ["plain", "simple", "github", "grid", "pretty",
                        "latex_booktabs", "tsv", "simple"]
 
 DEFAULT_CONFIG_FILE = "htcompact.conf"
-ACCEPTED_CONFIG_STATES = ["true", "yes", "y", "enable", "enabled", "0"]
 
 COLORS = {
         'red': "\033[0;31m",
@@ -91,19 +90,9 @@ COLORS = {
 class GlobalPlayer(object):
 
     def __init__(self):
-        self.colors = {
-            'red': "\033[0;31m",
-            'green': "\033[0;32m",
-            'yellow': "\033[0;33m",
-            'magenta': "\033[0;35m",
-            'cyan': "\033[0;36m",
-            'blue': "\033[0;34m",
-            'light_grey': "\033[37m",
-            'back_to_default': "\033[0;39m"
-        }
+        self.reset()
 
-        # if set do not use a config file, even if one was found
-        self.no_config = False
+    def reset(self):
 
         # thresholds for bad and low usage of resources
         self.tolerated_usage_threshold = 0.1
@@ -117,14 +106,6 @@ class GlobalPlayer(object):
         self.std_err = ".err"
         self.std_out = ".out"
 
-        # filter mode
-        self.filter_mode = False
-        self.filter_keywords = list()
-        self.filter_extended = False
-
-        # global defaults
-        self.table_format = "pretty"  # ascii by default
-
         # redirection tools
         self.redirecting_stdout = None
         self.reading_stdin = None
@@ -134,6 +115,38 @@ class GlobalPlayer(object):
 ###############################
 GlobalServant = GlobalPlayer()
 ###############################
+
+
+# solution discussed and taken from
+# https://bit.ly/32CkCWK
+# to remove uglyness in help format
+class CustomFormatter(argparse.HelpFormatter):
+    """Custom formatter for setting argparse formatter_class. Identical to the
+    default formatter, except that very long option strings are split into two
+    lines.
+    """
+
+    def _format_action_invocation(self, action):
+        if not action.option_strings:
+            metavar, = self._metavar_formatter(action, action.dest)(1)
+            return metavar
+        else:
+            parts = []
+            # if the Optional doesn't take a value, format is:
+            #    -s, --long
+            if action.nargs == 0:
+                parts.extend(action.option_strings)
+            # if the Optional takes a value, format is:
+            #    -s ARGS, --long ARGS
+            else:
+                default = action.dest.upper()
+                args_string = self._format_args(action, default)
+                for option_string in action.option_strings:
+                    parts.append('%s %s' % (option_string, args_string))
+            if sum(len(s) for s in parts) < self._width - (len(parts) - 1) * 2:
+                return ', '.join(parts)
+            else:
+                return ',\n  '.join(parts)
 
 
 def check_for_redirection():
@@ -187,7 +200,7 @@ def setup_no_config_parser():
     return parser
 
 
-def setup_config_parser(default_config_files):
+def setup_config_parser(default_config_files)-> configargparse.ArgumentParser:
     """
         Defines parser with all arguments listed below
         :param args:
@@ -234,19 +247,23 @@ def setup_config_parser(default_config_files):
 
     ignore_metavar = "{" + ALLOWED_IGNORE_VALUES[0] + " ... " \
                      + ALLOWED_IGNORE_VALUES[-1] + "}"
+    allowed_ign_vals = ALLOWED_IGNORE_VALUES[:] # copying
+    allowed_ign_vals.append('')  # needed so empty list are valid in config
     parser.add_argument("--ignore",
                         nargs="+",
                         action="append",
-                        choices=ALLOWED_IGNORE_VALUES,
+                        choices=allowed_ign_vals,
                         metavar=ignore_metavar,
                         dest="ignore_list",
                         default=[],
                         help="Ignore a section to not be printed")
+    allowed_show_vals = ALLOWED_SHOW_VALUES[:] # copying
+    allowed_show_vals.append('')  # needed so empty list are valid in config
     parser.add_argument("--show",
                         nargs="+",
                         action="append",
                         dest="show_list",
-                        choices=ALLOWED_SHOW_VALUES,
+                        choices=allowed_show_vals,
                         default=[],
                         help="Show more details")
 
@@ -290,14 +307,14 @@ def setup_config_parser(default_config_files):
     return parser
 
 
-def setup_commandline_parser() -> argparse.ArgumentParser:
+def setup_commandline_parser() -> configargparse.ArgumentParser:
     """
     Defines parser with all arguments listed below
     :param args:
     :return:
     """
 
-    parser = configargparse.ArgumentParser()
+    parser = configargparse.ArgumentParser(formatter_class=CustomFormatter)
 
     parser.add_argument("path",
                         nargs="*",
@@ -305,7 +322,7 @@ def setup_commandline_parser() -> argparse.ArgumentParser:
                         default=[],
                         help="ANY number of paths to log or config file(s)")
 
-    parser.add_argument("-f",
+    parser.add_argument("-f", "--files",
                         nargs=1,
                         action="append",
                         dest="more_files",
@@ -332,10 +349,7 @@ def setup_commandline_parser() -> argparse.ArgumentParser:
     for item in ALLOWED_MODES.items():
         all_vals.extend(list(item))
 
-    parser.add_argument("-m",
-                        help="Specifiy an interpretation mode",
-                        choices=all_vals)
-    parser.add_argument("--mode",
+    parser.add_argument("-m", "--mode",
                         help="Specifiy an interpretation mode",
                         choices=all_vals)
 
@@ -410,7 +424,7 @@ def setup_commandline_parser() -> argparse.ArgumentParser:
                         choices=VALID_TABLE_FORMATS)
 
     parser.add_argument("--save-config",
-                        is_write_out_config_file_arg=True,
+                        type=str,
                         help="Stores the current configuration"
                              " into a config file")
     parser.add_argument("--no-config",
@@ -570,6 +584,7 @@ def manage_params(args: list) -> dict:
       'reverse_dns_lookup': False,
       'table_format': 'pretty',
       'files': []
+      ....
       }
 
 
@@ -584,17 +599,18 @@ def manage_params(args: list) -> dict:
             args.append(line.rstrip('\n'))
 
     no_config_parsed, args = setup_no_config_parser().parse_known_args(args)
-    cmd_parser = setup_commandline_parser().parse_args(args)
+    cmd_parser = setup_commandline_parser()
+    commands_parsed = cmd_parser.parse_args(args)
 
     # first of all check for prioritised/exit params
-    if cmd_parser.version:
+    if commands_parsed.version:
         print("Version: v1.1.0")
         sys.exit(0)
-    if cmd_parser.print_event_table:
+    if commands_parsed.print_event_table:
         print(get_event_information())
         sys.exit(0)
 
-    cmd_dict = vars(cmd_parser)
+    cmd_dict = vars(commands_parsed).copy()
 
     # concat files
     new_files_list = list()
@@ -607,18 +623,36 @@ def manage_params(args: list) -> dict:
     del cmd_dict["path"]
     del cmd_dict["more_files"]
 
+    # concat ignore list
+    new_ignore_list = list()
+    for li in cmd_dict["ignore_list"]:
+        new_ignore_list.extend(li)
+    cmd_dict["ignore_list"] = new_ignore_list
+
+    # concat show list
+    new_show_list = list()
+    for li in cmd_dict["show_list"]:
+        new_show_list.extend(li)
+    cmd_dict["show_list"] = new_show_list
+
+    # concat filter list
+    new_filter_list = list()
+    for li in cmd_dict["filter_keywords"]:
+        new_filter_list.extend(li)
+    cmd_dict["filter_keywords"] = new_filter_list
+
     # parse the mode correctly
-    if cmd_parser.analyser_mode and cmd_parser.summarizer_mode:
+    if commands_parsed.analyser_mode and commands_parsed.summarizer_mode:
         mode = "analysed-summary"
-    elif cmd_parser.analyser_mode:
+    elif commands_parsed.analyser_mode:
         mode = "analyse"
-    elif cmd_parser.summarizer_mode:
+    elif commands_parsed.summarizer_mode:
         mode = "summarize"
-    elif cmd_parser.mode is not None:
-        if cmd_parser.mode in ALLOWED_MODES.keys():
-            mode = ALLOWED_MODES[cmd_parser.mode]
+    elif commands_parsed.mode is not None:
+        if commands_parsed.mode in ALLOWED_MODES.keys():
+            mode = ALLOWED_MODES[commands_parsed.mode]
         else:
-            mode = cmd_parser.mode
+            mode = commands_parsed.mode
     else:
         mode = None  # will result in default mode
 
@@ -626,9 +660,10 @@ def manage_params(args: list) -> dict:
 
     # error handling
     try:
-        if cmd_parser.filter_extended and len(cmd_parser.filter) == 0:
+        if commands_parsed.filter_extended and\
+                len(commands_parsed.filter_keywords) == 0:
             raise_value_error("--extend not allowed without --filter")
-        if len(cmd_parser.show_list) > 0:
+        if len(commands_parsed.show_list) > 0:
             if mode == "analysed-summary" or mode == "summarize":
                 raise_value_error("--show-more only allowed"
                                   " with default and analyser mode")
@@ -637,11 +672,10 @@ def manage_params(args: list) -> dict:
         sys.exit(2)
 
     # set global variables for log/err/out files
-    set_std_files(cmd_parser.std_log, cmd_parser.std_err, cmd_parser.std_out)
-    GlobalServant.reverse_dns_lookup = cmd_parser.reverse_dns_lookup
+    set_std_files(commands_parsed.std_log, commands_parsed.std_err, commands_parsed.std_out)
+    GlobalServant.reverse_dns_lookup = commands_parsed.reverse_dns_lookup
 
     # delete unnecessary information
-    del cmd_dict["m"]
     del cmd_dict["summarizer_mode"]
     del cmd_dict["analyser_mode"]
     del cmd_dict["version"]
@@ -655,26 +689,58 @@ def manage_params(args: list) -> dict:
         # find config file and remove if given
         config_file, new_files_list = find_valid_config(new_files_list,
                                                         config_paths)
-        cmd_dict["files"] = new_files_list  # remove config from files
+        # if a config file was found,
+        if config_file is not None:
+            rprint(f"[magenta]Using config file: {config_file}[/magenta]")
+            cmd_dict["files"] = new_files_list  # remove config from files
 
-        conf_parsed, _ = setup_config_parser([config_file]).parse_known_args()
-        conf_dict = vars(conf_parsed)
+            conf_parsed, _ = setup_config_parser([config_file]).parse_known_args([])
+            conf_dict = vars(conf_parsed)
 
-        # set global thresholds for requested vs actual usage
-        GlobalServant.tolerated_usage_threshold = conf_dict["tolerated_usage"]
-        GlobalServant.bad_usage_threshold = conf_dict["bad_usage"]
-        del conf_dict["tolerated_usage"]
-        del conf_dict["bad_usage"]
+            # set global thresholds for requested vs actual usage
+            GlobalServant.tolerated_usage_threshold = conf_dict["tolerated_usage"]
+            GlobalServant.bad_usage_threshold = conf_dict["bad_usage"]
+            del conf_dict["tolerated_usage"]
+            del conf_dict["bad_usage"]
 
-        # use conf_dict files if not given by command line
-        for val in conf_dict.keys():
-            if isinstance(cmd_dict[val], list) and len(cmd_dict[val]) == 0:
-                for sub_list in conf_dict[val]:
-                    cmd_dict[val].extend(sub_list)
-            elif cmd_dict[val] is None:
-                cmd_dict[val] = conf_dict[val]
+            # resolve for example as to analysed-summary
+            if conf_dict["mode"] in ALLOWED_MODES.keys():
+                conf_dict["mode"] = ALLOWED_MODES[conf_dict["mode"]]
 
-    # Todo: default values
+            # use conf_dict files if not given by command line
+            for val in conf_dict.keys():
+                if isinstance(cmd_dict[val], list) and len(cmd_dict[val]) == 0:
+                    for sub_list in conf_dict[val]:
+                        # remove empty strings
+                        for sub_val in sub_list:
+                            if sub_val == "":
+                                sub_list.remove(sub_val)
+                        cmd_dict[val].extend(sub_list)
+                elif cmd_dict[val] is None:
+                    cmd_dict[val] = conf_dict[val]
+
+    # if values are None, assign default values
+    if cmd_dict['std_log'] is None:
+        cmd_dict['std_log'] = ""
+    if cmd_dict['std_err'] is None:
+        cmd_dict['std_err'] = ".err"
+    if cmd_dict['std_out'] is None:
+        cmd_dict['std_out'] = ".out"
+    if cmd_dict['table_format'] is None:
+        cmd_dict['table_format'] = "pretty"
+
+    # Todo
+    # if cmd_dict['save_config'] is not None:
+    #     config_name = cmd_dict['save_config']
+    #     del cmd_dict["save_config"]
+    #     for key, value in dict(cmd_dict).items():
+    #         if value is None:
+    #             del cmd_dict[key]
+    #     new_nsp = argparse.Namespace(**cmd_dict)
+    #     print(commands_parsed)
+    #     print(new_nsp)
+    #     print(cmd_dict)
+    #     cmd_parser.write_config_file(new_nsp, [config_name], True)
 
     return cmd_dict
 
@@ -1462,7 +1528,14 @@ def find_valid_config(files: list, default_config_files=[]) -> (str, list):
 
     changed_files = files
     found_config_file = None
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(
+            delimiters=("=", ":"),
+            allow_no_value=False,
+            comment_prefixes=("#", ";"),
+            inline_comment_prefixes=("#", ";"),
+            strict=True,
+            empty_lines_in_values=False,
+        )
 
     # search through default_config_files[]
     for file in default_config_files:
@@ -1472,7 +1545,7 @@ def find_valid_config(files: list, default_config_files=[]) -> (str, list):
                     file) != 0 and config.read(file):
                 found_config_file = file
         except configparser.MissingSectionHeaderError:
-            continue
+            found_config_file = file
 
     # run through files, take the first appearing config file
     for file in files:
@@ -1483,7 +1556,7 @@ def find_valid_config(files: list, default_config_files=[]) -> (str, list):
                 changed_files.remove(file)
                 break
         except configparser.MissingSectionHeaderError:
-            continue
+            found_config_file = file
 
     return found_config_file, changed_files
 
@@ -2553,6 +2626,9 @@ def run(commandline_args):
 
     :return:
     """
+    # before running make sure Global Parameters are set to normal
+    GlobalServant.reset()
+
     if not isinstance(commandline_args, list):
         commandline_args = commandline_args.split()
 
@@ -2608,6 +2684,7 @@ def run(commandline_args):
         logging.info("Script was interrupted by the user")
         print("Script was interrupted")
         sys.exit(4)
+
 
 if __name__ == "__main__":
     """
