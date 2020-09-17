@@ -142,7 +142,6 @@ class GlobalPlayer(object):
                 'back_to_default': ""
             }
 
-
     def set_std_files(self, std_log=None, std_err=None, std_out=None):
         """
         Set global varibles for standard HTCondor log, error and output files
@@ -166,6 +165,15 @@ class GlobalPlayer(object):
             if not std_out.startswith('.') and std_out.__ne__(""):
                 std_out = '.' + std_out
             self.std_out = std_out
+
+    def set_thresholds(self, tolerated_usage=None, bad_usage=None):
+        if isinstance(tolerated_usage, float):
+            self.tolerated_usage_threshold = tolerated_usage
+        if isinstance(bad_usage, float):
+            self.bad_usage_threshold = bad_usage
+
+    def reverse_dns(self, do_that):
+        self.reverse_dns_lookup = do_that
 
 
 ###############################
@@ -558,7 +566,7 @@ def manage_params(args: list) -> dict:
     GlobalServant.set_std_files(commands_parsed.std_log,
                                 commands_parsed.std_err,
                                 commands_parsed.std_out)
-    GlobalServant.reverse_dns_lookup = commands_parsed.reverse_dns_lookup
+    GlobalServant.reverse_dns(commands_parsed.reverse_dns_lookup)
 
     # delete unnecessary information
     del cmd_dict["summarizer_mode"]
@@ -582,8 +590,8 @@ def manage_params(args: list) -> dict:
             conf_dict = vars(conf_parsed)
 
             # set global thresholds for requested vs actual usage
-            GlobalServant.tolerated_usage_threshold = conf_dict["tolerated_usage"]
-            GlobalServant.bad_usage_threshold = conf_dict["bad_usage"]
+            GlobalServant.set_thresholds(conf_dict["tolerated_usage"],
+                                         conf_dict["bad_usage"])
             del conf_dict["tolerated_usage"]
             del conf_dict["bad_usage"]
 
@@ -1442,8 +1450,10 @@ def find_valid_config(files: list, default_config_files=[]) -> (str, list):
                 found_config_file = file
                 changed_files.remove(file)
                 break
+        # this means it's still valid, we don't need sections anyway
         except configparser.MissingSectionHeaderError:
             found_config_file = file
+            changed_files.remove(file)
 
     return found_config_file, changed_files
 
