@@ -112,19 +112,73 @@ class GlobalPlayer(object):
         self.reading_stdin = None
         self.stdin_input = None
 
+    def check_for_redirection(self):
+        """
+        This method should be activated first, when output is generated
+        It changes the global variables of GlobalServant,
+        if stdin or stdout is set
+
+        This is useful to escape color sequences,
+        or to avoid user input
+        :return:
+        """
+
+        self.redirecting_stdout = not sys.stdout.isatty()
+        self.reading_stdin = not sys.stdin.isatty()
+
+        if self.reading_stdin:
+            self.stdin_input = sys.stdin.readlines()
+
+        if self.redirecting_stdout:
+            global COLORS
+            COLORS = {
+                'red': "",
+                'green': "",
+                'yellow': "",
+                'magenta': "",
+                'cyan': "",
+                'blue': "",
+                'light_grey': "",
+                'back_to_default': ""
+            }
+
+
+    def set_std_files(self, std_log=None, std_err=None, std_out=None):
+        """
+        Set global varibles for standard HTCondor log, error and output files
+        adds the dot if missing and string not empty like:
+        std_log = log -> .log
+
+        :param std_log: str
+        :param std_err: str
+        :param std_out: str
+        :return:
+        """
+        if std_log is not None:
+            if not std_log.startswith('.') and std_log.__ne__(""):
+                std_log = '.' + std_log
+            self.std_log = std_log
+        if std_err is not None:
+            if not std_err.startswith('.') and std_err.__ne__(""):
+                std_err = '.' + std_err
+            self.std_err = std_err
+        if std_out is not None:
+            if not std_out.startswith('.') and std_out.__ne__(""):
+                std_out = '.' + std_out
+            self.std_out = std_out
+
 
 ###############################
 GlobalServant = GlobalPlayer()  # define global variables
 ###############################
 
 
-# solution discussed and taken from
-# https://bit.ly/32CkCWK
-# to remove uglyness in help format
 class CustomFormatter(argparse.HelpFormatter):
     """Custom formatter for setting argparse formatter_class. Identical to the
     default formatter, except that very long option strings are split into two
     lines.
+
+    Solution discussed on: https://bit.ly/32CkCWK
     """
 
     def _format_action_invocation(self, action):
@@ -149,52 +203,6 @@ class CustomFormatter(argparse.HelpFormatter):
             else:
                 return ',\n  '.join(parts)
 
-
-# changes global redirection parameter,
-# cause they might get changed during runtime
-def check_for_redirection():
-    """
-    This method should be activated first, when output is generated
-    it does nothing, if output is printed to the terminal.
-    If output gets redirected with > or | or other redirection tools, ignore escape sequences
-    by setting them to ""
-    :return:
-    """
-
-    GlobalServant.redirecting_stdout = not sys.stdout.isatty()
-    GlobalServant.reading_stdin = not sys.stdin.isatty()
-
-    if GlobalServant.reading_stdin:
-        GlobalServant.stdin_input = sys.stdin.readlines()
-
-    if GlobalServant.redirecting_stdout:
-        global COLORS
-        COLORS = {
-            'red': "",
-            'green': "",
-            'yellow': "",
-            'magenta': "",
-            'cyan': "",
-            'blue': "",
-            'light_grey': "",
-            'back_to_default': ""
-        }
-
-
-# set global standard HTCondor log, error and output files
-def set_std_files(std_log=None, std_err=None, std_out=None):
-    if std_log is not None:
-        if not std_log.startswith('.') and std_log.__ne__(""):
-            std_log = '.' + std_log
-        GlobalServant.std_log = std_log
-    if std_err is not None:
-        if not std_err.startswith('.') and std_err.__ne__(""):
-            std_err = '.' + std_err
-        GlobalServant.std_err = std_err
-    if std_out is not None:
-        if not std_out.startswith('.') and std_out.__ne__(""):
-            std_out = '.' + std_out
-        GlobalServant.std_out = std_out
 
 
 # parser for --no-config flag, which avoids -h|--help flag
@@ -547,7 +555,9 @@ def manage_params(args: list) -> dict:
         sys.exit(2)
 
     # set global variables for log/err/out files
-    set_std_files(commands_parsed.std_log, commands_parsed.std_err, commands_parsed.std_out)
+    GlobalServant.set_std_files(commands_parsed.std_log,
+                                commands_parsed.std_err,
+                                commands_parsed.std_out)
     GlobalServant.reverse_dns_lookup = commands_parsed.reverse_dns_lookup
 
     # delete unnecessary information
@@ -2512,7 +2522,7 @@ def run(commandline_args):
 
         # initialize()  # initialize global parameters
 
-        check_for_redirection()
+        GlobalServant.check_for_redirection()
         # if exit parameters are given that will interrupt this script,
         # catch them here so the config won't be unnecessary loaded
         param_dict = manage_params(commandline_args)
