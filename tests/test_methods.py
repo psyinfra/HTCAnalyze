@@ -136,7 +136,6 @@ def test_manage_params():
     args = "--reverse-dns-lookup --no-config --generate-log -v".split()
     res_dict = ht.manage_params(args)
     assert ht.GlobalServant.reverse_dns_lookup is True
-    assert res_dict["no_config"] is True
     assert res_dict["generate_log_file"] == "htcompact.log"
     assert res_dict["verbose"] is True
 
