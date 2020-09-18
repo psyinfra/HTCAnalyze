@@ -114,7 +114,7 @@ def test_wrong_opts_or_args():
 def test_show_values():
     # default
     args = "tests/test_logs/valid_logs/normal_log.log " \
-           "tests/test_logs/valid_logs/gpu_usage.log" \
+           "tests/test_logs/valid_logs/gpu_usage.log " \
            "--show std-err std-out".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
@@ -123,7 +123,7 @@ def test_show_values():
 
     # analyse
     args = "tests/test_logs/valid_logs/normal_log.log " \
-           "tests/test_logs/valid_logs/gpu_usage.log" \
+           "tests/test_logs/valid_logs/gpu_usage.log " \
            "--show std-err std-out -a".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
