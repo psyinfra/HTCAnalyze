@@ -1,4 +1,4 @@
-.Dd May 26, 2020
+.Dd September 17, 2020
 .Dt HTCOMPACT 1
 .Os \" Current operating system.
 .
@@ -130,9 +130,9 @@ will include these keywords:
 .Bd -literal
 search inside the given files or directories
 for the given keywords,
-if you want to give more than one keyword,
-use the string notation: "keyword1 keyword2 ...",
-or the comma notation:    keyword1,keyword2,...
+if you want to show multiple information,
+separate them by space like:
+--filter err warn ...
 .Ed
 .Bd -literal
 you can forward the result to be processed by a mode
@@ -147,8 +147,8 @@ that is not normal, use --extend:
 .Ed
 .Bd -literal
 Examples:
---filter "exception gpu" -s
---filter error,warnings --mode analyse
+--filter exception gpu -s
+--filter error warnings --mode analyse
 .Ed
 .
 .It Fl Fl std-log Ar standard-log
@@ -184,8 +184,8 @@ errors and warnings regarding a stderr file (.err)
 output to get every line of the stdout file (.out)
 
 if you want to show multiple information,
-use the string notation: "keyword1 keyword2 ...",
-or the comma notation:    keyword1,keyword2,...
+separate them by space like:
+--show std-err std-out
 .Ed
 .
 .It Fl Fl ignore Ar keywords
@@ -198,15 +198,12 @@ Valid arguments are:
  allocated-resources, all-resources]
 
 if you want to ignore multiple information,
-use the string notation: "keyword1 keyword2 ...",
-or the comma notation:    keyword1,keyword2,...
+separate them by space like:
+--ignore times errors
 .Ed
 .
 .It Fl Fl no-config
 Do not search for a config file
-.
-.It Fl Fl to-csv
-Restructure the resource table into a csv format
 .
 .It Fl Fl reverse-dns-lookup
 Resolve the host the job was running on by it's ip address
@@ -287,7 +284,7 @@ htcompact -as log_directory
 htcompact -e 005
 htcompact --filter "" --extend -s --ignore all-resources log_directory
 htcompact htcompact.conf 394_440 -a --show-output --table-format simple
-htcompact --filter "aborted" -as ~/logs
+htcompact --filter aborted -as ~/logs
 OR
 grep -R -l aborted ~/logs | htcompact -as
 .Ed

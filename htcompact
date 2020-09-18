@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import configparser
 import datetime
-import getopt
+import argparse
+import configargparse
 import logging
 import os
 import re
@@ -26,8 +27,10 @@ timedelta = datetime.timedelta
 
 """
 
-This script is basically reading information from HTCondor log files and storing them into
-dictionaries. By that its actually pretty simple to analyse the data.
+This script is basically reading information from HTCondor log files,
+by using the htcondor module
+and stores it into dictionaries.
+By that it's simple to analyse the data.
 
 The script makes the information compact and easy to under stand,
 that's the reason for the name htcompact
@@ -41,73 +44,38 @@ to see for ex. the average runtime and usage of all the logs
 # Exit Codes
 """
  Normal Termination: 0
- Wrong Options or Arguments: 1
- No given files: 2
+ No given files: 1
+ Wrong Options or Arguments: 2
  TypeError: 3
  Keyboard interruption: 4
 """
 
+# global variables
+# option_shorts = "hsavm:"
+# option_longs = ["help", "version", "verbose", "mode=",
+#                 "std-log=", "std-err=", "std-out=",
+#                 "ignore=", "show-more=", "no-config", "to-csv",
+#                 "generate-log-file", "filter=", "extend",
+#                 "print-event-table", "reverse-dns-lookup", "table-format="]
 
-def initialize():
-    """
-    This method initializes all global variables
-    :return:
-    """
-    global accepted_states, files, option_shorts, option_longs, \
-        ignore_list, allowed_ignore_values, no_config, reverse_dns_lookup, \
-        store_dns_lookups, verbose_mode, \
-        to_csv, generate_log_file, filter_mode, filter_keywords, filter_extended, \
-        colors, tolerated_usage_threshold, bad_usage_threshold, std_log, std_err, std_out, \
-        default_configfile, table_format, reading_stdin, redirecting_output, \
-        show_list, allowed_show_values, mode, allowed_modes
+ALLOWED_MODES = {"a": "analyse",
+                 "s": "summarize",
+                 "as": "analysed-summary",
+                 "d": "default"}
 
-    # global parameters, used for dynamical output of information
-    accepted_states = ["true", "yes", "y", "enable", "enabled", "0"]
-    files = list()
-    option_shorts = "hsavm:"
-    option_longs = ["help", "version", "verbose", "mode=",
-                    "std-log=", "std-err=", "std-out=",
-                    "ignore=", "show-more=", "no-config", "to-csv",
-                    "generate-log-file", "filter=", "extend",
-                    "print-event-table",
-                    "reverse-dns-lookup", "table-format="]
+ALLOWED_SHOW_VALUES = ["std-err", "std-out"]
+ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
+                         "used-resources", "requested-resources",
+                         "allocated-resources", "all-resources",
+                         "errors"]
+VALID_TABLE_FORMATS = ["plain", "simple", "github", "grid", "pretty",
+                       "fancy_grid", "pipe", "orgtbl", "rst",
+                       "mediawiki", "html", "latex", "latex_raw",
+                       "latex_booktabs", "tsv", "simple"]
 
-    # show more information, mostly given by HTCompact .err and .out files
-    mode = None
-    allowed_modes = {"a": "analyse",
-                     "s": "summarize",
-                     "as": "analysed-summary",
-                     "d": "default"}
+DEFAULT_CONFIG_FILE = "htcompact.conf"
 
-    show_list = list()
-    allowed_show_values = ["std-err", "std-out"]
-
-    # ignore information
-    ignore_list = list()
-    allowed_ignore_values = ["execution-details", "times", "host-nodes",
-                             "used-resources", "requested-resources",
-                             "allocated-resources", "all-resources",
-                             "errors"]
-
-    # if set do not use a config file, even if one was found
-    no_config = False
-
-    # Features:
-    reverse_dns_lookup = False
-    store_dns_lookups = dict()
-    to_csv = False
-
-    # logging tool
-    generate_log_file = False
-    verbose_mode = False
-
-    # filter mode
-    filter_mode = False
-    filter_keywords = list()
-    filter_extended = False
-
-    # escape sequences for colors
-    colors = {
+COLORS = {
         'red': "\033[0;31m",
         'green': "\033[0;32m",
         'yellow': "\033[0;33m",
@@ -118,364 +86,482 @@ def initialize():
         'back_to_default': "\033[0;39m"
     }
 
-    # thresholds for bad and low usage of resources
-    tolerated_usage_threshold = 0.1
-    bad_usage_threshold = 0.25
 
-    # global variables with default values for err/log/out files
-    std_log = ""
-    std_err = ".err"
-    std_out = ".out"
+# class to store and change global variables
+class GlobalPlayer(object):
 
-    # global defaults
-    default_configfile = "htcompact.conf"
-    table_format = "pretty"  # ascii by default
+    def __init__(self):
+        self.reset()
 
-    reading_stdin = False
-    redirecting_output = False
+    def reset(self):
+
+        # thresholds for bad and low usage of resources
+        self.tolerated_usage_threshold = 0.1
+        self.bad_usage_threshold = 0.25
+
+        self.store_dns_lookups = dict()
+        self.reverse_dns_lookup = False
+
+        # global variables with default values for err/log/out files
+        self.std_log = ""
+        self.std_err = ".err"
+        self.std_out = ".out"
+
+        # redirection tools
+        self.redirecting_stdout = None
+        self.reading_stdin = None
+        self.stdin_input = None
+
+    def check_for_redirection(self):
+        """
+        This method should be activated first, when output is generated
+        It changes the global variables of GlobalServant,
+        if stdin or stdout is set
+
+        This is useful to escape color sequences,
+        or to avoid user input
+        :return:
+        """
+
+        self.redirecting_stdout = not sys.stdout.isatty()
+        self.reading_stdin = not sys.stdin.isatty()
+
+        if self.reading_stdin:
+            self.stdin_input = sys.stdin.readlines()
+
+        if self.redirecting_stdout:
+            global COLORS
+            COLORS = {
+                'red': "",
+                'green': "",
+                'yellow': "",
+                'magenta': "",
+                'cyan': "",
+                'blue': "",
+                'light_grey': "",
+                'back_to_default': ""
+            }
+
+    def set_std_files(self, std_log=None, std_err=None, std_out=None):
+        """
+        Set global varibles for standard HTCondor log, error and output files
+        adds the dot if missing and string not empty like:
+        std_log = log -> .log
+
+        :param std_log: str
+        :param std_err: str
+        :param std_out: str
+        :return:
+        """
+        if std_log is not None:
+            if not std_log.startswith('.') and std_log.__ne__(""):
+                std_log = '.' + std_log
+            self.std_log = std_log
+        if std_err is not None:
+            if not std_err.startswith('.') and std_err.__ne__(""):
+                std_err = '.' + std_err
+            self.std_err = std_err
+        if std_out is not None:
+            if not std_out.startswith('.') and std_out.__ne__(""):
+                std_out = '.' + std_out
+            self.std_out = std_out
+
+    def set_thresholds(self, tolerated_usage=None, bad_usage=None):
+        if isinstance(tolerated_usage, float):
+            self.tolerated_usage_threshold = tolerated_usage
+        if isinstance(bad_usage, float):
+            self.bad_usage_threshold = bad_usage
+
+    def reverse_dns(self, do_that):
+        if isinstance(do_that, bool):
+            self.reverse_dns_lookup = do_that
 
 
-def check_for_redirection():
+###############################
+GlobalServant = GlobalPlayer()  # define global variables
+###############################
+
+
+class CustomFormatter(argparse.HelpFormatter):
+    """Custom formatter for setting argparse formatter_class. Identical to the
+    default formatter, except that very long option strings are split into two
+    lines.
+
+    Solution discussed on: https://bit.ly/32CkCWK
     """
-    This method should be activated first, when output is generated
-    it does nothing, if output is printed to the terminal.
-    If output gets redirected with > or | or other redirection tools, ignore escape sequences
-    by setting them to ""
+
+    def _format_action_invocation(self, action):
+        if not action.option_strings:
+            metavar, = self._metavar_formatter(action, action.dest)(1)
+            return metavar
+        else:
+            parts = []
+            # if the Optional doesn't take a value, format is:
+            #    -s, --long
+            if action.nargs == 0:
+                parts.extend(action.option_strings)
+            # if the Optional takes a value, format is:
+            #    -s ARGS, --long ARGS
+            else:
+                default = action.dest.upper()
+                args_string = self._format_args(action, default)
+                for option_string in action.option_strings:
+                    parts.append('%s %s' % (option_string, args_string))
+            if sum(len(s) for s in parts) < self._width - (len(parts) - 1) * 2:
+                return ', '.join(parts)
+            else:
+                return ',\n  '.join(parts)
+
+
+# parser for prioritised flags
+def setup_prioritized_parser():
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--no-config",
+                        action="store_true")
+    parser.add_argument("-c", "--config", nargs=1)
+    parser.add_argument("--version",
+                        help="Print out extended execution details",
+                        action="store_true")
+    parser.add_argument("--print-event-table",
+                        action="store_true",
+                        help="Prints out the event table")
+
+    parser.add_argument("-f", "--files",
+                        nargs=1,
+                        action="append",
+                        dest="more_files",
+                        default=[],
+                        help="ONE path to log file")
+    return parser
+
+
+def setup_commandline_parser(default_config_files=[])\
+        -> configargparse.ArgumentParser:
+    """
+    Defines parser with all arguments listed below
+    :param args:
     :return:
     """
-    # if output gets redirected with > or | or other redirection tools, ignore escape sequences
-    global reading_stdin, redirecting_output, stdin_input  # it is easier to save this globaly, because if whe change
 
-    reading_stdin = not sys.stdin.isatty()
-    redirecting_output = not sys.stdout.isatty()
+    parser = configargparse.\
+        ArgumentParser(formatter_class=CustomFormatter,
+                       default_config_files=default_config_files,
+                       ignore_unknown_config_file_keys=True)
 
-    if reading_stdin:
-        stdin_input = sys.stdin.readlines()
+    parser.add_argument("path",
+                        nargs="*",
+                        action="append",
+                        default=[],
+                        help="ANY number of paths to log file(s)")
+    # also to add files with diffrent destination,
+    # to be used for config file / escaping flags with action=append
+    parser.add_argument("-f", "--files",
+                        nargs=1,
+                        action="append",
+                        dest="more_files",
+                        default=[],
+                        help="ONE path to log file")
 
-    if redirecting_output:
-        global colors
-        colors = {
-            'red': "",
-            'green': "",
-            'yellow': "",
-            'magenta': "",
-            'cyan': "",
-            'blue': "",
-            'light_grey': "",
-            'back_to_default': ""
-        }
+    parser.add_argument("--version",
+                        help="Print out extended execution details",
+                        action="store_true")
+
+    parser.add_argument("-v", "--verbose",
+                        help="Print out extended execution details",
+                        action="store_true",
+                        default=None)
+    parser.add_argument("--generate-log-file",
+                        nargs="?",
+                        const="htcompact.log",
+                        default=None,
+                        help="generates output about the process,"
+                             " which is mostly useful for developers, "
+                             "if no file is specified, default: htcompact.log")
+
+    all_vals = []
+    for item in ALLOWED_MODES.items():
+        all_vals.extend(list(item))
+
+    parser.add_argument("-m", "--mode",
+                        help="Specifiy an interpretation mode",
+                        choices=all_vals)
+
+    parser.add_argument("-s", dest="summarizer_mode",
+                        help="Short for --mode summarize,"
+                             " combine with -a for analysed-summary mode",
+                        action="store_true")
+
+    parser.add_argument("-a", dest="analyser_mode",
+                        help="Short for --mode analyse,"
+                             " combine with -s for analysed-summary mode",
+                        action="store_true")
+
+    parser.add_argument("--std-log",
+                        help="Specify the log file suffix",
+                        type=str)
+    parser.add_argument("--std-out",
+                        help="Specify the output file suffix",
+                        type=str)
+    parser.add_argument("--std-err",
+                        help="Specify the error file suffix",
+                        type=str)
+
+    ignore_metavar = "{" + ALLOWED_IGNORE_VALUES[0] + " ... " \
+                     + ALLOWED_IGNORE_VALUES[-1] + "}"
+    allowed_ign_vals = ALLOWED_IGNORE_VALUES[:]  # copying
+    allowed_ign_vals.append('')  # needed so empty list are valid in config
+    parser.add_argument("--ignore",
+                        nargs="+",
+                        action="append",
+                        choices=allowed_ign_vals,
+                        metavar=ignore_metavar,
+                        dest="ignore_list",
+                        default=[],
+                        help="Ignore a section to not be printed")
+    allowed_show_vals = ALLOWED_SHOW_VALUES[:]  # copying
+    allowed_show_vals.append('')  # needed so empty list are valid in config
+    parser.add_argument("--show",
+                        nargs="+",
+                        action="append",
+                        dest="show_list",
+                        choices=allowed_show_vals,
+                        default=[],
+                        help="Show more details")
+
+    parser.add_argument("--filter",
+                        nargs="+",
+                        metavar="keywords",
+                        help="Filter for the given keywords",
+                        default=[],
+                        dest="filter_keywords",
+                        action="append",
+                        type=str)
+    parser.add_argument("--extend",
+                        action="store_true",
+                        dest="filter_extended",
+                        default=None,
+                        help="extend the filter keyword list "
+                             "by specific error keywords")
+
+    parser.add_argument("--print-event-table",
+                        action="store_true",
+                        help="Prints out the event table")
+
+    parser.add_argument("--reverse-dns-lookup",
+                        action="store_true",
+                        default=None,
+                        help="Resolve the ip-address of an execution nodes"
+                             " to their dns entry")
+
+    parser.add_argument("--tolerated-usage",
+                        type=float,
+                        help="Threshold to warn the user, "
+                             "when a given percentage is exceeded "
+                             "between used and requested resources")
+
+    parser.add_argument("--bad-usage",
+                        type=float,
+                        help="Threshold to signal overuse/waste of resoucres, "
+                             "when a given percentage is exceeded "
+                             "between used and requested resources")
+
+    table_metavar = "{" + VALID_TABLE_FORMATS[0] + " ... " \
+                    + VALID_TABLE_FORMATS[-1] + "}"
+    parser.add_argument("--table-format",
+                        metavar=table_metavar,
+                        default=None,
+                        choices=VALID_TABLE_FORMATS)
+    parser.add_argument("-c", "--config",
+                        is_config_file=True,
+                        help="ONE path to config file")
+    parser.add_argument("--no-config",
+                        action="store_true",
+                        help="Do not search for config")
+    parser.add_argument("--save-config",
+                        is_write_out_config_file_arg=True,
+                        help="Stores the current configuration"
+                             " into a config file")
+
+    return parser
 
 
-def remove_files_from_args(args: list, short_opts: str, long_opts: list):
+def manage_params(args: list) -> dict:
     """
-        I want to make it easier for the user to insert many files at once.
-        The script should detect option arguments and files
+    Uses the argparse parser defined in define_parser()
+    returns a dict looking like (default):
 
-        It will filter the given files and remove them from the argument list
+     {'verbose': False,
+      'generate_log_file': None,
+      'mode': None,
+      'std_log': '',
+      'std_out': '.out',
+      'std_err': '.err',
+      'ignore_list': [],
+      'show_list': [],
+      'no_config': False,
+      'filter_keywords': [],
+      'extend': False,
+      'print_event_table': False,
+      'reverse_dns_lookup': False,
+      'table_format': 'pretty',
+      'files': []
+      ....
+      }
 
-        !!!Exactly that is this method doing!!! (because getopt has no such function)
 
-    :param args: is supposed to be a list, in any case it should be the sys.argv[1:] list
-    :param short_opts: the short getopt options
-    :param long_opts: the long getopt options
-    :return: list of getopt arguments
+    :param args: list of args
+    :return: dict with params
     """
-    if type(args) != list:
-        raise_value_error("Expecting a list as argument")
-
-    new_args = args.copy()
-    generate_files = list()
-    index = 0
-    # run through the command line arguments,
-    # skip the getopt argument and interpret everything else as a file
-    while True:
-        if index >= len(args):
-            break
-
-        arg = args[index]
-
-        is_long_arg = False
-
-        if arg.startswith("-"):  # for short_args
-            arg = arg[1:]
-            if arg.startswith("-"):  # for long_args
-                arg = arg[1:]
-                is_long_arg = True
-
-            # skip the argument if getopt arguments are setable
-            if not is_long_arg:
-                for i, s_arg in enumerate(short_opts):
-                    if s_arg == arg and i < len(short_opts) - 1 and short_opts[
-                        i + 1] == ":":
-                        index += 1
-                        break
-            else:
-                for l_arg in long_opts:
-                    if l_arg.startswith(arg) and l_arg.endswith("="):
-                        index += 1
-                        break
-
-            # if arg + ":" in short_opts:
-            #     index += 1
-            # elif arg + "=" in long_opts:
-            #     index += 1
-        else:
-            generate_files.append(arg)
-            new_args.remove(arg)
-
-        index += 1
-
-    # change files, if found
-    if len(generate_files) > 0:
-        global files
-        files = generate_files
-
-    # return valid arguments
-    return new_args
-
-
-def manage_prioritized_params(args: list):
-    if type(args) != list:
-        raise_value_error("Expecting a list as argument")
-
-    global option_shorts, option_longs
-    global no_config, generate_log_file, verbose_mode
-
-    # if for whatever reasons files were given
-    better_args = remove_files_from_args(args, option_shorts, option_longs)
-
-    try:
-        opts, args = getopt.getopt(better_args, option_shorts, option_longs)
-
-        for opt, arg in opts:
-
-            # system exit params
-            if opt in ["-h", "--help"]:
-                print(small_help())
-                sys.exit(0)
-            if opt.__eq__("--version"):
-                print("Version: v1.1.0")
-                sys.exit(0)
-            if opt.__eq__("--print-event-table"):
-                print(get_event_information())
-                sys.exit(0)
-
-            # prioritized management params,
-            if opt in ["-v", "--verbose"]:
-                verbose_mode = True
-            elif opt.__eq__("--no-config"):
-                no_config = True
-            elif opt.__eq__("--generate-log-file"):
-                generate_log_file = True
-
-    # print error messages
-    except Exception as err:
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        rprint(
-            "[dark_olive_green1]Use '--help' or 'man htcompact' for help [/dark_olive_green1]")
-        sys.exit(1)
-
-
-def manage_params(args: list):
-    """
-    Interprets the given command line arguments and changes the global variables in this scrips
-
-    """
-    global files  # list of files and directories
-    global mode  # what mode are we on
-    global std_log, std_err, std_out  # all default values for the HTCondor files
-    global show_list  # show more
-    global ignore_list  # ignore information variables
-    global to_csv
-    global filter_mode, filter_keywords, filter_extended  # search features
-    global table_format  # table_format can be changed
-    global reverse_dns_lookup  # if set host ip's will be looked up in dns server
-
-    global option_shorts, option_longs
-
-    summarizer_mode = False
-    analyser_mode = False
-
-    all_args = args
 
     # listen to stdin and add these files
-    if reading_stdin:  # else the script will be waiting fro stdin
+    if GlobalServant.reading_stdin:
         logging.debug("Listening to arguments from stdin")
-        for line in stdin_input:
-            all_args.append(line.rstrip('\n'))
+        for line in GlobalServant.stdin_input:
+            args.append(line.rstrip('\n'))
 
-    better_args = remove_files_from_args(all_args, option_shorts, option_longs)
+    prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
+    # first of all check for prioritised/exit params
+    if prio_parsed.version:
+        print("Version: v1.1.0")
+        sys.exit(0)
+    if prio_parsed.print_event_table:
+        print(get_event_information())
+        sys.exit(0)
 
-    try:
-        opts, args = getopt.getopt(better_args, option_shorts, option_longs)
+    # get files from prio_parsed
+    files_list = list()
+    for li in prio_parsed.more_files:
+        files_list.extend(li)
 
-        for opt, arg in opts:
+    if prio_parsed.config:
+        # do not use config files if --no-config flag is set
+        if prio_parsed.no_config:
+            # if as well config is set, exit, because of conflict
+            print("htcompact: error: conflict between --no-config and --config")
+            sys.exit(2)
+        # else add config again
+        args.extend(["--config", prio_parsed.config[0]])
 
-            # catch unusual but not wrong parameters starting with -
-            if arg.startswith("-"):
-                rprint("[yellow]The argument for {0} is {1}, "
-                       "is that wanted?[/yellow]".format(opt, arg))
-                logging.warning("The argument for {0} is {1}, "
-                                "is that wanted?".format(opt, arg))
+    # parse config file if not --no-config is set, might change nothing
+    if not prio_parsed.no_config:
+        config_paths = ['/etc/htcompact.conf',
+                        '~/.config/htcompact/htcompact.conf',
+                        sys.prefix + '/config/htcompact.conf']
+        cmd_parser = setup_commandline_parser(config_paths)
+        commands_parsed = cmd_parser.parse_args(args)
+        cmd_dict = vars(commands_parsed).copy()
 
-            elif opt in ["-m", "--mode"]:
+        # extend files list by given paths
+        for li in commands_parsed.path:
+            files_list.extend(li)
+        # add files, if none are given by terminal
+        if len(files_list) == 0:
+            for li in cmd_dict["more_files"]:
+                files_list.extend(li)
 
-                if arg in allowed_modes.keys():
-                    mode = allowed_modes.get(arg)
-                elif arg in allowed_modes.values():
-                    mode = arg
-                else:
-                    err_msg = "Invalid argument '" + arg + \
-                              "'\nValid arguments:\n" + \
-                              ", ".join("'{}' or '{}'".format(key, value)
-                                        for key, value
-                                        in allowed_modes.items())
-                    raise_value_error(err_msg)
+        # remove empty string from lists, because configargparse
+        # inserts empty strings, when list is empty
+        for val in cmd_dict.keys():
+            if isinstance(cmd_dict[val], list):
+                for li in cmd_dict[val]:
+                    if len(li) == 1 and li[0] == "":
+                        li.remove("")
 
-                logging.debug("Starting the: " + mode + " mode")
+    else:
+        cmd_parser = setup_commandline_parser()
+        commands_parsed = cmd_parser.parse_args(args)
+        # extend files list by given paths
+        for li in commands_parsed.path:
+            files_list.extend(li)
+        cmd_dict = vars(commands_parsed).copy()
 
-            elif opt.__eq__("-s"):
-                summarizer_mode = True
-            elif opt.__eq__("-a"):
-                analyser_mode = True
-            elif opt in ["--filter"]:
-                filter_mode = True
-                filter_keywords = " ".join(re.split(',| ', arg)).split()
-            elif opt in ["--extend"]:
-                filter_extended = True
-            elif opt.__eq__("--std-log"):
-                # if std_log is empty,
-                # every given file will be interpreted as log file
-                if arg != "" and arg[0] != '.':
-                    arg = "." + arg  # add point if missing
-                std_log = arg
-            elif opt.__eq__("--std-err"):
-                if arg == "":
-                    raise_value_error("Empty string only allowed for std-log")
-                if arg[0] != '.':
-                    arg = "." + arg  # add point if missing
-                std_err = arg
-            elif opt.__eq__("--std-out"):
-                if arg == "":
-                    raise_value_error("Empty string only allowed for std-log")
-                if arg[0] != '.':
-                    arg = "." + arg  # add point if missing
-                std_out = arg
+    del cmd_dict["path"]
+    del cmd_dict["more_files"]
+    cmd_dict["files"] = files_list
 
-            # show more specific information
-            elif opt.__eq__("--show-more"):
-                keywords = " ".join(re.split(',| ', arg)).split()
-                for keyword in keywords:
-                    if keyword in allowed_show_values:
-                        show_list.append(keyword)
-                    else:
-                        raise_value_error(
-                            "Invalid argument '"
-                            + keyword
-                            + "'\nValid arguments:\n"
-                            + ", ".join(allowed_show_values))
+    # concat ignore list
+    new_ignore_list = list()
+    for li in cmd_dict["ignore_list"]:
+        new_ignore_list.extend(li)
+    cmd_dict["ignore_list"] = new_ignore_list
 
-                logging.debug("Show these information: "
-                              + ", ".join(show_list))
+    # concat show list
+    new_show_list = list()
+    for li in cmd_dict["show_list"]:
+        new_show_list.extend(li)
+    cmd_dict["show_list"] = new_show_list
 
-            # all variables to ignore unwanted information
-            elif opt.__eq__("--ignore"):
-                keywords = " ".join(re.split(',| ', arg)).split()
-                for keyword in keywords:
-                    if keyword in allowed_ignore_values:
-                        ignore_list.append(keyword)
-                    else:
-                        raise_value_error(
-                            "Invalid argument '"
-                            + keyword
-                            + "'\nValid arguments:\n"
-                            + ", ".join(allowed_ignore_values))
+    # concat filter list
+    new_filter_list = list()
+    for li in cmd_dict["filter_keywords"]:
+        new_filter_list.extend(li)
+    cmd_dict["filter_keywords"] = new_filter_list
 
-                logging.debug("Ignore these information: "
-                              + ", ".join(ignore_list))
-
-            elif opt.__eq__("--to-csv"):
-                to_csv = True
-                rprint("[red]--to-csv not handled yet[/red]")
-                sys.exit(0)
-
-            elif opt.__eq__("--table-format"):
-                types = "plain,simple,github,grid,fancy_grid,pipe," \
-                        "orgtbl,rst,mediawiki,html,latex,latex_raw," \
-                        "latex_booktabs,tsv,pretty"
-                # only valid arguments
-                if arg in types.split(","):
-                    table_format = arg
-                else:
-                    logging.debug("The given table format doesn't exist")
-
-            elif opt.__eq__("--reverse-dns-lookup"):
-                reverse_dns_lookup = True
-
-            # these are already managed in manage_prioritized_params
-            # need to be caught, cause of exception cases
-            elif opt.__eq__("--no-config"):
-                pass
-            elif opt.__eq__("--generate-log-file"):
-                pass
-            elif opt in ["-v", "--verbose"]:
-                pass
-
-            else:
-                rprint("[red]Option not handled yet[/red]")
-                sys.exit(0)
-    # print error messages
-    except Exception as err:
-        logging.exception(
-            err)  # write a detailed description in the stdout.log file
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        rprint("[dark_olive_green1]"
-               "Use '--help' or 'man htcompact' for help"
-               "[/dark_olive_green1]")
-        sys.exit(1)
-
-    if summarizer_mode and analyser_mode:
+    # parse the mode correctly
+    if commands_parsed.analyser_mode and commands_parsed.summarizer_mode:
         mode = "analysed-summary"
-    elif summarizer_mode:
-        mode = "summarize"
-    elif analyser_mode:
+    elif commands_parsed.analyser_mode:
         mode = "analyse"
+    elif commands_parsed.summarizer_mode:
+        mode = "summarize"
+    elif commands_parsed.mode is not None:
+        if commands_parsed.mode in ALLOWED_MODES.keys():
+            mode = ALLOWED_MODES[commands_parsed.mode]
+        else:
+            mode = commands_parsed.mode
+    else:
+        mode = None  # will result in default mode
 
-    if len(files) == 0:
-        logging.debug("No files given")
-        rprint("[red]No files given[/red]")
+    cmd_dict["mode"] = mode
+    # error handling
+    try:
+        if cmd_dict["filter_extended"] and\
+                len(cmd_dict["filter_keywords"]) == 0:
+            raise_value_error("--extend not allowed without --filter")
+        if len(cmd_dict["show_list"]) > 0:
+            if mode == "analysed-summary" or mode == "summarize":
+                raise_value_error("--show only allowed"
+                                  " with default and analyser mode")
+    except ValueError as err:
+        print("htcompact: error: " + str(err))
         sys.exit(2)
 
+    # set global variables for log/err/out files
+    GlobalServant.set_std_files(cmd_dict["std_log"],
+                                cmd_dict["std_err"],
+                                cmd_dict["std_out"])
+    GlobalServant.reverse_dns(cmd_dict["reverse_dns_lookup"])
+    GlobalServant.set_thresholds(cmd_dict["tolerated_usage"],
+                                 cmd_dict["bad_usage"])
 
-def small_help() -> str:
-    """
-Usage:
-  htcompact [file ...] [-hsav] [-m mode] [--help] [--version] [--verbose]
-            [--mode mode] [--std-log suffix] [--std-out suffix]
-            [--std-err suffix] [--ignore keywords] [--show-more keywords]
-            [--no-config] [--to-csv] [--generate-log-file]
-            [--filter keywords [--extend]] [--print-event-table]
-            [--reverse-dns-lookup] [--table-format tablefmt]
+    # delete unnecessary information
+    del cmd_dict["summarizer_mode"]
+    del cmd_dict["analyser_mode"]
+    del cmd_dict["version"]
+    del cmd_dict["no_config"] # is never changed becasue of prioritized_parser
 
-----------------------------Main features:---------------------------------
+    if cmd_dict['std_log'] is None:
+        cmd_dict['std_log'] = ""
+    if cmd_dict['std_err'] is None:
+        cmd_dict['std_err'] = ".err"
+    if cmd_dict['std_out'] is None:
+        cmd_dict['std_out'] = ".out"
+    if cmd_dict['table_format'] is None:
+        cmd_dict['table_format'] = "pretty"
 
- --mode summary
-         summarizes all given HTCondor log files and return a result
-         regarding the averange usages and runtimes, this only makes
-         sense, if multiple log files are given
-
- --mode analyse
-        analyses a specific file, for occurred errors, ram history ->
-        histogram, execution status, runtime and much more
-
- --mode analysed-summary
-        A combination of both modes, which gives a more detailed overview
-
- More detailed descriptions and help on other options with:
- 'man htcompact'
-    """
-    # returns this docstring
-    return small_help.__doc__
+    # Todo
+    # if cmd_dict['save_config'] is not None:
+    #     config_name = cmd_dict['save_config']
+    #     del cmd_dict["save_config"]
+    #     for key, value in dict(cmd_dict).items():
+    #         if value is None:
+    #             del cmd_dict[key]
+    #     new_nsp = argparse.Namespace(**cmd_dict)
+    #     print(commands_parsed)
+    #     print(new_nsp)
+    #     print(cmd_dict)
+    #     cmd_parser.write_config_file(new_nsp, [config_name], True)
+    return cmd_dict
 
 
 def get_event_information(event_id="") -> str:
@@ -901,7 +987,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                                          event.get('ExecuteHost'))
                 if match_to_host:
                     execution_host = match_to_host[1]
-                    if reverse_dns_lookup:  # resolve ip to dns if set
+                    if GlobalServant.reverse_dns_lookup:  # resolve ip to dns
                         execution_host = gethostbyaddr(execution_host)
 
                     job_events.append(('Executing on', execution_host))
@@ -965,13 +1051,13 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 # differentiate between normal and abnormal termination
                 if normal_termination:
                     job_events.insert(0, ("Termination State",
-                                          colors['green'] + "Normal" + colors[
+                                          COLORS['green'] + "Normal" + COLORS[
                                               'back_to_default']))
                     return_value = event.get('ReturnValue')
                     job_events.append(("Return Value", return_value))
                 else:
                     job_events.insert(0, ("Termination State",
-                                          colors['red'] + "Abnormal" + colors[
+                                          COLORS['red'] + "Abnormal" + COLORS[
                                               'back_to_default']))
                     signal = event.get('TerminatedBySignal')
                     job_events.append(("Terminated by Signal", signal))
@@ -986,7 +1072,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                     [event_type_number, date.strftime("%m/%d %H:%M:%S"),
                      "Aborted", reason])
                 job_events.insert(0, ("Process was",
-                                      colors['red'] + "Aborted" + colors[
+                                      COLORS['red'] + "Aborted" + COLORS[
                                           'back_to_default']))
 
             # update error dict
@@ -1036,15 +1122,15 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
         elif "Waiting time" in better_time_dict["Dates and times"]:
             state = "Waiting"
         else:
-            pass
-        job_events.insert(0, ("Process is", colors["blue"]
-                              + state + colors["back_to_default"]))
+            state = "Unknown"
+        job_events.insert(0, ("Process is", COLORS["blue"]
+                              + state + COLORS["back_to_default"]))
     # file not fully readable
     elif invalid_file:
         better_time_dict = dict()  # times have no meaning here
-        job_events.insert(0, ("Error", colors["red"]
+        job_events.insert(0, ("Error", COLORS["red"]
                               + "Error while reading"
-                              + colors["back_to_default"]))
+                              + COLORS["back_to_default"]))
 
     job_events_dict = dict()
     error_dict = dict()
@@ -1091,81 +1177,32 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
            ram_history_dict, error_dict
 
 
-# just read .err files content and return it as a string
-def read_condor_error(file: str) -> str:
-    """
-    Reads a HTCondor .err file and returns its content
-
-    :param file: a HTCondor .err file
-
-    :raises: :class:'NameError': The param file was no .err file
-             :class:'FileNotFoundError': if open does not work
-
-    :return: file content
-
-    """
-    if not file.endswith(std_err):
-        raise NameError(
-            "The read_condor_error method is only for " + std_err + " files")
-
-    try:
-        err_file = open(file)
-    except FileNotFoundError as err:
-        logging.exception(err)
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-    else:
-        return "".join(err_file.readlines())
-
-
-# just read .out files content and return it as a string
-def read_condor_output(file: str) -> str:
-    """
-        Reads a HTCondor .out file and returns its content
-
-        :param file: a HTCondor .out file
-
-        :raises: :class:'NameError': The param file was no .out file
-                 :class:'FileNotFoundError': if open does not work
-
-        :return: file content
-
-        """
-    if not file.endswith(std_out):
-        raise NameError(
-            "The read_condor_output method is only for " + std_out + " files")
-    try:
-        out_file = open(file)
-    except FileNotFoundError as err:
-        logging.exception(err)
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-    else:
-        return "".join(out_file.readlines())
-
-
 def gethostbyaddr(ip):
     """
         this function is supposed to filter a given ip for it's representative domain name like google.com
         :return: resolved domain name, else give back the ip
     """
     try:
-        if ip in list(store_dns_lookups.keys()):
-            return store_dns_lookups[ip]
+        if ip in list(GlobalServant.store_dns_lookups.keys()):
+            return GlobalServant.store_dns_lookups[ip]
         # else lookup
         reversed_dns = socket.gethostbyaddr(ip)
         logging.debug(
             'Lookup successful ' + ip + ' resolved as: ' + reversed_dns[0])
         # store
-        store_dns_lookups[ip] = reversed_dns[0]
+        GlobalServant.store_dns_lookups[ip] = reversed_dns[0]
         # return
         return reversed_dns[0]
     except Exception:
         logging.debug('Not able to resolve the IP: ' + ip)
         # also store
-        store_dns_lookups[ip] = ip
+        GlobalServant.store_dns_lookups[ip] = ip
         return ip
 
 
-def manage_thresholds(resources: dict) -> dict:
+def manage_thresholds(resources: dict,
+                      tolerated_usage_threshold=0.1,
+                      bad_usage_threshold=0.25) -> dict:
     """
 
         The important part is that the keywords "Usage", "Requested" exists
@@ -1186,25 +1223,26 @@ def manage_thresholds(resources: dict) -> dict:
 
             # color red if more than bad_usage_thresholds % away from the requested value
             if deviation >= 1 + bad_usage_threshold or deviation <= 1 - bad_usage_threshold:
-                resources['Usage'][i] = colors['red'] + str(
-                    resources['Usage'][i]) + colors['back_to_default']
+                resources['Usage'][i] = COLORS['red'] + str(
+                    resources['Usage'][i]) + COLORS['back_to_default']
 
             # color yellow if more than low_usage_threhold % away from requested value
             elif deviation >= 1 + tolerated_usage_threshold or deviation <= 1 - tolerated_usage_threshold:
-                resources['Usage'][i] = colors['yellow'] + str(
-                    resources['Usage'][i]) + colors['back_to_default']
+                resources['Usage'][i] = COLORS['yellow'] + str(
+                    resources['Usage'][i]) + COLORS['back_to_default']
             # else it's okay, color green
             else:
-                resources['Usage'][i] = colors['green'] + str(
-                    resources['Usage'][i]) + colors['back_to_default']
+                resources['Usage'][i] = COLORS['green'] + str(
+                    resources['Usage'][i]) + COLORS['back_to_default']
 
     return resources
 
 
-def show_htcondor_stderr(file: str) -> str:
+def show_htcondor_stderr(file: str, std_err=".err") -> str:
     """
 
-    :param file: HTCondor .err file
+    :param file: HTCondor stderr file
+    :param std_err: stderr suffix, default: .err
     :return: filtered content
     """
 
@@ -1217,28 +1255,33 @@ def show_htcondor_stderr(file: str) -> str:
         raise_value_error("Missing specification for the std_err")
 
     output_string = ""
+    path = job_spec_id+std_err
     try:
+        if os.path.getsize(path) == 0:
+            return ""
 
-        error_content = read_condor_error(job_spec_id + std_err)
-        for line in error_content.split("\n"):
-            if 'std-err' in show_list:
+        with open(path, "r") as error_content:
+            for line in error_content:
+                line = line.strip("\n")
                 if "err" in line.lower():
-                    output_string += colors['red'] + line + colors[
+                    output_string += COLORS['red'] + line + COLORS[
                         'back_to_default'] + "\n"
                 elif "warn" in line.lower():
-                    output_string += colors['yellow'] + line + colors[
+                    output_string += COLORS['yellow'] + line + COLORS[
                         'back_to_default'] + "\n"
 
     except NameError as err:
         logging.exception(err)
-        rprint(
-            "[red]The smart_output_error method requires a " + std_err + " file as parameter[/red]")
+        rprint("[red]The smart_output_error method requires a "
+               + std_err + " file as parameter[/red]")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
         match = re.match(r".*?([0-9]{3,}_[0-9]+)" + std_err, relevant[1])
         rprint(
-            f"[yellow]There is no related {std_err} file: {relevant[1]} in the directory:\n[/yellow]"
-            f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
+            f"[yellow]There is no related {std_err} file:"
+            f" {relevant[1]} in the directory:\n[/yellow]"
+            f"[cyan]'{os.path.abspath(relevant[0])}'\n"
+            f" with the prefix: {match[1]}[/cyan]")
     except TypeError as err:
         logging.exception(err)
         # we continue here no exit needed
@@ -1246,9 +1289,10 @@ def show_htcondor_stderr(file: str) -> str:
         return output_string
 
 
-def show_htcondor_stdout(file: str) -> str:
+def show_htcondor_stdout(file: str, std_out=".out") -> str:
     """
-    :param: HTCondor .out file
+    :param: HTCondor stdout file
+    :param std_out: stdout suffix, default: .out
     :return: content
     """
 
@@ -1261,20 +1305,28 @@ def show_htcondor_stdout(file: str) -> str:
         raise_value_error("Missing specification for the std_out file")
 
     output_string = ""
+    path = job_spec_id + std_out
     try:
 
-        output_content = read_condor_output(job_spec_id + std_out)
-        output_string += output_content
+        if os.path.getsize(path) == 0:
+            return ""
+
+        with open(path,"r") as output_content:
+            output_string += "".join(output_content.readlines())
     except NameError as err:
         logging.exception(err)
         rprint(
-            "[red]The smart_output_output method requires a " + std_out + " file as parameter[/red]")
+            "[red]The smart_output_output method requires a "
+            + std_out + " file as parameter[/red]")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
         match = re.match(r".*?([0-9]{3,}_[0-9]+)" + std_out, relevant[1])
         rprint(
-            f"[yellow]There is no related {std_out} file: {relevant[1]} in the directory:\n[/yellow]"
-            f"[cyan]'{os.path.abspath(relevant[0])}'\n with the prefix: {match[1]}[/cyan]")
+            f"[yellow]There is no related {std_out}"
+            f" file: {relevant[1]} in the directory:\n"
+            f"[/yellow]"
+            f"[cyan]'{os.path.abspath(relevant[0])}'\n"
+            f" with the prefix: {match[1]}[/cyan]")
     except TypeError as err:
         logging.exception(err)
         # we continue here no exit needed
@@ -1283,342 +1335,12 @@ def show_htcondor_stdout(file: str) -> str:
         return output_string
 
 
-def customize_log(file: str) -> dict:
-    """
-    reads a given HTCondor .log file with the log_to_dict() function,
-    adds .err and .out files content, if specified
-
-    :param file:    a HTCondor .log file
-    :return:        dict
-
-    """
-    # accept files without the std_log suffix
+def get_job_spec_id(file: str, std_log):
     if std_log.__ne__("") and file[-len(std_log):].__eq__(std_log):
         job_spec_id = file[:-len(std_log)]
     else:
         job_spec_id = os.path.splitext(file)[0]
-
-    result_dict = dict()
-
-    try:
-
-        htcondor_log = log_to_dict(file)
-
-        job_dict = htcondor_log[0]
-        res_dict = htcondor_log[1]
-        times = htcondor_log[2]
-
-        if to_csv:
-            pass
-        else:
-            result_dict[
-                "file-description"] = f"{colors['green']}The job procedure of : {file}{colors['back_to_default']}"
-
-            result_dict["execution-details"] = job_dict
-
-            result_dict["times"] = times
-            if not len(res_dict) == 0:  # make sure res_df is not None
-
-                res_dict = manage_thresholds(res_dict)
-
-                result_dict["all-resources"] = res_dict
-
-        if 'std-err' in show_list:
-            result_dict['stderr'] = show_htcondor_stderr(job_spec_id + std_err)
-        if 'std-out' in show_list:
-            result_dict['stdout'] = show_htcondor_stdout(job_spec_id + std_out)
-
-    except NameError as err:
-        logging.exception(err)
-        rprint(
-            f"[red]The smart_output_logs method requires a {std_log} file as parameter[/red]")
-    except ValueError as err:
-        logging.exception(err)
-        rprint(f"[red]{err}[/red]")
-    except TypeError as err:
-        logging.exception(err)
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        sys.exit(3)
-    except Exception as err:
-        logging.exception(err)
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-
-    return result_dict
-
-
-def find_config(args: list) -> (str, list):
-    """
-
-        Try to find a config file in the given arguments.
-
-        Go through the hierarchy in the order:
-        - current_working_directory/file
-        - current_project_folder/config/file
-        - ~/.config/{script_name}/{file}"
-        - /etc/{file}
-
-        ONE config will be loaded if set: generate_logging_file
-
-        -> else try to find default config file "htcompact.conf"
-         in the same order excluding the current working directory,
-         because this might lead to misbehaviour,
-          when the user changes the working directory.
-
-        :param args: command line arguments
-        :return: file if found, else None, args without config, if found
-    """
-
-    script_name = sys.argv[0]
-    if script_name.endswith(".py"):
-        script_name = sys.argv[0][:-3]  # scriptname without .py
-    config = configparser.ConfigParser()
-    # search for the given file,
-    # first directly,
-    # then in /etc and then in ~/.config/htcompact/
-    found_config = False
-
-    arguments = args
-    arguments.append(default_configfile)
-
-    found_config_file = None
-    found_default_in_cwd = False
-    # run through every given argument and check if it's a config file
-    for i, file in enumerate(arguments):
-        # try to find the given file in the current directory,
-        # in /etc or in ~/.config/htcompact/
-        try:
-            # check if the file is not empty, readable and acceptable
-            if os.path.isfile(file) and os.path.getsize(file) != 0 \
-                    and config.read(file):
-                # only use the file if given,
-                # means the default config should be ignored,
-                # even if it's in cwd,
-                # this will exclude misbehaviour, when cwd is changed
-                if not (file.__eq__(default_configfile) and i == len(
-                        arguments) - 1):
-                    found_config = True
-                    arguments.remove(file)
-                else:
-                    found_default_in_cwd = True
-
-                found_config_file = file
-
-            # try to find the config file in the current environment hierarchy
-            elif os.path.isfile(f"{sys.prefix}/config/{file}") \
-                    and config.read(f"{sys.prefix}/config/{file}"):
-                found_config = True
-                arguments.remove(file)
-                # remember file
-                found_config_file = f"{sys.prefix}/config/{file}"
-
-            # try to find config file in ~/.config/script_name/
-            elif os.path.isfile(f"~/.config/{script_name}/{file}") \
-                    and config.read(f"~/.config/{script_name}/{file}"):
-                found_config = True
-                arguments.remove(file)
-                # remember file
-                found_config_file = f"~/.config/{script_name}/{file}"
-
-            # try to find config file in /etc
-            elif os.path.isfile(f"/etc/{file}") \
-                    and config.read(f"/etc/{file}"):
-                found_config = True
-                arguments.remove(file)
-                # remember file
-                found_config_file = f"/etc/{file}"
-
-            else:
-                logging.debug(f"{file} not found or not a valid config file")
-
-            # do not search any longer if found
-            if found_config:
-                break
-
-        # file has no readable format for the configparser,
-        # probably because it's not a config file
-        except configparser.MissingSectionHeaderError:
-            continue
-        except configparser.DuplicateOptionError as err:
-            rprint(f"[red]{err}[/red]")
-
-    try:
-        arguments.remove(
-            default_configfile)  # remove again, if other config file was found
-    except ValueError:
-        pass
-
-    # prepare output if not and break if not found
-    if not found_config and not found_default_in_cwd:
-        rprint(f"[yellow]No valid config file found in: \n"
-               f"- {os.getcwd()},\n"
-               f"- {sys.prefix}/config,\n"
-               f"- ~/.config/htcompact/,\n"
-               f"- /etc/ \n"
-               f"-> using default settings[/yellow]")
-        return None, args
-    elif found_default_in_cwd:
-        rprint(
-            f"[yellow]Found default {default_configfile} "
-            f"in the current working directory.\n"
-            f"It will be ignore, to use it, pass it as an argument like:\n"
-            f"htcompact {default_configfile} [logs] [options]\n"
-            f"-> using default settings[/yellow]")
-        return None, args
-
-    config.read(found_config_file)
-    sections = config.sections()
-    # check if logging is tuned on
-    if 'features' in sections:
-        if 'generate_log_file' in config['features']:
-            global generate_log_file
-            if not generate_log_file:  # if already set, do NOT overwrite
-                generate_log_file = \
-                    config['features']['generate_log_file'].lower()\
-                    in accepted_states
-                logging.getLogger().disabled = not generate_log_file
-
-    return found_config_file, arguments
-
-
-# search for config file ( UNIX BASED )
-def load_config(config_file: str):
-    config = configparser.ConfigParser()
-
-    try:
-
-        config.read(config_file)
-        # all sections in the config file
-        sections = config.sections()
-
-        # now try filter the config file for all available parameters
-
-        rprint(f"[blue]Load config from file: {config_file}[/blue]")
-
-        # all documents like files, etc.
-        if 'documents' in sections:
-            global files
-
-            if 'files' in config['documents']:
-                files = config['documents']['files'].split(" ")
-                logging.debug(f"Changed document files to {files}")
-
-        # all formats like the table format
-        if 'formats' in sections:
-            global table_format
-            if 'table_format' in config['formats']:
-                table_format = config['formats']['table_format']
-                logging.debug(
-                    f"Changed default table_format to: {table_format}")
-
-        # all basic HTCondor file endings like .log, .err, .out
-        if 'htc-files' in sections:
-            global std_log, std_err, std_out
-
-            if 'stdlog' in config['htc-files']:
-                std_log = config['htc-files']['stdlog']
-                logging.debug(
-                    f"Changed default for HTCondor .log files to: {std_log}")
-
-            if 'stderr' in config['htc-files']:
-                std_err = config['htc-files']['stderr']
-                logging.debug(
-                    f"Changed default for HTCondor .err files to: {std_err}")
-
-            if 'stdout' in config['htc-files']:
-                std_out = config['htc-files']['stdout']
-                logging.debug(
-                    f"Changed default for HTCondor .out files to: {std_out}")
-
-        # if show variables are set for further output
-        if 'show-more' in sections:
-            global show_list
-
-            if 'show_list' in config['show-more']:
-                for arg in " ".join(re.split(',| ', config['show-more'][
-                    'show_list'])).split():
-                    if arg in allowed_show_values:
-                        show_list.append(arg)
-                    else:
-                        logging.debug(
-                            "Don't know this ignore statement: " + arg)
-                logging.debug(
-                    f"Changed default ignore statements to: {show_list}")
-
-        # what information should to be ignored
-        if 'ignore' in sections:
-            global ignore_list  # sources to ignore
-
-            if 'ignore_list' in config['ignore']:
-                for arg in " ".join(re.split(',| ', config['ignore'][
-                    'ignore_list'])).split():
-                    if arg in allowed_ignore_values:
-                        ignore_list.append(arg)
-                    else:
-                        logging.debug("Don't know this show statement: " + arg)
-                logging.debug(
-                    f"Changed default show-more statements to: {ignore_list}")
-
-        if 'thresholds' in sections:
-            global tolerated_usage_threshold, bad_usage_threshold
-            if 'tolerated_usage' in config['thresholds']:
-                tolerated_usage_threshold = float(
-                    config['thresholds']['tolerated_usage'])
-                logging.debug(
-                    f"Changed default tolerated_usage to: {tolerated_usage_threshold}")
-            if 'bad_usage' in config['thresholds']:
-                bad_usage_threshold = float(config['thresholds']['bad_usage'])
-                logging.debug(
-                    f"Changed default bad_usage to: {bad_usage_threshold}")
-
-        if "modes" in sections:
-            global filter_mode, mode
-            if 'filter_mode' in config['modes']:
-                filter_mode = config['modes'][
-                                  'filter_mode'].lower() in accepted_states
-                logging.debug(f"Changed filter_mode to: {filter_mode}")
-
-            if 'mode' in config['modes']:
-                mode_tmp = config['modes']['mode'].lower()
-                if mode_tmp in allowed_modes.values():
-                    mode = mode_tmp
-                elif mode_tmp in allowed_modes.keys():
-                    mode = allowed_modes.get(mode_tmp)
-                else:
-                    mode = None
-                logging.debug(f"Changed mode to: {mode}")
-
-        if "filter" in sections:
-            global filter_keywords, filter_extended
-            if 'filter_keywords' in config['filter']:
-                filter_keywords = " ".join(re.split(',| ', config['filter'][
-                    'filter_keywords'])).split()
-                logging.debug(
-                    f"Changed default filter_keywords to: {filter_keywords}")
-            if 'filter_extended' in config['filter']:
-                filter_extended = config['filter'][
-                                      'filter_extended'].lower() in accepted_states
-                logging.debug(
-                    f"Changed default filter_extended to: {filter_extended}")
-
-        if 'features' in sections:
-            global reverse_dns_lookup, to_csv  # extra parameters
-            # the first thing to check should be if logging is turend on
-
-            if 'reverse_dns_lookup' in config['features']:
-                reverse_dns_lookup = config['features'][
-                                         'reverse_dns_lookup'].lower() in accepted_states
-                logging.debug(
-                    f"Changed default reverse_dns_lookup to: {reverse_dns_lookup}")
-
-            if 'to_csv' in config['features']:
-                to_csv = config['features'][
-                             'to_csv'].lower() in accepted_states
-                logging.debug(f"Changed default to_csv to: {to_csv}")
-
-        return True
-
-    except KeyError as err:
-        logging.exception(err)
+    return job_spec_id
 
 
 # in order that plotille has nothing like a int converter,
@@ -1638,7 +1360,7 @@ def _int_formatter(val, chars, delta, left=False):
     return '{:{}{}d}'.format(int(val), align, chars)
 
 
-def default(log_files: list_of_logs) -> log_inf_list:
+def default(log_files: list_of_logs, show_list=[]) -> log_inf_list:
     """
     Print the default output for a given list of log files
 
@@ -1651,56 +1373,71 @@ def default(log_files: list_of_logs) -> log_inf_list:
 
     logging.info('Starting the default mode')
 
+    std_log = GlobalServant.std_log
+    std_err = GlobalServant.std_err
+    std_out = GlobalServant.std_out
+
     list_of_dicts = list()
-    current_path = os.getcwd()
-    # go through all given logs and check for each if it is a directory or file and if std_log was missing or not
+    # current_path = os.getcwd()
+    # go through all given logs
     for file in track(log_files, transient=True, description="Processing..."):
 
-        # for the * operation it should skip std_err and std_out files
-        if file.endswith(std_err) and not std_err.__eq__("") or file.endswith(
-                std_out) and not std_out.__eq__(""):
-            continue
+        result_dict = dict()
+        htcondor_log = log_to_dict(file)
 
-        # else check if file is a valid file
-        if os.path.isfile(file) or os.path.isfile(current_path + "/" + file):
-            list_of_dicts.append(customize_log(file))
+        job_dict = htcondor_log[0]
+        res_dict = htcondor_log[1]
+        times = htcondor_log[2]
 
-        # if that did not work try std_log at the end of that file
-        elif not file.endswith(std_log):
-            new_path = file + std_log
-            # is this now a valid file ?
-            if os.path.isfile(new_path) or os.path.isfile(
-                    current_path + "/" + new_path):
-                list_of_dicts.append(customize_log(new_path))
-            # no file or directory found, even after manipulating the string
-            else:
-                logging.error(f"No such file with that name or prefix: {file}")
-                rprint(
-                    f"[red]No such file with that name or prefix: {file}[/red]")
+        result_dict["file-description"] = f"" \
+            f"{COLORS['green']}The job procedure of : " \
+            f"{file}{COLORS['back_to_default']}"
 
-        # The given .log file was not found
-        else:
-            logging.error(f"No such file: {file}")
-            rprint(f"[red]No such file: {file}[/red]")
+        result_dict["execution-details"] = job_dict
+
+        result_dict["times"] = times
+        if not len(res_dict) == 0:  # make sure res_df is not None
+
+            res_dict = manage_thresholds(res_dict)
+
+            result_dict["all-resources"] = res_dict
+
+        if len(show_list) > 0:
+            job_spec_id = get_job_spec_id(file, std_log)
+            if 'std-err' in show_list:
+                result_dict['stderr'] = show_htcondor_stderr(
+                    job_spec_id + std_err, std_err)
+            if 'std-out' in show_list:
+                result_dict['stdout'] = show_htcondor_stdout(
+                    job_spec_id + std_out, std_out)
+
+        list_of_dicts.append(result_dict)
 
     if len(list_of_dicts) == 0:
-        rprint(
-            "[yellow]Nothing found, please use \"man htcompact\" or \"htcompact -h\" for help[/yellow]",
-            end="")
+        rprint("[yellow]Nothing found,"
+               " please use \"man htcompact\" "
+               "or \"htcompact -h\" for help[/yellow]",end="")
 
     return list_of_dicts
 
 
-def analyse(log_files: list_of_logs) -> log_inf_list:
+def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
+    """
+
+    :param log_files: list of valid HTCondor log files
+    :return: list with information of each log file
+    """
     logging.info('Starting the analyser mode')
 
     if len(log_files) == 0:
         return "No files to analyse"
-    elif len(log_files) > 1 and not redirecting_output:
+    elif len(log_files) > 1 and not GlobalServant.redirecting_stdout:
         print(
-            "More than one file is given, this mode is meant to be used for single job analysis.\n"
-            "This will change nothing, but you should rather do it just for a file one by one")
-        if not reading_stdin:
+            "More than one file is given, "
+            "this mode is meant to be used for single job analysis.\n"
+            "This will change nothing,"
+            " but you should rather do it just for a file one by one")
+        if not GlobalServant.reading_stdin:
             x = input("Want to continue (y/n): ")
             if x != "y":
                 rprint('[red]Process stopped[/red]')
@@ -1708,59 +1445,84 @@ def analyse(log_files: list_of_logs) -> log_inf_list:
 
     result_list = list()
 
-    for file in track(log_files, transient=True, description="Analysing..."):
-        result_dict = dict()
+    std_log = GlobalServant.std_log
+    std_err = GlobalServant.std_err
+    std_out = GlobalServant.std_out
 
-        logging.debug(f"Analysing the HTCondor log file: {file}")
-        result_dict[
-            "file-description"] = f"{colors['green']}Job analysis of: {file}{colors['back_to_default']}"
+    # create progressbar, do not redirect output
+    with Progress(transient=True, redirect_stdout=False,
+                  redirect_stderr=False) as progress:
 
-        job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(
-            file)
+        task = progress.add_task("Analysing...", total=len(log_files))
 
-        if len(job_dict) != 0:
-            result_dict["execution-details"] = job_dict
+        for file in log_files:
+            progress.update(task, advance=1)
+            result_dict = dict()
 
-        if len(time_dict) > 0:
-            result_dict["times"] = time_dict
+            logging.debug(f"Analysing the HTCondor log file: {file}")
+            result_dict["file-description"] = f"{COLORS['green']}" \
+                f"Job analysis of: {file}{COLORS['back_to_default']}"
 
-        if len(res_dict) > 0:
-            result_dict["all-resources"] = manage_thresholds(res_dict)
+            job_dict, res_dict, time_dict, \
+            ram_history, occurred_errors = log_to_dict(file)
+            if len(job_dict) != 0:
+                result_dict["execution-details"] = job_dict
 
-        # show HTCondor errors
-        if len(occurred_errors) > 0:
-            result_dict["errors"] = occurred_errors
+            if len(time_dict) > 0:
+                result_dict["times"] = time_dict
 
-        # managing the ram history
-        if len(ram_history) > 0:
-            ram = np.array(ram_history.get('Image size updates'))
-            dates = np.array(ram_history.get('Dates'))
+            if len(res_dict) > 0:
+                result_dict["all-resources"] = manage_thresholds(res_dict)
 
-            if len(ram) > 1:
+            # show HTCondor errors
+            if len(occurred_errors) > 0:
+                result_dict["errors"] = occurred_errors
 
-                fig = Figure()
-                fig.width = 55
-                fig.height = 15
-                fig.set_x_limits(min_=min(dates))
-                min_ram = int(min(ram))  # raises an error if not casted to int
-                fig.set_y_limits(min_=min_ram)
-                fig.y_label = "Usage"
-                fig.x_label = "Time"
+            # managing the ram history
+            if len(ram_history) > 0:
+                ram = np.array(ram_history.get('Image size updates'))
+                dates = np.array(ram_history.get('Dates'))
 
-                # this will use the self written function _num_formatter, to convert the y-label to int values
-                fig.register_label_formatter(float, _int_formatter)
-                fig.plot(dates, ram, lc='green', label="Continuous Graph")
-                fig.scatter(dates, ram, lc='red', label="Single Values")
+                if len(ram) > 1:
 
-                if redirecting_output:  # if redirected, the Legend is useless
-                    result_dict["ram-history"] = fig.show()
+                    fig = Figure()
+                    fig.width = 55
+                    fig.height = 15
+                    fig.set_x_limits(min_=min(dates))
+                    min_ram = int(min(ram))  # raises an error if not casted
+                    fig.set_y_limits(min_=min_ram)
+                    fig.y_label = "Usage"
+                    fig.x_label = "Time"
+
+                    # this will use the self written function _
+                    # num_formatter, to convert the y-label to int values
+                    fig.register_label_formatter(float, _int_formatter)
+                    fig.plot(dates, ram, lc='green', label="Continuous Graph")
+                    fig.scatter(dates, ram, lc='red', label="Single Values")
+
+                    # if redirected, the Legend is useless
+                    if GlobalServant.redirecting_stdout:
+                        result_dict["ram-history"] = fig.show()
+                    else:
+                        result_dict["ram-history"] = fig.show(legend=True)
                 else:
-                    result_dict["ram-history"] = fig.show(legend=True)
-            else:
-                result_dict["ram-history"] = f"Single memory update found:\n" \
-                    f"Memory usage on the {dates[0]} was updatet to {ram[0]} MB"
+                    result_dict["ram-history"] = f"" \
+                        f"Single memory update found:\n" \
+                        f"Memory usage on the {dates[0]}" \
+                        f" was updatet to {ram[0]} MB"
 
-        result_list.append(result_dict)
+            if len(show_list) > 0:
+                job_spec_id = get_job_spec_id(file, std_log)
+                if 'std-err' in show_list:
+                    result_dict['stderr'] = show_htcondor_stderr(
+                        job_spec_id + std_err,
+                        std_err)
+                if 'std-out' in show_list:
+                    result_dict['stdout'] = show_htcondor_stdout(
+                        job_spec_id + std_out,
+                        std_out)
+
+            result_list.append(result_dict)
 
     return result_list
 
@@ -1876,13 +1638,13 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     # do not even try futher if the only files given have been aborted, are still running etc.
     if n == 0:
-        return result_dict
+        return [result_dict]
 
     create_desc = "The following data only implies on sucessful executed jobs"
     if aborted_files > 0 or still_running > 0 or other_exception > 0:
-        create_desc += f"\n{colors['light_grey']}" \
+        create_desc += f"\n{COLORS['light_grey']}" \
             f"Use the analysed-summary mode for more details about the other jobs" \
-            f"{colors['back_to_default']}"
+            f"{COLORS['back_to_default']}"
 
     result_dict["summation-description"] = create_desc
 
@@ -1974,8 +1736,10 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         refactor_job_dict = dict(
             zip(job_dict["Execution details"], job_dict["Values"]))
         job_keys = list(refactor_job_dict.keys())
+        to_host = None
         if "Executing on" in job_keys:
             to_host = refactor_job_dict["Executing on"]
+
 
         termination_type = job_dict["Values"][0]
 
@@ -2025,7 +1789,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                         "Allocated"] += np.nan_to_num(res_dict["Allocated"])
 
                 # add cpu
-                if to_host != "":
+                if to_host is not None:
                     # cpu known ???
                     if to_host in all_files[termination_type][5].keys():
                         all_files[termination_type][5][to_host][0] += 1
@@ -2111,7 +1875,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         if "Error while reading" in term_state:
             result_dict["file-description"] = f"" \
                 f"##################################################\n" \
-                f"## All files, that caused an {colors['red']}error while reading{colors['back_to_default']}\n" \
+                f"## All files, that caused an {COLORS['red']}error while reading{COLORS['back_to_default']}\n" \
                 f"##################################################"
         elif not term_state in ["Waiting", "Executing"]:
             result_dict["file-description"] = f"" \
@@ -2199,8 +1963,11 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
 
 # search in the files for the keywords
-def filter_for(log_files: list_of_logs, keywords: list,
-               extend=False) -> log_inf_list:
+def filter_for(log_files: list_of_logs,
+               keywords: list,
+               extend=False,
+               mode=None,
+               show_list=[]) -> log_inf_list:
     """
     Filter for a list of keywords, which can be extended
     and print out every file which matches the pattern (not case sensitive)
@@ -2218,17 +1985,15 @@ def filter_for(log_files: list_of_logs, keywords: list,
     logging.info('Starting the filter mode')
 
     # if the keywords are given as a string, try to create a list
-    if type(keywords) == list:
+    if isinstance(keywords, list):
         keyword_list = keywords
-    elif type(keywords) == str:
-        keyword_list = " ".join(re.split(',| ',
-                                         keywords)).split()  # remove spaces and commas from string
     else:
         logging.debug(
             f"Filter mode only accepts a string or list with keywords, not {keywords}")
         raise_type_error("Expecting a list or a string")
 
-    # if extend is set, keywords like err will also look for keywords like warn exception, aborted, etc.
+    # if extend is set, keywords like err will
+    # also look for keywords like warn exception, aborted, etc.
     if extend:  # apply some rules
         # the error list
         err_list = ["err", "warn", "exception", "aborted", "abortion",
@@ -2241,17 +2006,19 @@ def filter_for(log_files: list_of_logs, keywords: list,
 
         keyword_list.extend(err_list)  # extend search
 
-        rprint(
-            "[green]Keyword List was extended, now search for these keywords:[/green]",
-            keyword_list)
+        rprint("[green]Keyword List was extended,"
+               " now search for these keywords:[/green]",
+               keyword_list)
     else:
         rprint("[green]Search for these keywords:[/green]", keyword_list)
 
     if len(keyword_list) == 1 and keyword_list[0] == "":
         logging.debug("Empty filter, don't know what to do")
-        return f"{colors['yellow']}Don't know what to do with an empty filter,\n" \
+        return f"{COLORS['yellow']}" \
+            f"Don't know what to do with an empty filter,\n" \
             f"if you activate the filter mode in the config file, \n" \
-            f"please add a [filter] section with the filter_keywords = your_filter"
+            f"please add a [filter] section with the filter" \
+            f"_keywords = your_filter"
 
     logging.debug(f"These are the keywords to look for: {keyword_list}")
 
@@ -2282,27 +2049,30 @@ def filter_for(log_files: list_of_logs, keywords: list,
     elif mode is not None:
         print(f"Total count: {len(found_logs)}")
         if mode.__eq__("default"):
-            return_dicts = default(found_logs)
+            return_dicts = default(found_logs, show_list)
         elif mode.__eq__("analysed-summary"):
-            rprint(
-                "[magenta]Try to give an analysed summary for these files[/magenta]")
+            rprint("[magenta]Give an analysed summary"
+                   " for these files[/magenta]")
             return_dicts = analysed_summary(found_logs)
         elif mode.__eq__("summarize"):
-            rprint("[magenta]Try to summarize these files[/magenta]")
+            rprint("[magenta]Summarize these files[/magenta]")
             return_dicts = summarize(found_logs)
         elif mode.__eq__("analyse"):
-            rprint("[magenta]Try to analyse these files[/magenta]")
-            return_dicts = analyse(found_logs)
-    elif not reading_stdin and not redirecting_output:  # if not reading from stdin or redirected
+            rprint("[magenta]Analyse these files[/magenta]")
+            return_dicts = analyse(found_logs, show_list)
+    # if not reading from stdin or redirected
+    elif not GlobalServant.reading_stdin \
+            and not GlobalServant.redirecting_stdout:
         rprint("[blue]Want do do more?[/blue]")
         x = input(
-            "default(d), summarize(s), analyse(a), analysed summary(as), exit(e): ")
+            "default(d), summarize(s), analyse(a),"
+            " analysed summary(as), exit(e): ")
         if x == "d":
-            return_dicts = default(found_logs)
+            return_dicts = default(found_logs, show_list)
         elif x == "s":
             return_dicts = summarize(found_logs)
         elif x == "a":
-            return_dicts = analyse(found_logs)
+            return_dicts = analyse(found_logs, show_list)
         elif x == "as":
             return_dicts = analysed_summary(found_logs)
         elif x == "e":
@@ -2314,23 +2084,24 @@ def filter_for(log_files: list_of_logs, keywords: list,
     return return_dicts
 
 
-def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
+def validate_given_logs(file_list: list_of_logs,
+                        std_log="", std_err=".err",
+                        std_out=".log") -> list_of_logs:
     """
-    This method is supposed to take the given log files (by config or command line argument)
-    and tries to determine if these are valid log files, ignoring the std_log specification, if std_log = "".
+    This method is supposed to take the given log files
+    (by config or command line argument)
+    and tries to determine if these are valid log files,
+     ignoring the std_log specification, if std_log = "".
 
-    It will run through given directories and check every single file, if accessible, for the
-    HTCondor log file standard, valid log files should start with lines like:
+    It will run through given directories and check every single file,
+    if accessible, for the
+    HTCondor log file standard,
+    valid log files should start with lines like:
 
-    000 (5989.000.000) 03/30 15:48:47 Job submitted from host: <10.0.8.10:9618?addrs=10.0.8.10-9618&noUDP&sock=3775629_0774_3>
+    000 (5989.000.000) 03/30 15:48:47
 
-    if done, it will change the global files list and store only valid log files.
-    The user will be remind, what files were accepted as "valid".
 
-    The user will also be informed if a given file was not found.
-
-    -> my guess: yes or no question, if nothing is given in under 10 seconds, it should go with no
-    -> this should prevent, that the script is stucked, if the user is for example running it over night
+    The user will also be informed if a single given file was not found.
 
     """
     valid_files = list()
@@ -2343,7 +2114,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
         for arg in file_list:
 
-            path = os.getcwd()  # current working directory , should be condor job summarizer script
+            path = os.getcwd()  # mainly search in current working directory
             logs_path = path + "/" + arg  # absolute path
 
             working_dir_path = ""
@@ -2358,7 +2129,8 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
                 working_file_path = arg
             elif os.path.isfile(logs_path):
                 working_file_path = logs_path
-            # check if only the id was given and resolve it with the std_log specification
+            # check if only the id was given
+            # and resolve it with the std_log specification
             elif os.path.isfile(arg + std_log):
                 working_file_path = arg + std_log
             elif os.path.isfile(logs_path + std_log):
@@ -2367,18 +2139,20 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
             # if path is a directory
             if working_dir_path.__ne__(""):
                 rprint(
-                    f"[light_coral]Search: {working_dir_path} for valid log files[/light_coral]")
-                # run through all files and separate the files into log/error and output files
+                    f"[light_coral]Search: {working_dir_path} "
+                    f"for valid log files[/light_coral]")
+                # run through all files and
+                # separate the files into log, error and output files
                 valid_dir_files = list()
                 file_dir = os.listdir(working_dir_path)
                 total += len(file_dir) - 1
                 for file in file_dir:
                     progress.update(task, total=total, advance=1)
 
-                    # ---- if std_log is set ignore other log files with a different suffix ----
+                    # if std_log is set, ignore other log files
                     if std_log.__ne__("") and not file.endswith(std_log):
-                        logging.debug(
-                            "Ignoring this file, " + file + ", because std_log is set to: " + std_log)
+                        logging.debug("Ignoring this file, " + file +
+                                      ", because std-log is: " + std_log)
                         continue
 
                     # ignore hidden files
@@ -2398,38 +2172,42 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
 
                             if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
                                         read_file.readlines()[0]):
-                                # logging.debug(f"{read_file.name} is a valid HTCondor log file")
                                 valid_dir_files.append(file_path)
 
                     else:
                         logging.debug(
-                            f"Found a subfolder: {working_dir_path}/{file}"
+                            f"Found a subfolder: "
+                            f"{working_dir_path}/{file}"
                             f", it will be ignored")
                         progress.console.print(
-                            f"[yellow]Found a subfolder: {working_dir_path}/{file},"
+                            f"[yellow]Found a subfolder:"
+                            f" {working_dir_path}/{file},"
                             f" it will be ignored[/yellow]")
 
                 valid_files.extend(valid_dir_files)
                 rprint(
-                    f"[green]Found {len(valid_dir_files)} valid log files out of "
+                    f"[green]Found {len(valid_dir_files)}"
+                    f" valid log files out of "
                     f"{len(file_dir)} files[/green]\n")
             # else if path "might" be a valid HTCondor file
             elif working_file_path.__ne__(""):
                 progress.update(task, advance=1)
 
-                # ---- if std_log is set ignore other log files with a different suffix ----
-                if std_log.__ne__("") and not working_file_path.endswith(
-                        std_log):
+                # if std_log is set, ignore other log files
+                if std_log.__ne__("") and \
+                        not working_file_path.endswith(std_log):
                     logging.debug("Ignoring this file, " +
-                                  working_file_path + ", because std_log is set to: " + std_log)
+                                  working_file_path +
+                                  ", because std_log is set to: " + std_log)
                     continue
 
-                if std_err.__ne__("") and working_file_path.endswith(
-                        std_err) or \
-                        std_out.__ne__("") and working_file_path.endswith(
-                    std_out):
+                if std_err.__ne__("") \
+                        and working_file_path.endswith(std_err)\
+                        or std_out.__ne__("") \
+                        and working_file_path.endswith(std_out):
                     logging.debug(
-                        f"Only log files accepted, ignored this file: {working_file_path}")
+                        f"Only log files accepted,"
+                        f" ignored this file: {working_file_path}")
                     continue
 
                 with open(working_file_path, "r") as read_file:
@@ -2460,7 +2238,7 @@ def validate_given_logs(file_list: list_of_logs) -> list_of_logs:
     return valid_files
 
 
-def setup_logging_tool(log_file=sys.argv[0] + '.log'):
+def setup_logging_tool(log_file=None, verbose_mode=False):
     """
         Set up the logging device,
         to generate a log file, with --generate-log-file
@@ -2481,12 +2259,13 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
         logging.root.removeHandler(default_handler)
 
     # if logging tool is set to use
-    if generate_log_file:
+    if log_file is not None:
         # activate logger if not already activated
         logging.getLogger().disabled = False
 
         # more specific view into the script itself
-        logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d] %(levelname)s : %(message)s'
+        logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d]' \
+                              ' %(levelname)s : %(message)s'
         file_formatter = logging.Formatter(logging_file_format)
 
         handler = RotatingFileHandler(log_file, maxBytes=1000000,
@@ -2513,21 +2292,33 @@ def setup_logging_tool(log_file=sys.argv[0] + '.log'):
         log.addHandler(stdout_handler)
 
 
-def customize_results(files: list_of_logs):
+def customize_results(log_files: list_of_logs,
+                      mode: str,
+                      ignore_list=list,
+                      show_list=list,
+                      filter_keywords=list,
+                      filter_extended=False,
+                      table_format="pretty",
+                      **kwargs) -> str:
     output_string = ""
 
-    if filter_mode:
-        results = filter_for(files, filter_keywords, filter_extended)
+    if len(filter_keywords) > 0:
+        results = filter_for(log_files,
+                             keywords=filter_keywords,
+                             extend=filter_extended,
+                             mode=mode,
+                             show_list=show_list)
     elif mode.__eq__("default"):
-        results = default(files)  # force default with -d
+        results = default(log_files, show_list)  # force default with -d
     elif mode.__eq__("analysed-summary"):
-        results = analysed_summary(files)  # analysed summary ?
+        results = analysed_summary(log_files)  # analysed summary ?
     elif mode.__eq__("summarize"):
-        results = summarize(files)  # summarize information
+        results = summarize(log_files)  # summarize information
     elif mode.__eq__("analyse"):
-        results = analyse(files)  # analyse the given files
+        results = analyse(log_files, show_list)  # analyse the given log_files
     else:
-        results = default(files)  # anyways try to print default output
+        results = default(log_files, show_list)
+        # anyways try to print default output
 
     # This can happen, when for example the filter mode is not forwarded
     if results is None:
@@ -2535,12 +2326,11 @@ def customize_results(files: list_of_logs):
 
     work_with = results
     # convert result to list, if given as dict
-    if type(results) == dict:
+    if isinstance(results, dict):
         work_with = [results]
 
     # check for ignore values
-    for i in range(len(work_with)):
-        mystery = work_with[i]
+    for mystery in work_with:
 
         if "execution-details" in mystery:
             if "execution-details" in ignore_list:
@@ -2616,65 +2406,50 @@ def run(commandline_args):
     """
     Run this script
 
-    This searches first for a given config file.
-    After that, given parameters in the terminal will be interpreted, so they have a higher priority
-    given files will be validated and the logging tool will be managed
-    After that the user input will be used to process the output to the terminal,
-    which will contain information about the given log files
-
     :return:
     """
+    # before running make sure Global Parameters are set to normal
+    GlobalServant.reset()
+
+    if not isinstance(commandline_args, list):
+        commandline_args = commandline_args.split()
+
     try:
-        start = datetime.datetime.now()  # startdate
+        start = datetime.datetime.now()  # start date for runtime
 
-        initialize()  # initialize global parameters
+        # initialize()  # initialize global parameters
 
-        check_for_redirection()  # set the color sequenzes to ""
-
-        # if exit parameters are given that will interrupt this script, like --help,
+        GlobalServant.check_for_redirection()
+        # if exit parameters are given that will interrupt this script,
         # catch them here so the config won't be unnecessary loaded
-        manage_prioritized_params(commandline_args)
+        param_dict = manage_params(commandline_args)
 
-        # if not --no-config is set:
-        # interpret the first file, that can be interpreted as a config file and remove it, other given config files,
-        # (you will see when you try, files will be interpreted as HTCondor log files)
-        # so it's not possible to give multiple config files
-        found_conf = None
-        if not no_config:
-            found_conf, commandline_args = find_config(commandline_args)
-
-        setup_logging_tool()  # set up the logging device
+        setup_logging_tool(param_dict["generate_log_file"],
+                           param_dict["verbose"])
 
         logging.debug("-------Start of htcompact scipt-------")
 
-        if verbose_mode:
+        if param_dict["verbose"]:
             logging.info('Verbose mode turned on')
 
-        if reading_stdin:
+        if GlobalServant.reading_stdin:
             logging.debug("Reading from stdin")
-        if redirecting_output:
+        if GlobalServant.redirecting_stdout:
             logging.debug("Output is getting redirected")
 
-        if found_conf is not None:
-            load_config(found_conf)
-
-        # after that, interpret the command line arguments, these will have a higher priority, than the config setup
-        # and by that arguments set in the config file, will be ignored
-        manage_params(commandline_args)
-
-        global files
-        valid_files = validate_given_logs(
-            files)  # validate the files, make a list of all valid config files
-
+        valid_files = validate_given_logs(param_dict["files"],
+                                          std_log=GlobalServant.std_log,
+                                          std_err=GlobalServant.std_err,
+                                          std_out=GlobalServant.std_out)
         if len(valid_files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
-            sys.exit(2)
+            sys.exit(1)
 
-        output_str = customize_results(valid_files)
+        output_str = customize_results(log_files=valid_files, **param_dict)
 
         print(output_str)  # write it to the console
 
-        end = datetime.datetime.now()  # enddate
+        end = datetime.datetime.now()  # end date for runtime
 
         logging.debug(f"Runtime: {end - start}")  # runtime of this script
 
@@ -2695,8 +2470,9 @@ def run(commandline_args):
 
 if __name__ == "__main__":
     """
-    This is the main function, which runs the script, if not imported as a module
+    This is the main function, 
+    which runs the script, if not imported as a module
 
-    :return:
+    :return: exit status 0-4
     """
     run(sys.argv[1:])

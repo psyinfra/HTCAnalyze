@@ -23,6 +23,7 @@ setup(name='htcompact',
             "tabulate",
             "htcondor",
             "plotille >= 3.7",
+            "configargparse == 1.2.3",
             "rich >= 3.0.3"
       ],
       dependency_links=[
