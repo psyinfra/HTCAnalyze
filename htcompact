@@ -213,141 +213,59 @@ class CustomFormatter(argparse.HelpFormatter):
 
 
 # parser for --no-config flag, which avoids -h|--help flag
-def setup_no_config_parser():
+def setup_prioritized_parser():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--no-config",
                         action="store_true")
-    return parser
-
-
-def setup_config_parser(default_config_files)-> configargparse.ArgumentParser:
-    """
-        Defines parser with all arguments listed below
-        :param args:
-        :return:
-        """
-
-    parser = configargparse.\
-        ArgumentParser(default_config_files=default_config_files)
-
-    parser.add_argument("--files",
-                        nargs="*",
-                        action="append",
-                        default=[],
-                        help="ANY number of paths to log or config file(s)")
-
-    parser.add_argument("-v", "--verbose",
+    parser.add_argument("-c", "--config", nargs=1)
+    parser.add_argument("--version",
                         help="Print out extended execution details",
+                        action="store_true")
+    parser.add_argument("--print-event-table",
                         action="store_true",
-                        default=None)
-    parser.add_argument("--generate-log-file",
-                        nargs="?",
-                        const="htcompact.log",
-                        default=None,
-                        help="generates output about the process,"
-                             " which is mostly useful for developers, "
-                             "if no file is specified, default: htcompact.log")
-
-    all_vals = []
-    for item in ALLOWED_MODES.items():
-        all_vals.extend(list(item))
-    parser.add_argument("--mode",
-                        help="Specifiy an interpretation mode",
-                        choices=all_vals)
-
-    parser.add_argument("--std-log",
-                        help="Specify the log file suffix",
-                        type=str)
-    parser.add_argument("--std-out",
-                        help="Specify the output file suffix",
-                        type=str)
-    parser.add_argument("--std-err",
-                        help="Specify the error file suffix",
-                        type=str)
-
-    ignore_metavar = "{" + ALLOWED_IGNORE_VALUES[0] + " ... " \
-                     + ALLOWED_IGNORE_VALUES[-1] + "}"
-    allowed_ign_vals = ALLOWED_IGNORE_VALUES[:] # copying
-    allowed_ign_vals.append('')  # needed so empty list are valid in config
-    parser.add_argument("--ignore",
-                        nargs="+",
-                        action="append",
-                        choices=allowed_ign_vals,
-                        metavar=ignore_metavar,
-                        dest="ignore_list",
-                        default=[],
-                        help="Ignore a section to not be printed")
-    allowed_show_vals = ALLOWED_SHOW_VALUES[:] # copying
-    allowed_show_vals.append('')  # needed so empty list are valid in config
-    parser.add_argument("--show",
-                        nargs="+",
-                        action="append",
-                        dest="show_list",
-                        choices=allowed_show_vals,
-                        default=[],
-                        help="Show more details")
-
-    parser.add_argument("--filter",
-                        nargs="+",
-                        metavar="keywords",
-                        help="Filter for the given keywords",
-                        default=[],
-                        dest="filter_keywords",
-                        action="append",
-                        type=str)
-    parser.add_argument("--extend",
-                        action="store_true",
-                        dest="filter_extended",
-                        help="extend the filter keyword list "
-                             "by specific error keywords")
-
-    parser.add_argument("--tolerated-usage",
-                        type=float,
-                        help="Threshold to warn the user, "
-                             "when a given percentage is exceeded "
-                             "between used and requested resources")
-
-    parser.add_argument("--bad-usage",
-                        type=float,
-                        help="Threshold to signal overuse/waste of resoucres, "
-                             "when a given percentage is exceeded "
-                             "between used and requested resources")
-
-    parser.add_argument("--reverse-dns-lookup",
-                        action="store_true",
-                        help="Resolve the ip-address of an execution nodes"
-                             " to their dns entry")
-
-    table_metavar = "{" + VALID_TABLE_FORMATS[0] + " ... " \
-                    + VALID_TABLE_FORMATS[-1] + "}"
-    parser.add_argument("--table-format",
-                        metavar=table_metavar,
-                        choices=VALID_TABLE_FORMATS)
-
-    return parser
-
-
-def setup_commandline_parser() -> configargparse.ArgumentParser:
-    """
-    Defines parser with all arguments listed below
-    :param args:
-    :return:
-    """
-
-    parser = configargparse.ArgumentParser(formatter_class=CustomFormatter)
+                        help="Prints out the event table")
 
     parser.add_argument("path",
                         nargs="*",
                         action="append",
                         default=[],
-                        help="ANY number of paths to log or config file(s)")
+                        help="ANY number of paths to log file(s)")
 
     parser.add_argument("-f", "--files",
                         nargs=1,
                         action="append",
                         dest="more_files",
                         default=[],
-                        help="ONE path to log or config file(s)")
+                        help="ONE path to log file")
+    return parser
+
+
+def setup_commandline_parser(default_config_files=[])\
+        -> configargparse.ArgumentParser:
+    """
+    Defines parser with all arguments listed below
+    :param args:
+    :return:
+    """
+
+    parser = configargparse.\
+        ArgumentParser(formatter_class=CustomFormatter,
+                       default_config_files=default_config_files,
+                       ignore_unknown_config_file_keys=True)
+
+    parser.add_argument("path",
+                        nargs="*",
+                        action="append",
+                        default=[],
+                        help="ANY number of paths to log file(s)")
+    # also to add files with diffrent destination,
+    # to be used for config file / escaping flags with action=append
+    parser.add_argument("-f", "--files",
+                        nargs=1,
+                        action="append",
+                        dest="more_files",
+                        default=[],
+                        help="ONE path to log file")
 
     parser.add_argument("--version",
                         help="Print out extended execution details",
@@ -395,19 +313,23 @@ def setup_commandline_parser() -> configargparse.ArgumentParser:
 
     ignore_metavar = "{" + ALLOWED_IGNORE_VALUES[0] + " ... " \
                      + ALLOWED_IGNORE_VALUES[-1] + "}"
+    allowed_ign_vals = ALLOWED_IGNORE_VALUES[:]  # copying
+    allowed_ign_vals.append('')  # needed so empty list are valid in config
     parser.add_argument("--ignore",
                         nargs="+",
                         action="append",
-                        choices=ALLOWED_IGNORE_VALUES,
+                        choices=allowed_ign_vals,
                         metavar=ignore_metavar,
                         dest="ignore_list",
                         default=[],
                         help="Ignore a section to not be printed")
+    allowed_show_vals = ALLOWED_SHOW_VALUES[:]  # copying
+    allowed_show_vals.append('')  # needed so empty list are valid in config
     parser.add_argument("--show",
                         nargs="+",
                         action="append",
                         dest="show_list",
-                        choices=ALLOWED_SHOW_VALUES,
+                        choices=allowed_show_vals,
                         default=[],
                         help="Show more details")
 
@@ -436,20 +358,34 @@ def setup_commandline_parser() -> configargparse.ArgumentParser:
                         help="Resolve the ip-address of an execution nodes"
                              " to their dns entry")
 
+    parser.add_argument("--tolerated-usage",
+                        type=float,
+                        help="Threshold to warn the user, "
+                             "when a given percentage is exceeded "
+                             "between used and requested resources")
+
+    parser.add_argument("--bad-usage",
+                        type=float,
+                        help="Threshold to signal overuse/waste of resoucres, "
+                             "when a given percentage is exceeded "
+                             "between used and requested resources")
+
     table_metavar = "{" + VALID_TABLE_FORMATS[0] + " ... " \
                     + VALID_TABLE_FORMATS[-1] + "}"
     parser.add_argument("--table-format",
                         metavar=table_metavar,
                         default=None,
                         choices=VALID_TABLE_FORMATS)
-
-    parser.add_argument("--save-config",
-                        type=str,
-                        help="Stores the current configuration"
-                             " into a config file")
+    parser.add_argument("-c", "--config",
+                        is_config_file=True,
+                        help="ONE path to config file")
     parser.add_argument("--no-config",
                         action="store_true",
                         help="Do not search for config")
+    parser.add_argument("--save-config",
+                        is_write_out_config_file_arg=True,
+                        help="Stores the current configuration"
+                             " into a config file")
 
     return parser
 
@@ -488,31 +424,64 @@ def manage_params(args: list) -> dict:
         for line in GlobalServant.stdin_input:
             args.append(line.rstrip('\n'))
 
-    no_config_parsed, args = setup_no_config_parser().parse_known_args(args)
-    cmd_parser = setup_commandline_parser()
-    commands_parsed = cmd_parser.parse_args(args)
-
+    prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
     # first of all check for prioritised/exit params
-    if commands_parsed.version:
+    if prio_parsed.version:
         print("Version: v1.1.0")
         sys.exit(0)
-    if commands_parsed.print_event_table:
+    if prio_parsed.print_event_table:
         print(get_event_information())
         sys.exit(0)
 
-    cmd_dict = vars(commands_parsed).copy()
-    cmd_dict["no_config"] = no_config_parsed.no_config
+    # get files from prio_parsed
+    files_list = list()
+    for li in prio_parsed.path:
+        files_list.extend(li)
+    for li in prio_parsed.more_files:
+        files_list.extend(li)
 
-    # concat files
-    new_files_list = list()
-    for li in cmd_dict["path"]:
-        new_files_list.extend(li)
-    for li in cmd_dict["more_files"]:
-        new_files_list.extend(li)
+    if prio_parsed.config:
+        # do not use config files if --no-config flag is set
+        if prio_parsed.no_config:
+            # if as well config is set, exit, because of conflict
+            print("htcompact: error: conflict between --no-config and --config")
+            sys.exit(2)
+        # else add config again
+        args.extend(["--config", prio_parsed.config[0]])
 
-    cmd_dict["files"] = new_files_list
+    # parse config file if not --no-config is set, might change nothing
+    if not prio_parsed.no_config:
+        config_paths = ['/etc/htcompact.conf',
+                        '~/.config/htcompact/htcompact.conf',
+                        sys.prefix + '/config/htcompact.conf']
+        cmd_parser = setup_commandline_parser(config_paths)
+        commands_parsed = cmd_parser.parse_args(args)
+        cmd_dict = vars(commands_parsed).copy()
+
+        # add files, if none are given by terminal
+        if len(files_list) == 0:
+            for li in cmd_dict["more_files"]:
+                files_list.extend(li)
+
+        # remove empty string from lists, because configargparse
+        # inserts empty strings, when list is empty
+        for val in cmd_dict.keys():
+            if isinstance(cmd_dict[val], list):
+                for li in cmd_dict[val]:
+                    if len(li) == 1 and li[0] == "":
+                        li.remove("")
+
+    else:
+        cmd_parser = setup_commandline_parser()
+        commands_parsed = cmd_parser.parse_args(args)
+        cmd_dict = vars(commands_parsed).copy()
+
+    print(commands_parsed)
+    print(cmd_dict)
+
     del cmd_dict["path"]
     del cmd_dict["more_files"]
+    cmd_dict["files"] = files_list
 
     # concat ignore list
     new_ignore_list = list()
@@ -548,15 +517,15 @@ def manage_params(args: list) -> dict:
         mode = None  # will result in default mode
 
     cmd_dict["mode"] = mode
-
+    print(cmd_dict)
     # error handling
     try:
-        if commands_parsed.filter_extended and\
-                len(commands_parsed.filter_keywords) == 0:
+        if cmd_dict["filter_extended"] and\
+                len(cmd_dict["filter_keywords"]) == 0:
             raise_value_error("--extend not allowed without --filter")
-        if len(commands_parsed.show_list) > 0:
+        if len(cmd_dict["show_list"]) > 0:
             if mode == "analysed-summary" or mode == "summarize":
-                raise_value_error("--show-more only allowed"
+                raise_value_error("--show only allowed"
                                   " with default and analyser mode")
     except ValueError as err:
         print("htcompact: error: " + str(err))
@@ -573,48 +542,6 @@ def manage_params(args: list) -> dict:
     del cmd_dict["analyser_mode"]
     del cmd_dict["version"]
 
-    # if not no config is set, do overwrite every None value, or empty list
-    if not cmd_dict["no_config"]:
-        config_paths = ['/etc/htcompact.conf',
-                        '~/.config/htcompact.conf',
-                        sys.prefix + '/config/htcompact.conf']
-        # find config file and remove if given
-        config_file, new_files_list = find_valid_config(new_files_list,
-                                                        config_paths)
-        # if a config file was found,
-        if config_file is not None:
-            rprint(f"[magenta]Using config file: {config_file}[/magenta]")
-            cmd_dict["files"] = new_files_list  # remove config from files
-
-            conf_parsed, _ = setup_config_parser([config_file]).parse_known_args([])
-            conf_dict = vars(conf_parsed)
-
-            # set global thresholds for requested vs actual usage
-            GlobalServant.set_thresholds(conf_dict["tolerated_usage"],
-                                         conf_dict["bad_usage"])
-            del conf_dict["tolerated_usage"]
-            del conf_dict["bad_usage"]
-
-            # resolve for example as to analysed-summary
-            if conf_dict["mode"] in ALLOWED_MODES.keys():
-                conf_dict["mode"] = ALLOWED_MODES[conf_dict["mode"]]
-
-            # use conf_dict files if not given by command line
-            for val in conf_dict.keys():
-                if isinstance(cmd_dict[val], list) and len(cmd_dict[val]) == 0:
-                    for sub_list in conf_dict[val]:
-                        # remove empty strings
-                        for sub_val in sub_list:
-                            if sub_val == "":
-                                sub_list.remove(sub_val)
-                        cmd_dict[val].extend(sub_list)
-                elif cmd_dict[val] is None:
-                    cmd_dict[val] = conf_dict[val]
-
-        else:
-            rprint("[yellow]No config file found[/yellow]")
-
-    # if values are None, assign default values
     if cmd_dict['std_log'] is None:
         cmd_dict['std_log'] = ""
     if cmd_dict['std_err'] is None:
