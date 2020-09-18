@@ -538,8 +538,7 @@ def manage_params(args: list) -> dict:
     del cmd_dict["summarizer_mode"]
     del cmd_dict["analyser_mode"]
     del cmd_dict["version"]
-    del cmd_dict["no_config"]
-    del cmd_dict["config"]
+    del cmd_dict["no_config"] # is never changed becasue of prioritized_parser
 
     if cmd_dict['std_log'] is None:
         cmd_dict['std_log'] = ""
@@ -562,7 +561,6 @@ def manage_params(args: list) -> dict:
     #     print(new_nsp)
     #     print(cmd_dict)
     #     cmd_parser.write_config_file(new_nsp, [config_name], True)
-
     return cmd_dict
 
 
