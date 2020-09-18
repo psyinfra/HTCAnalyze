@@ -173,7 +173,8 @@ class GlobalPlayer(object):
             self.bad_usage_threshold = bad_usage
 
     def reverse_dns(self, do_that):
-        self.reverse_dns_lookup = do_that
+        if isinstance(do_that, bool):
+            self.reverse_dns_lookup = do_that
 
 
 ###############################
@@ -224,12 +225,6 @@ def setup_prioritized_parser():
     parser.add_argument("--print-event-table",
                         action="store_true",
                         help="Prints out the event table")
-
-    parser.add_argument("path",
-                        nargs="*",
-                        action="append",
-                        default=[],
-                        help="ANY number of paths to log file(s)")
 
     parser.add_argument("-f", "--files",
                         nargs=1,
@@ -435,8 +430,6 @@ def manage_params(args: list) -> dict:
 
     # get files from prio_parsed
     files_list = list()
-    for li in prio_parsed.path:
-        files_list.extend(li)
     for li in prio_parsed.more_files:
         files_list.extend(li)
 
@@ -458,6 +451,9 @@ def manage_params(args: list) -> dict:
         commands_parsed = cmd_parser.parse_args(args)
         cmd_dict = vars(commands_parsed).copy()
 
+        # extend files list by given paths
+        for li in commands_parsed.path:
+            files_list.extend(li)
         # add files, if none are given by terminal
         if len(files_list) == 0:
             for li in cmd_dict["more_files"]:
@@ -474,10 +470,10 @@ def manage_params(args: list) -> dict:
     else:
         cmd_parser = setup_commandline_parser()
         commands_parsed = cmd_parser.parse_args(args)
+        # extend files list by given paths
+        for li in commands_parsed.path:
+            files_list.extend(li)
         cmd_dict = vars(commands_parsed).copy()
-
-    print(commands_parsed)
-    print(cmd_dict)
 
     del cmd_dict["path"]
     del cmd_dict["more_files"]
@@ -517,7 +513,6 @@ def manage_params(args: list) -> dict:
         mode = None  # will result in default mode
 
     cmd_dict["mode"] = mode
-    print(cmd_dict)
     # error handling
     try:
         if cmd_dict["filter_extended"] and\
@@ -532,15 +527,19 @@ def manage_params(args: list) -> dict:
         sys.exit(2)
 
     # set global variables for log/err/out files
-    GlobalServant.set_std_files(commands_parsed.std_log,
-                                commands_parsed.std_err,
-                                commands_parsed.std_out)
-    GlobalServant.reverse_dns(commands_parsed.reverse_dns_lookup)
+    GlobalServant.set_std_files(cmd_dict["std_log"],
+                                cmd_dict["std_err"],
+                                cmd_dict["std_out"])
+    GlobalServant.reverse_dns(cmd_dict["reverse_dns_lookup"])
+    GlobalServant.set_thresholds(cmd_dict["tolerated_usage"],
+                                 cmd_dict["bad_usage"])
 
     # delete unnecessary information
     del cmd_dict["summarizer_mode"]
     del cmd_dict["analyser_mode"]
     del cmd_dict["version"]
+    del cmd_dict["no_config"]
+    del cmd_dict["config"]
 
     if cmd_dict['std_log'] is None:
         cmd_dict['std_log'] = ""
