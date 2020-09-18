@@ -213,7 +213,7 @@ class CustomFormatter(argparse.HelpFormatter):
                 return ',\n  '.join(parts)
 
 
-# parser for --no-config flag, which avoids -h|--help flag
+# parser for prioritised flags
 def setup_prioritized_parser():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--no-config",
@@ -1341,45 +1341,6 @@ def get_job_spec_id(file: str, std_log):
     else:
         job_spec_id = os.path.splitext(file)[0]
     return job_spec_id
-
-
-def find_valid_config(files: list, default_config_files=[]) -> (str, list):
-
-    changed_files = files
-    found_config_file = None
-    config = configparser.ConfigParser(
-            delimiters=("=", ":"),
-            allow_no_value=False,
-            comment_prefixes=("#", ";"),
-            inline_comment_prefixes=("#", ";"),
-            strict=True,
-            empty_lines_in_values=False,
-        )
-
-    # search through default_config_files[]
-    for file in default_config_files:
-        file = os.path.expanduser(file)
-        try:
-            if os.path.isfile(file) and os.path.getsize(
-                    file) != 0 and config.read(file):
-                found_config_file = file
-        except configparser.MissingSectionHeaderError:
-            found_config_file = file
-
-    # run through files, take the first appearing config file
-    for file in files:
-        try:
-            if os.path.isfile(file) and os.path.getsize(
-                    file) != 0 and config.read(file):
-                found_config_file = file
-                changed_files.remove(file)
-                break
-        # this means it's still valid, we don't need sections anyway
-        except configparser.MissingSectionHeaderError:
-            found_config_file = file
-            changed_files.remove(file)
-
-    return found_config_file, changed_files
 
 
 # in order that plotille has nothing like a int converter,
