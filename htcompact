@@ -253,7 +253,7 @@ def setup_commandline_parser(default_config_files=[])\
                         action="append",
                         default=[],
                         help="ANY number of paths to log file(s)")
-    # also to add files with diffrent destination,
+    # also to add files with different destination,
     # to be used for config file / escaping flags with action=append
     parser.add_argument("-f", "--files",
                         nargs=1,
@@ -261,6 +261,10 @@ def setup_commandline_parser(default_config_files=[])\
                         dest="more_files",
                         default=[],
                         help="ONE path to log file")
+    parser.add_argument("-r", "--recursive",
+                        action="store_true",
+                        default=None,
+                        help="Recursive search through directory hierarchy")
 
     parser.add_argument("--version",
                         help="Print out extended execution details",
@@ -457,7 +461,11 @@ def manage_params(args: list) -> dict:
         # add files, if none are given by terminal
         if len(files_list) == 0:
             for li in cmd_dict["more_files"]:
-                files_list.extend(li)
+                # make sure that empty strings are not getting inserted
+                if len(li) == 1 and li[0] != "":
+                    files_list.extend(li)
+
+        # TODO: generate_log_file = True -> convert to bool
 
         # remove empty string from lists, because configargparse
         # inserts empty strings, when list is empty
@@ -1179,7 +1187,8 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
 
 def gethostbyaddr(ip):
     """
-        this function is supposed to filter a given ip for it's representative domain name like google.com
+        this function is supposed to filter a given
+         ip for it's representative domain name like google.com
         :return: resolved domain name, else give back the ip
     """
     try:
@@ -2085,6 +2094,7 @@ def filter_for(log_files: list_of_logs,
 
 
 def validate_given_logs(file_list: list_of_logs,
+                        recursive=False,
                         std_log="", std_err=".err",
                         std_out=".log") -> list_of_logs:
     """
@@ -2147,6 +2157,9 @@ def validate_given_logs(file_list: list_of_logs,
                 file_dir = os.listdir(working_dir_path)
                 total += len(file_dir) - 1
                 for file in file_dir:
+                    # ignore hidden files or python modules
+                    if file.startswith(".") or file.startswith("__"):
+                        continue
                     progress.update(task, total=total, advance=1)
 
                     # if std_log is set, ignore other log files
@@ -2173,7 +2186,13 @@ def validate_given_logs(file_list: list_of_logs,
                             if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
                                         read_file.readlines()[0]):
                                 valid_dir_files.append(file_path)
-
+                    elif recursive:
+                        valid_files.extend(validate_given_logs([file_path],
+                                                               recursive,
+                                                               std_log,
+                                                               std_err,
+                                                               std_out))
+                        print("do recursive search")
                     else:
                         logging.debug(
                             f"Found a subfolder: "
@@ -2436,8 +2455,8 @@ def run(commandline_args):
             logging.debug("Reading from stdin")
         if GlobalServant.redirecting_stdout:
             logging.debug("Output is getting redirected")
-
         valid_files = validate_given_logs(param_dict["files"],
+                                          param_dict["recursive"],
                                           std_log=GlobalServant.std_log,
                                           std_err=GlobalServant.std_err,
                                           std_out=GlobalServant.std_out)
