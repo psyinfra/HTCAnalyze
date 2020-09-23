@@ -2187,12 +2187,12 @@ def validate_given_logs(file_list: list_of_logs,
                                         read_file.readlines()[0]):
                                 valid_dir_files.append(file_path)
                     elif recursive:
+                        # extend files by searching through this directory
                         valid_files.extend(validate_given_logs([file_path],
                                                                recursive,
                                                                std_log,
                                                                std_err,
                                                                std_out))
-                        print("do recursive search")
                     else:
                         logging.debug(
                             f"Found a subfolder: "
