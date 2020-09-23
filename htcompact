@@ -236,7 +236,7 @@ def setup_commandline_parser(default_config_files=[])\
         -> configargparse.ArgumentParser:
     """
     Defines parser with all arguments listed below
-    :param args:
+    :param default_config_files: list with config file hierarchy to look for
     :return:
     """
 
@@ -430,7 +430,8 @@ def manage_params(args: list) -> dict:
         # do not use config files if --no-config flag is set
         if prio_parsed.no_config:
             # if as well config is set, exit, because of conflict
-            print("htcompact: error: conflict between --no-config and --config")
+            print("htcompact: error: conflict between"
+                  " --no-config and --config")
             sys.exit(2)
         # else add config again
         args.extend(["--config", prio_parsed.config[0]])
@@ -535,7 +536,7 @@ def manage_params(args: list) -> dict:
     del cmd_dict["summarizer_mode"]
     del cmd_dict["analyser_mode"]
     del cmd_dict["version"]
-    del cmd_dict["no_config"] # is never changed becasue of prioritized_parser
+    del cmd_dict["no_config"]
 
     if cmd_dict['std_log'] is None:
         cmd_dict['std_log'] = ""
@@ -886,14 +887,14 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
             state = "Waiting"
         else:
             state = "Unknown"
-        job_events.insert(0, ("Process is", COLORS["blue"]
-                              + state + COLORS["back_to_default"]))
+        job_events.insert(0, ("Process is", COLORS["blue"] +
+                              state + COLORS["back_to_default"]))
     # file not fully readable
     elif invalid_file:
         better_time_dict = dict()  # times have no meaning here
-        job_events.insert(0, ("Error", COLORS["red"]
-                              + "Error while reading"
-                              + COLORS["back_to_default"]))
+        job_events.insert(0, ("Error", COLORS["red"] +
+                              "Error while reading" +
+                              COLORS["back_to_default"]))
 
     job_events_dict = dict()
     error_dict = dict()
@@ -936,8 +937,11 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
             "Resident Set Sizes": list(res_set_size)
         }
 
-    return job_events_dict, res_dict, better_time_dict, \
-           ram_history_dict, error_dict
+    return (job_events_dict,
+            res_dict,
+            better_time_dict,
+            ram_history_dict,
+            error_dict)
 
 
 def gethostbyaddr(ip):
@@ -985,13 +989,17 @@ def manage_thresholds(resources: dict,
             deviation = float(resources['Usage'][i]) / float(
                 resources['Requested'][i])
 
-            # color red if more than bad_usage_thresholds % away from the requested value
-            if deviation >= 1 + bad_usage_threshold or deviation <= 1 - bad_usage_threshold:
+            # color red if more than bad_usage_thresholds % away
+            # from the requested value
+            if deviation >= 1 + bad_usage_threshold\
+                    or deviation <= 1 - bad_usage_threshold:
                 resources['Usage'][i] = COLORS['red'] + str(
                     resources['Usage'][i]) + COLORS['back_to_default']
 
-            # color yellow if more than low_usage_threhold % away from requested value
-            elif deviation >= 1 + tolerated_usage_threshold or deviation <= 1 - tolerated_usage_threshold:
+            # color yellow if more than low_usage_threhold % away
+            # from requested value
+            elif deviation >= 1 + tolerated_usage_threshold\
+                    or deviation <= 1 - tolerated_usage_threshold:
                 resources['Usage'][i] = COLORS['yellow'] + str(
                     resources['Usage'][i]) + COLORS['back_to_default']
             # else it's okay, color green
@@ -1036,8 +1044,8 @@ def show_htcondor_stderr(file: str, std_err=".err") -> str:
 
     except NameError as err:
         logging.exception(err)
-        rprint("[red]The smart_output_error method requires a "
-               + std_err + " file as parameter[/red]")
+        rprint("[red]The smart_output_error method requires a " +
+               std_err + " file as parameter[/red]")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
         match = re.match(r".*?([0-9]{3,}_[0-9]+)" + std_err, relevant[1])
@@ -1075,13 +1083,13 @@ def show_htcondor_stdout(file: str, std_out=".out") -> str:
         if os.path.getsize(path) == 0:
             return ""
 
-        with open(path,"r") as output_content:
+        with open(path, "r") as output_content:
             output_string += "".join(output_content.readlines())
     except NameError as err:
         logging.exception(err)
         rprint(
-            "[red]The smart_output_output method requires a "
-            + std_out + " file as parameter[/red]")
+            "[red]The smart_output_output method requires a " +
+            std_out + " file as parameter[/red]")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
         match = re.match(r".*?([0-9]{3,}_[0-9]+)" + std_out, relevant[1])
@@ -1228,7 +1236,7 @@ def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
                 f"Job analysis of: {file}{COLORS['back_to_default']}"
 
             job_dict, res_dict, time_dict, \
-            ram_history, occurred_errors = log_to_dict(file)
+                ram_history, occurred_errors = log_to_dict(file)
             if len(job_dict) != 0:
                 result_dict["execution-details"] = job_dict
 
@@ -1491,8 +1499,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
     for file in track(log_files, transient=True, description="Summarizing..."):
 
-        job_dict, res_dict, time_dict, \
-            ram_history, occurred_errors = log_to_dict(file)
+        (job_dict, res_dict, time_dict,
+         ram_history, occurred_errors) = log_to_dict(file)
 
         if len(occurred_errors) > 0:
             create_file_list = list()
@@ -1507,7 +1515,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         if "Executing on" in job_keys:
             to_host = refactor_job_dict["Executing on"]
 
-        termination_type = job_dict["Values"][0]
+        term_type = job_dict["Values"][0]
 
         # if time dict exists
         time_keys = list()
@@ -1529,67 +1537,66 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
             total_time = datetime.timedelta()
 
         try:
-            if termination_type in all_files:
+            if term_type in all_files:
                 # logging.debug(all_files[termination_type])
-                all_files[termination_type][0] += 1  # count number
-                all_files[termination_type][1] += waiting_time
-                all_files[termination_type][2] += runtime
-                all_files[termination_type][3] += total_time
+                all_files[term_type][0] += 1  # count number
+                all_files[term_type][1] += waiting_time
+                all_files[term_type][2] += runtime
+                all_files[term_type][3] += total_time
 
                 # add errors
                 if len(occurred_errors) > 0:
                     for key in occurred_errors.keys():
-                        all_files[termination_type][6][key].extend(
+                        all_files[term_type][6][key].extend(
                             occurred_errors[key])
 
-                if not len(all_files[termination_type][4]) == 0:
+                if not len(all_files[term_type][4]) == 0:
                     # add usages
 
-                    all_files[termination_type][4]["Usage"] += np.nan_to_num(
+                    all_files[term_type][4]["Usage"] += np.nan_to_num(
                         res_dict["Usage"])
                     # add requested
-                    all_files[termination_type][4][
+                    all_files[term_type][4][
                         "Requested"] += np.nan_to_num(res_dict["Requested"])
                     # allocated
-                    all_files[termination_type][4][
+                    all_files[term_type][4][
                         "Allocated"] += np.nan_to_num(res_dict["Allocated"])
 
                 # add cpu
                 if to_host is not None:
                     # cpu known ???
-                    if to_host in all_files[termination_type][5].keys():
-                        all_files[termination_type][5][to_host][0] += 1
-                        all_files[termination_type][5][to_host][
+                    if to_host in all_files[term_type][5].keys():
+                        all_files[term_type][5][to_host][0] += 1
+                        all_files[term_type][5][to_host][
                             1] += total_time
                     else:
-                        all_files[termination_type][5][to_host] = [1,
-                                                                   total_time]
+                        all_files[term_type][5][to_host] = [1, total_time]
                 elif "Submitted from" in job_dict["Execution details"]:
                     # other waiting jobs ???
                     if 'Waiting for execution' in \
-                            all_files[termination_type][5].keys():
-                        all_files[termination_type][5][
+                            all_files[term_type][5].keys():
+                        all_files[term_type][5][
                             'Waiting for execution'][0] += 1
-                        all_files[termination_type][5][
+                        all_files[term_type][5][
                             'Waiting for execution'][1] += total_time
                     else:
                         count_host_nodes = dict()
                         count_host_nodes['Waiting for'
                                          ' execution'] = [1, total_time]
-                        all_files[termination_type][5] = count_host_nodes
+                        all_files[term_type][5] = count_host_nodes
                 else:
                     # other aborted before submission jobs ???
                     if 'Aborted before submission' in \
-                            all_files[termination_type][5].keys():
-                        all_files[termination_type][5][
+                            all_files[term_type][5].keys():
+                        all_files[term_type][5][
                             'Aborted before submission'][0] += 1
-                        all_files[termination_type][5][
+                        all_files[term_type][5][
                             'Aborted before submission'][1] += total_time
                     else:
                         count_host_nodes = dict()
                         count_host_nodes['Aborted before '
-                                         'submission'] = [1,total_time]
-                        all_files[termination_type][5] = count_host_nodes
+                                         'submission'] = [1, total_time]
+                        all_files[term_type][5] = count_host_nodes
 
             # else new entry
             else:
@@ -1606,8 +1613,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 # else aborted before submission ?
                 else:
                     count_host_nodes = dict()
-                    count_host_nodes['Aborted before' 
-                                     ' submission'] = [1,total_time]
+                    count_host_nodes['Aborted before'
+                                     ' submission'] = [1, total_time]
 
                 # convert nan values to 0
                 if len(res_dict) > 0:
@@ -1617,10 +1624,13 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                     res_dict["Allocated"] = np.nan_to_num(
                         res_dict["Allocated"])
 
-                all_files[termination_type] = [1, waiting_time, runtime,
-                                               total_time,
-                                               res_dict, count_host_nodes,
-                                               occurred_errors]
+                all_files[term_type] = [1,
+                                        waiting_time,
+                                        runtime,
+                                        total_time,
+                                        res_dict,
+                                        count_host_nodes,
+                                        occurred_errors]
 
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
@@ -1645,7 +1655,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 f"## All files, that caused an {COLORS['red']}" \
                 f"error while reading{COLORS['back_to_default']}\n" \
                 f"##################################################"
-        elif not term_state in ["Waiting", "Executing"]:
+        elif term_state not in ["Waiting", "Executing"]:
             result_dict["file-description"] = f"" \
                 f"##################################################\n" \
                 f"## All files with the termination state: {term_state}\n" \
@@ -2252,10 +2262,9 @@ def run(commandline_args):
 
 if __name__ == "__main__":
     """
-    This is the main function, 
+    This is the main function,
     which runs the script, if not imported as a module
 
     :return: exit status 0-4
     """
     run(sys.argv[1:])
-
