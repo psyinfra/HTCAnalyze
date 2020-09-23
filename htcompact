@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-import configparser
 import datetime
 import argparse
-import configargparse
 import logging
 import os
 import re
@@ -10,6 +8,9 @@ import socket
 import sys
 from logging.handlers import RotatingFileHandler
 
+from typing import List
+
+import configargparse
 import htcondor
 import numpy as np
 from htcondor import JobEventType as jet
@@ -18,7 +19,6 @@ from rich.progress import track, Progress
 from tabulate import tabulate
 from plotille import Figure
 
-from typing import List
 
 log_inf_list = List[dict]
 list_of_logs = List[str]
@@ -1180,7 +1180,7 @@ def default(log_files: list_of_logs, show_list=[]) -> log_inf_list:
     if len(list_of_dicts) == 0:
         rprint("[yellow]Nothing found,"
                " please use \"man htcompact\" "
-               "or \"htcompact -h\" for help[/yellow]",end="")
+               "or \"htcompact -h\" for help[/yellow]", end="")
 
     return list_of_dicts
 
@@ -1375,7 +1375,8 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             sys.exit(3)
 
     # calc difference of successful executed jobs
-    n = valid_files - aborted_files - still_running - other_exception - error_reading_files
+    n = valid_files - aborted_files - still_running\
+        - other_exception - error_reading_files
 
     average_runtime = normal_runtime / n if n != 0 else normal_runtime
     average_runtime = datetime.timedelta(days=average_runtime.days,
@@ -1400,14 +1401,16 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     result_dict["execution-details"] = exec_dict
 
-    # do not even try futher if the only files given have been aborted, are still running etc.
+    # do not even try futher if the only files
+    # given have been aborted, are still running etc.
     if n == 0:
         return [result_dict]
 
     create_desc = "The following data only implies on sucessful executed jobs"
     if aborted_files > 0 or still_running > 0 or other_exception > 0:
         create_desc += f"\n{COLORS['light_grey']}" \
-            f"Use the analysed-summary mode for more details about the other jobs" \
+            f"Use the analysed-summary mode" \
+            f" for more details about the other jobs" \
             f"{COLORS['back_to_default']}"
 
     result_dict["summation-description"] = create_desc
@@ -1488,8 +1491,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
     for file in track(log_files, transient=True, description="Summarizing..."):
 
-        job_dict, res_dict, time_dict, ram_history, occurred_errors = log_to_dict(
-            file)
+        job_dict, res_dict, time_dict, \
+            ram_history, occurred_errors = log_to_dict(file)
 
         if len(occurred_errors) > 0:
             create_file_list = list()
@@ -1563,16 +1566,16 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                                                                    total_time]
                 elif "Submitted from" in job_dict["Execution details"]:
                     # other waiting jobs ???
-                    if 'Waiting for execution' in all_files[termination_type][
-                        5].keys():
+                    if 'Waiting for execution' in \
+                            all_files[termination_type][5].keys():
                         all_files[termination_type][5][
                             'Waiting for execution'][0] += 1
                         all_files[termination_type][5][
                             'Waiting for execution'][1] += total_time
                     else:
                         count_host_nodes = dict()
-                        count_host_nodes['Waiting for execution'] = [1,
-                                                                     total_time]
+                        count_host_nodes['Waiting for'
+                                         ' execution'] = [1, total_time]
                         all_files[termination_type][5] = count_host_nodes
                 else:
                     # other aborted before submission jobs ???
@@ -1584,8 +1587,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                             'Aborted before submission'][1] += total_time
                     else:
                         count_host_nodes = dict()
-                        count_host_nodes['Aborted before submission'] = [1,
-                                                                         total_time]
+                        count_host_nodes['Aborted before '
+                                         'submission'] = [1,total_time]
                         all_files[termination_type][5] = count_host_nodes
 
             # else new entry
@@ -1598,12 +1601,13 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 # else if still waiting
                 elif "Submitted from" in job_dict["Execution details"]:
                     count_host_nodes = dict()
-                    count_host_nodes['Waiting for execution'] = [1, total_time]
+                    count_host_nodes['Waiting for'
+                                     ' execution'] = [1, total_time]
                 # else aborted before submission ?
                 else:
                     count_host_nodes = dict()
-                    count_host_nodes['Aborted before submission'] = [1,
-                                                                     total_time]
+                    count_host_nodes['Aborted before' 
+                                     ' submission'] = [1,total_time]
 
                 # convert nan values to 0
                 if len(res_dict) > 0:
@@ -1711,8 +1715,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         if len(term_info[6]) > 0:
             temp_err = term_info[6]
-            del temp_err[
-                "Reason"]  # remove reason, cause thats just too much information
+            del temp_err["Reason"]  # remove reason, cause thats just too much
             result_dict["errors"] = temp_err
 
         result_list.append(result_dict)
@@ -1742,7 +1745,8 @@ def filter_for(log_files: list_of_logs,
     :param keywords:
     :param extend:
     :return:
-        list with dicts depending on the used mode, to forward the filtered files,
+        list with dicts depending on the used mode,
+        to forward the filtered files,
 
         None if no forwarding is set
     """
@@ -1753,7 +1757,8 @@ def filter_for(log_files: list_of_logs,
         keyword_list = keywords
     else:
         logging.debug(
-            f"Filter mode only accepts a string or list with keywords, not {keywords}")
+            f"Filter mode only accepts a string"
+            f" or list with keywords, not {keywords}")
         raise_type_error("Expecting a list or a string")
 
     # if extend is set, keywords like err will
@@ -2118,7 +2123,8 @@ def customize_results(log_files: list_of_logs,
             if "times" in ignore_list:
                 del mystery["times"]
             else:
-                mystery["times"] = tabulate(mystery["times"], showindex=False,
+                mystery["times"] = tabulate(mystery["times"],
+                                            showindex=False,
                                             headers='keys',
                                             tablefmt=table_format)
 
@@ -2134,7 +2140,8 @@ def customize_results(log_files: list_of_logs,
                 if "allocated-resources" in ignore_list:
                     del mystery["all-resources"]["Allocated"]
 
-                mystery["all-resources"] = tabulate(resources, showindex=False,
+                mystery["all-resources"] = tabulate(resources,
+                                                    showindex=False,
                                                     headers='keys',
                                                     tablefmt=table_format)
 
@@ -2144,7 +2151,8 @@ def customize_results(log_files: list_of_logs,
             else:
                 mystery["errors"] = "Occurred errors: \n" + \
                                     tabulate(mystery["errors"],
-                                             showindex=False, headers='keys',
+                                             showindex=False,
+                                             headers='keys',
                                              tablefmt='grid')
 
         if "host-nodes" in mystery:
@@ -2250,3 +2258,4 @@ if __name__ == "__main__":
     :return: exit status 0-4
     """
     run(sys.argv[1:])
+
