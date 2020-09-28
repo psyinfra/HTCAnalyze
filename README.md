@@ -20,7 +20,7 @@ source ~/htcompact/bin/activate
 pip install git+https://github.com/psyinfra/htcompact.git
 ```
 
-A config file (`setup.conf`) is also provided, to control the default behavior of
+A config file (`htcompact.conf`) is also provided, to control the default behavior of
 htcompact. This is especially useful when installing system-wide, or for
 adjusting various warning/error thresholds. See
 [CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md) for
@@ -31,7 +31,7 @@ more information
 ## Getting Started
 - *htcompact --help* for detailed description
 - general use:
-`htcompact \[files] \[directories] \[config_file] \[args]`
+`htcompact \[files] \[directories] \[args]`
 
 Let's assume that we have a directory called `logs/` containing these files:
 ```
@@ -65,13 +65,13 @@ htcompact path_to_logs/395_2.log --table-format=pretty
 ```
 
 lets consider we also have a config file (see: [CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md)) \
-a default setup.conf should already exist inside the project folder
+a default htcompact.conf should already exist inside the project folder
 
 possible configurations could be reduced to something like:
 ```
-htcompact setup.conf
+htcompact -c htcomapct.conf
 or
-htcompact [files/directories] setup.conf (ignores files/directories set inside the config file)
+htcompact [files/directories] -c htcompact.conf (ignores files/directories set inside the config file)
 ```
 
 ### Testing:
