@@ -68,13 +68,6 @@ def test_wrong_opts_or_args():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 2
 
-    # wrong table-format will result in default table
-    args = "--table-format=None".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 2
-
     # wrong ignore value
     args = "--ignore None ".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -129,7 +122,7 @@ def test_ignore_values():
 
 def test_independent_opts():
     args = "--std-log=.log --std-out=.output " \
-           "--std-err=.error --table-format=grid --reverse-dns-lookup".split()
+           "--std-err=.error --reverse-dns-lookup".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert ht.GlobalServant.std_log == ".log"
@@ -140,7 +133,7 @@ def test_independent_opts():
     assert pytest_wrapped_e.value.code == 1  # no valid file is given
 
     args = "--std-log log --std-out output " \
-           "--std-err error --table-format=grid " \
+           "--std-err error " \
            "--reverse-dns-lookup tests/test_logs/valid_logs".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
