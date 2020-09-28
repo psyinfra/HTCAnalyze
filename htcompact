@@ -60,10 +60,6 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "used-resources", "requested-resources",
                          "allocated-resources", "all-resources",
                          "errors"]
-VALID_TABLE_FORMATS = ["plain", "simple", "github", "grid", "pretty",
-                       "fancy_grid", "pipe", "orgtbl", "rst",
-                       "mediawiki", "html", "latex", "latex_raw",
-                       "latex_booktabs", "tsv", "simple"]
 
 DEFAULT_CONFIG_FILE = "htcompact.conf"
 
@@ -210,8 +206,7 @@ def setup_commandline_parser(default_config_files=[])\
 
     parser = configargparse.\
         ArgumentParser(formatter_class=CustomFormatter,
-                       default_config_files=default_config_files,
-                       ignore_unknown_config_file_keys=True)
+                       default_config_files=default_config_files)
 
     parser.add_argument("path",
                         nargs="*",
@@ -326,16 +321,9 @@ def setup_commandline_parser(default_config_files=[])\
 
     parser.add_argument("--bad-usage",
                         type=float,
-                        help="Threshold to signal overuse/waste of resoucres, "
+                        help="Threshold to signal overuse/waste of resources, "
                              "when a given percentage is exceeded "
                              "between used and requested resources")
-
-    table_metavar = "{" + VALID_TABLE_FORMATS[0] + " ... " \
-                    + VALID_TABLE_FORMATS[-1] + "}"
-    parser.add_argument("--table-format",
-                        metavar=table_metavar,
-                        default=None,
-                        choices=VALID_TABLE_FORMATS)
     parser.add_argument("-c", "--config",
                         is_config_file=True,
                         help="ONE path to config file")
@@ -366,8 +354,7 @@ def manage_params(args: list) -> dict:
       'no_config': False,
       'filter_keywords': [],
       'extend': False,
-      'reverse_dns_lookup': False,
-      'table_format': 'pretty',
+      'reverse_dns_lookup': False
       'files': []
       ....
       }
@@ -512,8 +499,6 @@ def manage_params(args: list) -> dict:
         cmd_dict['std_err'] = ".err"
     if cmd_dict['std_out'] is None:
         cmd_dict['std_out'] = ".out"
-    if cmd_dict['table_format'] is None:
-        cmd_dict['table_format'] = "pretty"
 
     # Todo
     # if cmd_dict['save_config'] is not None:
@@ -2076,7 +2061,6 @@ def print_results(log_files: list_of_logs,
                   show_list=list,
                   filter_keywords=list,
                   filter_extended=False,
-                  table_format="pretty",
                   **kwargs) -> str:
 
     if len(filter_keywords) > 0:
