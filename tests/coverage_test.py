@@ -36,19 +36,6 @@ def _help():
     assert pytest_wrapped_e.value.code == 0
 
 
-def _event_table():
-    args = "--print-event-table".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    ht.get_event_information(30)
-    with pytest.raises(ValueError):
-        ht.get_event_information("hallo")
-    assert ht.get_event_information("066") == "This event number does not exist."
-
-
 def _version():
     args = "--version".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -59,7 +46,6 @@ def _version():
 
 def test_exit_opts():
     _help()
-    _event_table()
     _version()
 
 
