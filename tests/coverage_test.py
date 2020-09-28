@@ -285,7 +285,8 @@ def test_filter_mode():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
-    args = "--filter gpu --mode default tests/test_logs/valid_logs/gpu_usage.log".split()
+    args = "--filter gpu --mode default" \
+           " tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -391,72 +392,6 @@ def test_all_modes_by_faulty_logs():
 def test_all_modes_by_exception_logs():
     folder = "tests/test_logs/faulty_resource_logs"
     _all_modes_by_logfiles(folder, 0)
-
-
-# def test_config():
-#     # folder = "tests/test_configs/valid_configs"
-#     args = "tests/test_configs/valid_" \
-#            "configs/std_htcompact.conf tests/test_logs/valid_logs".split()
-#     with pytest.raises(SystemExit) as pytest_wrapped_e:
-#         ht.run(args)
-#
-#     # assert ht.files == ['tests/test_logs/valid_logs']
-#     assert pytest_wrapped_e.type == SystemExit
-#     assert pytest_wrapped_e.value.code == 0
-#
-#     assert ht.table_format == "pretty"
-#
-#     assert ht.std_log == ".log"
-#     assert ht.std_err == ".err"
-#     assert ht.std_out == ".out"
-#
-#     assert len(ht.show_list) == 0
-#     assert len(ht.ignore_list) == 0
-#
-#     assert ht.tolerated_usage_threshold == 0.1
-#     assert ht.bad_usage_threshold == 0.25
-#
-#     assert ht.filter_mode is False
-#     assert ht.mode is None
-#
-#     assert ht.filter_keywords == ["gpu", "err"]
-#     assert ht.filter_extended is False
-#
-#     assert ht.generate_log_file is False
-#     assert ht.to_csv is False
-#     assert ht.reverse_dns_lookup is False
-#
-#     args = "tests/test_configs/valid_configs/all_params_set.conf tests/test_logs/valid_logs".split()
-#     with pytest.raises(SystemExit) as pytest_wrapped_e:
-#         ht.run(args)
-#
-#     # assert ht.files == ['tests/test_logs/valid_logs']
-#     assert pytest_wrapped_e.type == SystemExit
-#     assert pytest_wrapped_e.value.code == 0
-#
-#     assert ht.table_format == "pretty"
-#
-#     assert ht.std_log == ".log"
-#     assert ht.std_err == ".err"
-#     assert ht.std_out == ".out"
-#
-#     assert len(ht.show_list) == 2
-#     assert len(ht.ignore_list) == 2
-#
-#     assert ht.tolerated_usage_threshold == 0.1
-#     assert ht.bad_usage_threshold == 0.25
-#
-#     assert ht.filter_mode is True
-#     assert ht.mode == "analysed-summary"
-#
-#     assert ht.filter_extended is False
-#     assert ht.filter_keywords == ["gpu", "err"]
-#
-#     assert ht.generate_log_file is True
-#     assert ht.to_csv is True
-#     assert ht.reverse_dns_lookup is True
-#
-
 
 
 def test_missing_lines():
