@@ -26,7 +26,7 @@ adjusting various warning/error thresholds. See
 [CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md) for
 more information
 #### Notice:
-- The script is using the python module htcondor 8.9.8, which is not working on MacOS devices.
+- The script is using the python module htcondor 8.9.8, which is not working on macOS devices.
 
 ## Getting Started
 - *htcompact --help* for detailed description
