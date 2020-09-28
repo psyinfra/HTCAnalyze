@@ -878,17 +878,6 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
     # convert errors into a dictionary
     if len(occurred_errors) > 0:
         event_numbers, time_list, errors, reasons = zip(*occurred_errors)
-        reasons = list(reasons)
-        # for i in range(len(reasons)):
-        #     tmp_reason = reasons[i]
-        #     if len(tmp_reason) > 50:
-        #         split = int(len(tmp_reason) / 2)
-        #         while tmp_reason[split] != ' ' and split < len(tmp_reason) - 1:
-        #             split += 1
-        #         # if no space was found, change back to normal
-        #         if split > len(tmp_reason) - 2:
-        #             split = int(len(tmp_reason) / 2)
-        #         reasons[i] = tmp_reason[0:split] + '\n' + tmp_reason[split:]
         error_dict = {
             "Event Number": list(event_numbers),
             "Time": list(time_list),
@@ -1421,11 +1410,12 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
         return [result_dict]
 
     create_desc = "The following data only implies on sucessful executed jobs"
-    if aborted_files > 0 or still_running > 0 or other_exception > 0:
-        create_desc += f"\n[light_grey]" \
-            f"Use the analysed-summary mode" \
-            f" for more details about the other jobs" \
-            f"[/light_grey]"
+    if aborted_files > 0 or still_running > 0 \
+            or other_exception > 0 or error_reading_files:
+        create_desc += "\n[light_grey]" \
+            "Use the analysed-summary mode" \
+            " for more details about the other jobs" \
+            "[/light_grey]"
 
     result_dict["summation-description"] = create_desc
 
@@ -1656,11 +1646,11 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         # differentiate between terminated and running processes
         if "Error while reading" in term_state:
-            result_dict["file-description"] = f"" \
-                f"##################################################\n" \
-                f"## All files, that caused an [red]" \
-                f"error while reading[/red]\n" \
-                f"##################################################"
+            result_dict["file-description"] = "" \
+                "##################################################\n" \
+                "## All files, that caused an [red]" \
+                "error while reading[/red]\n" \
+                "##################################################"
         elif term_state not in ["Waiting", "Executing"]:
             result_dict["file-description"] = f"" \
                 f"##################################################\n" \
@@ -1799,11 +1789,11 @@ def filter_for(log_files: list_of_logs,
 
     if len(keyword_list) == 1 and keyword_list[0] == "":
         logging.debug("Empty filter, don't know what to do")
-        return f"[yellow]" \
-            f"Don't know what to do with an empty filter,\n" \
-            f"if you activate the filter mode in the config file, \n" \
-            f"please add a [filter] section with the filter" \
-            f"_keywords = your_filter[/yellow]"
+        return "[yellow]" \
+            "Don't know what to do with an empty filter,\n" \
+            "if you activate the filter mode in the config file, \n" \
+            "please add a [filter] section with the filter" \
+            "_keywords = your_filter[/yellow]"
 
     logging.debug(f"These are the keywords to look for: {keyword_list}")
 
@@ -2088,13 +2078,13 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
 
 
 def print_results(log_files: list_of_logs,
-                      mode: str,
-                      ignore_list=list,
-                      show_list=list,
-                      filter_keywords=list,
-                      filter_extended=False,
-                      table_format="pretty",
-                      **kwargs) -> str:
+                  mode: str,
+                  ignore_list=list,
+                  show_list=list,
+                  filter_keywords=list,
+                  filter_extended=False,
+                  table_format="pretty",
+                  **kwargs) -> str:
 
     if len(filter_keywords) > 0:
         results = filter_for(log_files,
