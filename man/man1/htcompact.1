@@ -46,8 +46,19 @@ More details about the different modes below.
 Its arguments are as follows:
 .Bl -tag -width Ds
 .
-.It Ar FILES
-just pass any log files, config files or directories, you just need to separate them by space.
+.It Ar FILES | Fl f Ar FILES | Fl Fl files Ar FILES
+just pass any log files or directories,
+you just need to separate them by space.
+There is no need to use the flags,
+but sometimes you have to use them,
+to escape the previous option, for ex:
+.Bd -literal
+    htcompact --ignore all-resources --files log1 log2
+
+to prevent this, always hand the files first, like:
+
+    htcompact log1 log2 --ignore all-resources
+.Ed
 .
 .It Ar OPTIONS
 .
@@ -245,10 +256,10 @@ Args that start with '--' (eg. -f) can also be set in a config file. Config file
 syntax allows: key=value, flag=true, stuff=[a,b,c]
 If an arg is specified in more than one place, then
 commandline values override config file values which override defaults.
-.
+
 See the config specification:
-.Lk https://github.com/psyinfra/htcompact/blob/master/CONFIG.md
-.
+.Lk https://github.com/psyinfra/htcompact/blob/master/config/README.md
+
 The script is also checking for other config files in other places:
 .
 "project_dir/config/htcomapct.conf",
@@ -272,7 +283,7 @@ Priority[5] run with default settings
 .
 .Sh FILES
 .Bl -tag -width Ds
-.It Pa script/htcompact.conf
+.It Pa config/htcompact.conf
 A default setup for this script.
 .El
 .
