@@ -14,9 +14,8 @@ import configargparse
 import htcondor
 import numpy as np
 from htcondor import JobEventType as jet
-from rich import print as rprint
-from rich.progress import track, Progress
-from tabulate import tabulate
+from rich import print as rprint, box
+from rich.progress import track, Progress, Table
 from plotille import Figure
 
 
@@ -75,17 +74,6 @@ VALID_TABLE_FORMATS = ["plain", "simple", "github", "grid", "pretty",
 
 DEFAULT_CONFIG_FILE = "htcompact.conf"
 
-COLORS = {
-        'red': "\033[0;31m",
-        'green': "\033[0;32m",
-        'yellow': "\033[0;33m",
-        'magenta': "\033[0;35m",
-        'cyan': "\033[0;36m",
-        'blue': "\033[0;34m",
-        'light_grey': "\033[37m",
-        'back_to_default': "\033[0;39m"
-    }
-
 
 # class to store and change global variables
 class GlobalPlayer(object):
@@ -128,19 +116,6 @@ class GlobalPlayer(object):
 
         if self.reading_stdin:
             self.stdin_input = sys.stdin.readlines()
-
-        if self.redirecting_stdout:
-            global COLORS
-            COLORS = {
-                'red': "",
-                'green': "",
-                'yellow': "",
-                'magenta': "",
-                'cyan': "",
-                'blue': "",
-                'light_grey': "",
-                'back_to_default': ""
-            }
 
     def set_std_files(self, std_log=None, std_err=None, std_out=None):
         """
@@ -815,14 +790,12 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 # differentiate between normal and abnormal termination
                 if normal_termination:
                     job_events.insert(0, ("Termination State",
-                                          COLORS['green'] + "Normal" + COLORS[
-                                              'back_to_default']))
+                                          "[green]Normal[/green]"))
                     return_value = event.get('ReturnValue')
                     job_events.append(("Return Value", return_value))
                 else:
                     job_events.insert(0, ("Termination State",
-                                          COLORS['red'] + "Abnormal" + COLORS[
-                                              'back_to_default']))
+                                          "[red]Abnormal[/red]"))
                     signal = event.get('TerminatedBySignal')
                     job_events.append(("Terminated by Signal", signal))
 
@@ -835,9 +808,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                 occurred_errors.append(
                     [event_type_number, date.strftime("%m/%d %H:%M:%S"),
                      "Aborted", reason])
-                job_events.insert(0, ("Process was",
-                                      COLORS['red'] + "Aborted" + COLORS[
-                                          'back_to_default']))
+                job_events.insert(0, ("Process was", "[red]Aborted[/red]"))
 
             # update error dict
             if event.type == jet.JOB_HELD:
@@ -887,14 +858,11 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
             state = "Waiting"
         else:
             state = "Unknown"
-        job_events.insert(0, ("Process is", COLORS["blue"] +
-                              state + COLORS["back_to_default"]))
+        job_events.insert(0, ("Process is", f"[blue]{state}[/blue]"))
     # file not fully readable
     elif invalid_file:
         better_time_dict = dict()  # times have no meaning here
-        job_events.insert(0, ("Error", COLORS["red"] +
-                              "Error while reading" +
-                              COLORS["back_to_default"]))
+        job_events.insert(0, ("Error", "[red]Error while reading[/red]"))
 
     job_events_dict = dict()
     error_dict = dict()
@@ -911,16 +879,16 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
     if len(occurred_errors) > 0:
         event_numbers, time_list, errors, reasons = zip(*occurred_errors)
         reasons = list(reasons)
-        for i in range(len(reasons)):
-            tmp_reason = reasons[i]
-            if len(tmp_reason) > 50:
-                split = int(len(tmp_reason) / 2)
-                while tmp_reason[split] != ' ' and split < len(tmp_reason) - 1:
-                    split += 1
-                # if no space was found, change back to normal
-                if split > len(tmp_reason) - 2:
-                    split = int(len(tmp_reason) / 2)
-                reasons[i] = tmp_reason[0:split] + '\n' + tmp_reason[split:]
+        # for i in range(len(reasons)):
+        #     tmp_reason = reasons[i]
+        #     if len(tmp_reason) > 50:
+        #         split = int(len(tmp_reason) / 2)
+        #         while tmp_reason[split] != ' ' and split < len(tmp_reason) - 1:
+        #             split += 1
+        #         # if no space was found, change back to normal
+        #         if split > len(tmp_reason) - 2:
+        #             split = int(len(tmp_reason) / 2)
+        #         reasons[i] = tmp_reason[0:split] + '\n' + tmp_reason[split:]
         error_dict = {
             "Event Number": list(event_numbers),
             "Time": list(time_list),
@@ -993,19 +961,19 @@ def manage_thresholds(resources: dict,
             # from the requested value
             if deviation >= 1 + bad_usage_threshold\
                     or deviation <= 1 - bad_usage_threshold:
-                resources['Usage'][i] = COLORS['red'] + str(
-                    resources['Usage'][i]) + COLORS['back_to_default']
+                resources['Usage'][i] = f"[red]" \
+                    f"{str(resources['Usage'][i])}[/red]"
 
             # color yellow if more than low_usage_threhold % away
             # from requested value
             elif deviation >= 1 + tolerated_usage_threshold\
                     or deviation <= 1 - tolerated_usage_threshold:
-                resources['Usage'][i] = COLORS['yellow'] + str(
-                    resources['Usage'][i]) + COLORS['back_to_default']
+                resources['Usage'][i] = f"[yellow]" \
+                    f"{str(resources['Usage'][i])}[/yellow]"
             # else it's okay, color green
             else:
-                resources['Usage'][i] = COLORS['green'] + str(
-                    resources['Usage'][i]) + COLORS['back_to_default']
+                resources['Usage'][i] = f"[green]" \
+                    f"{str(resources['Usage'][i])}[/green]"
 
     return resources
 
@@ -1036,11 +1004,9 @@ def show_htcondor_stderr(file: str, std_err=".err") -> str:
             for line in error_content:
                 line = line.strip("\n")
                 if "err" in line.lower():
-                    output_string += COLORS['red'] + line + COLORS[
-                        'back_to_default'] + "\n"
+                    output_string += f"[red]{line}[/red]\n"
                 elif "warn" in line.lower():
-                    output_string += COLORS['yellow'] + line + COLORS[
-                        'back_to_default'] + "\n"
+                    output_string += f"[yellow]{line}[/yellow]\n"
 
     except NameError as err:
         logging.exception(err)
@@ -1115,6 +1081,46 @@ def get_job_spec_id(file: str, std_log):
     return job_spec_id
 
 
+def wrap_dict_to_table(table_dict, title="") -> Table:
+    """
+    Takes a dict of the format :
+    {
+        column1: [Header1, Header2, Header3]
+        column2: [val1, val2, val3]
+    }
+    Why ? Because the tool tabulate took the data like this
+    and this function is supposed to reduce the usage of tabulate
+    without too much work
+    :param table_dict:
+    :param title: title of table
+    :return:
+    """
+
+    if len(table_dict) == 0:
+        return
+
+    table = Table(title=title,
+                  show_header=True,
+                  header_style="bold magenta",
+                  box=box.ASCII)
+    headers = list(table_dict.keys())
+    n_vals = 0
+    for val in headers:
+        table.add_column(val)
+        if n_vals == 0:
+            n_vals = len(table_dict[val])
+        # Todo: could be reduce to one call
+    for i in range(n_vals):
+        new_list = list()
+        # get the values from each column, convert to str
+        for val in table_dict:
+            new_list.append(str(table_dict[val][i]))
+        table.add_row(*new_list)
+
+    # rprint(table)
+    return table
+
+
 # in order that plotille has nothing like a int converter,
 # I have to set it up manually to show the y - label in number format
 def _int_formatter(val, chars, delta, left=False):
@@ -1162,8 +1168,8 @@ def default(log_files: list_of_logs, show_list=[]) -> log_inf_list:
         times = htcondor_log[2]
 
         result_dict["file-description"] = f"" \
-            f"{COLORS['green']}The job procedure of : " \
-            f"{file}{COLORS['back_to_default']}"
+            f"[green]The job procedure of : " \
+            f"{file}[/green]"
 
         result_dict["execution-details"] = job_dict
 
@@ -1203,9 +1209,9 @@ def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
 
     if len(log_files) == 0:
         return "No files to analyse"
-    elif len(log_files) > 1 and not GlobalServant.redirecting_stdout:
+    elif len(log_files) > 5 and not GlobalServant.redirecting_stdout:
         print(
-            "More than one file is given, "
+            "More than five files are given, "
             "this mode is meant to be used for single job analysis.\n"
             "This will change nothing,"
             " but you should rather do it just for a file one by one")
@@ -1232,8 +1238,8 @@ def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
             result_dict = dict()
 
             logging.debug(f"Analysing the HTCondor log file: {file}")
-            result_dict["file-description"] = f"{COLORS['green']}" \
-                f"Job analysis of: {file}{COLORS['back_to_default']}"
+            result_dict["file-description"] = f"[green]" \
+                f"Job analysis of: {file}[/green]"
 
             job_dict, res_dict, time_dict, \
                 ram_history, occurred_errors = log_to_dict(file)
@@ -1416,10 +1422,10 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
     create_desc = "The following data only implies on sucessful executed jobs"
     if aborted_files > 0 or still_running > 0 or other_exception > 0:
-        create_desc += f"\n{COLORS['light_grey']}" \
+        create_desc += f"\n[light_grey]" \
             f"Use the analysed-summary mode" \
             f" for more details about the other jobs" \
-            f"{COLORS['back_to_default']}"
+            f"[/light_grey]"
 
     result_dict["summation-description"] = create_desc
 
@@ -1652,8 +1658,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         if "Error while reading" in term_state:
             result_dict["file-description"] = f"" \
                 f"##################################################\n" \
-                f"## All files, that caused an {COLORS['red']}" \
-                f"error while reading{COLORS['back_to_default']}\n" \
+                f"## All files, that caused an [red]" \
+                f"error while reading[/red]\n" \
                 f"##################################################"
         elif term_state not in ["Waiting", "Executing"]:
             result_dict["file-description"] = f"" \
@@ -1793,11 +1799,11 @@ def filter_for(log_files: list_of_logs,
 
     if len(keyword_list) == 1 and keyword_list[0] == "":
         logging.debug("Empty filter, don't know what to do")
-        return f"{COLORS['yellow']}" \
+        return f"[yellow]" \
             f"Don't know what to do with an empty filter,\n" \
             f"if you activate the filter mode in the config file, \n" \
             f"please add a [filter] section with the filter" \
-            f"_keywords = your_filter"
+            f"_keywords = your_filter[/yellow]"
 
     logging.debug(f"These are the keywords to look for: {keyword_list}")
 
@@ -2081,7 +2087,7 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
         log.addHandler(stdout_handler)
 
 
-def customize_results(log_files: list_of_logs,
+def print_results(log_files: list_of_logs,
                       mode: str,
                       ignore_list=list,
                       show_list=list,
@@ -2089,7 +2095,6 @@ def customize_results(log_files: list_of_logs,
                       filter_extended=False,
                       table_format="pretty",
                       **kwargs) -> str:
-    output_string = ""
 
     if len(filter_keywords) > 0:
         results = filter_for(log_files,
@@ -2121,25 +2126,31 @@ def customize_results(log_files: list_of_logs,
     # check for ignore values
     for mystery in work_with:
 
+        for i in mystery:
+            if mystery[i] is None:
+                logging.debug("This musst be fixed,"
+                              " mystery['" + i + "'] is None.")
+                rprint("[red]NoneType object found,"
+                       " this should not happen[/red]")
+
+        if "file-description" in mystery:
+            rprint(mystery["file-description"])
+
         if "execution-details" in mystery:
             if "execution-details" in ignore_list:
                 del mystery["execution-details"]
             else:
-                mystery["execution-details"] = tabulate(
-                    mystery["execution-details"],
-                    headers='keys', tablefmt=table_format)
+                table = wrap_dict_to_table(mystery["execution-details"])
+                rprint(table)
 
         if "times" in mystery:
             if "times" in ignore_list:
                 del mystery["times"]
             else:
-                mystery["times"] = tabulate(mystery["times"],
-                                            showindex=False,
-                                            headers='keys',
-                                            tablefmt=table_format)
+                table = wrap_dict_to_table(mystery["times"])
+                rprint(table)
 
         if "all-resources" in mystery:
-            resources = mystery["all-resources"]
             if "all-resources" in ignore_list:
                 del mystery["all-resources"]
             else:
@@ -2150,48 +2161,33 @@ def customize_results(log_files: list_of_logs,
                 if "allocated-resources" in ignore_list:
                     del mystery["all-resources"]["Allocated"]
 
-                mystery["all-resources"] = tabulate(resources,
-                                                    showindex=False,
-                                                    headers='keys',
-                                                    tablefmt=table_format)
+                table = wrap_dict_to_table(mystery["all-resources"])
+                rprint(table)
+
+        if "ram-history" in mystery:
+            if "ram-history" in ignore_list:
+                del mystery["ram-history"]
+            elif mystery["ram-history"] is not None:
+                print(mystery["ram-history"])
 
         if "errors" in mystery:
             if "errors" in ignore_list:
                 del mystery["errors"]
-            else:
-                mystery["errors"] = "Occurred errors: \n" + \
-                                    tabulate(mystery["errors"],
-                                             showindex=False,
-                                             headers='keys',
-                                             tablefmt='grid')
+            elif mystery["errors"] is not None:
+                table = wrap_dict_to_table(mystery["errors"],
+                                           "Occurred HTCondor errors")
+                rprint(table)
 
         if "host-nodes" in mystery:
             if "host-nodes" in ignore_list:
                 del mystery["host-nodes"]
-            else:
-                mystery["host-nodes"] = tabulate(mystery["host-nodes"],
-                                                 showindex=False,
-                                                 headers='keys',
-                                                 tablefmt=table_format)
+            elif mystery["host-nodes"] is not None:
+                table = wrap_dict_to_table(mystery["host-nodes"])
+                rprint(table)
+
+        print()
 
         # TODO: show-more section
-
-        for _i in mystery:
-            if mystery[_i] is not None:
-                output_string += mystery[_i]
-            else:
-                logging.debug("This musst be fixed, NoneType found.")
-                rprint(
-                    "[red]NoneType object found, this should not happen[/red]")
-
-            if mystery[_i] == mystery[list(mystery.keys())[-1]]:
-                output_string += "\n"
-            else:
-                output_string += "\n\n"
-
-        output_string += "\n"
-
-    return output_string
 
 
 def run(commandline_args):
@@ -2237,9 +2233,7 @@ def run(commandline_args):
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(1)
 
-        output_str = customize_results(log_files=valid_files, **param_dict)
-
-        print(output_str)  # write it to the console
+        print_results(log_files=valid_files, **param_dict)
 
         end = datetime.datetime.now()  # end date for runtime
 
