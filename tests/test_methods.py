@@ -51,18 +51,6 @@ def test_check_for_redirection():
     assert ht.GlobalServant.reading_stdin is True \
            and ht.GlobalServant.redirecting_stdout is True
 
-    # lastly check if all COLORS are set to ""
-    assert ht.COLORS == {
-        'red': "",
-        'green': "",
-        'yellow': "",
-        'magenta': "",
-        'cyan': "",
-        'blue': "",
-        'light_grey': "",
-        'back_to_default': ""
-    }
-
 
 def test_reverse_dns_lookup():
     ht.GlobalServant.reset()
@@ -76,12 +64,6 @@ def test_reverse_dns_lookup():
 def test_manage_params():
     ht.GlobalServant.reset()
 
-    # test exit params
-    args = "--print-event-table".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.manage_params(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
     args = "--version".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.manage_params(args)
