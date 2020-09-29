@@ -416,7 +416,7 @@ def manage_params(args: list) -> dict:
     prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
     # first of all check for prioritised/exit params
     if prio_parsed.version:
-        print("Version: v1.2.2")
+        print("Version: v1.2.3")
         sys.exit(0)
 
     # get files from prio_parsed
