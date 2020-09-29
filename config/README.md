@@ -87,10 +87,10 @@ htcompact
 This will search for the config_file with the priorities from 1 (high) to 4 (low)
 if NOT --no-config Flag is set:
 
-1. if found: environment_dir/config/htcompact.conf (virtual environment)
-2. else if found: ~/.config/htcompact/htcompact.conf
-3. else if found: /etc/htcompact.conf
-4. else go with default settings
+1.  environment_dir/config/htcompact.conf (virtual environment)
+2.  ~/.config/htcompact/htcompact.conf
+3.  /etc/htcompact.conf
+4.  else go with default settings
 
 
 ##### Note:
@@ -102,9 +102,9 @@ but all the other arguments stay defined by the config file.
 
 Just move your config file to one of these locations,
 the name has to be "htcompact.conf":
-1. project_dir/config
-2. ~/.config/htcompact
-3. /etc
+1.  project_dir/config
+2.  ~/.config/htcompact
+3.  /etc
 
 <details>
 <summary>
