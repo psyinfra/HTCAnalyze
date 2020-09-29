@@ -140,6 +140,49 @@ class GlobalPlayer(object):
         if isinstance(do_that, bool):
             self.reverse_dns_lookup = do_that
 
+    def manage_thresholds(self, resources: dict) -> dict:
+        """
+
+            The important part is that the keywords "Usage", "Requested" exists
+            and that at least 3 values are given: cpu, disk, memory
+
+        :param resources:
+        :return:
+        """
+
+        resources.update(Usage=list(
+            resources["Usage"]))  # change to list, to avoid numpy type errors
+        for i in range(len(resources['Resources'])):
+            # thresholds used vs. requested
+            if float(resources['Requested'][i]) != 0:
+
+                deviation = float(resources['Usage'][i]) / float(
+                    resources['Requested'][i])
+
+                # color red if more than bad_usage_thresholds % away
+                # from the requested value
+                if deviation >= 1 + self.bad_usage_threshold \
+                        or deviation <= 1 - self.bad_usage_threshold:
+                    resources['Usage'][i] = f"[red]" \
+                        f"{str(resources['Usage'][i])}[/red]"
+
+                # color yellow if more than low_usage_threhold % away
+                # from requested value
+                elif deviation >= 1 + self.tolerated_usage_threshold \
+                        or deviation <= 1 - self.tolerated_usage_threshold:
+                    resources['Usage'][i] = f"[yellow]" \
+                        f"{str(resources['Usage'][i])}[/yellow]"
+                # if nan, mark yellow
+                elif str(resources['Usage'][i]) == "nan":
+                    resources['Usage'][i] = f"[yellow2]" \
+                        f"{str(resources['Usage'][i])}[/yellow2]"
+                # else it's okay, color green,
+                else:
+                    resources['Usage'][i] = f"[green]" \
+                        f"{str(resources['Usage'][i])}[/green]"
+
+        return resources
+
 
 ###############################
 GlobalServant = GlobalPlayer()  # define global variables
@@ -903,48 +946,6 @@ def gethostbyaddr(ip):
         return ip
 
 
-def manage_thresholds(resources: dict,
-                      tolerated_usage_threshold=0.1,
-                      bad_usage_threshold=0.25) -> dict:
-    """
-
-        The important part is that the keywords "Usage", "Requested" exists
-        and that at least 3 values are given: cpu, disk, memory
-
-    :param resources:
-    :return:
-    """
-
-    resources.update(Usage=list(
-        resources["Usage"]))  # change to list, to avoid numpy type errors
-    for i in range(len(resources['Resources'])):
-        # thresholds used vs. requested
-        if float(resources['Requested'][i]) != 0:
-
-            deviation = float(resources['Usage'][i]) / float(
-                resources['Requested'][i])
-
-            # color red if more than bad_usage_thresholds % away
-            # from the requested value
-            if deviation >= 1 + bad_usage_threshold\
-                    or deviation <= 1 - bad_usage_threshold:
-                resources['Usage'][i] = f"[red]" \
-                    f"{str(resources['Usage'][i])}[/red]"
-
-            # color yellow if more than low_usage_threhold % away
-            # from requested value
-            elif deviation >= 1 + tolerated_usage_threshold\
-                    or deviation <= 1 - tolerated_usage_threshold:
-                resources['Usage'][i] = f"[yellow]" \
-                    f"{str(resources['Usage'][i])}[/yellow]"
-            # else it's okay, color green
-            else:
-                resources['Usage'][i] = f"[green]" \
-                    f"{str(resources['Usage'][i])}[/green]"
-
-    return resources
-
-
 def show_htcondor_stderr(file: str, std_err=".err") -> str:
     """
 
@@ -1143,7 +1144,7 @@ def default(log_files: list_of_logs, show_list=[]) -> log_inf_list:
         result_dict["times"] = times
         if not len(res_dict) == 0:  # make sure res_df is not None
 
-            res_dict = manage_thresholds(res_dict)
+            res_dict = GlobalServant.manage_thresholds(res_dict)
 
             result_dict["all-resources"] = res_dict
 
@@ -1217,7 +1218,8 @@ def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
                 result_dict["times"] = time_dict
 
             if len(res_dict) > 0:
-                result_dict["all-resources"] = manage_thresholds(res_dict)
+                result_dict["all-resources"] = \
+                    GlobalServant.manage_thresholds(res_dict)
 
             # show HTCondor errors
             if len(occurred_errors) > 0:
@@ -1422,7 +1424,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
 
         }
 
-        average_dict = manage_thresholds(average_dict)
+        average_dict = GlobalServant.manage_thresholds(average_dict)
 
         result_dict["all-resources"] = average_dict
 
@@ -1677,7 +1679,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 avg_dict['Assigned'] = ['', '', '',
                                         ", ".join(list_of_gpu_names)]
 
-            avg_dict = manage_thresholds(avg_dict)
+            avg_dict = GlobalServant.manage_thresholds(avg_dict)
             result_dict["all-resources"] = avg_dict
 
         executed_jobs = list()
@@ -1932,26 +1934,22 @@ def validate_given_logs(file_list: list_of_logs,
                                 valid_dir_files.append(file_path)
                     elif recursive:
                         # extend files by searching through this directory
-                        valid_files.extend(validate_given_logs([file_path],
-                                                               recursive,
-                                                               std_log,
-                                                               std_err,
-                                                               std_out))
+                        valid_dir_files.extend(validate_given_logs([file_path],
+                                                                   recursive,
+                                                                   std_log,
+                                                                   std_err,
+                                                                   std_out))
                     else:
                         logging.debug(
-                            f"Found a subfolder: "
+                            f"Found subfolder: "
                             f"{working_dir_path}/{file}"
                             f", it will be ignored")
                         progress.console.print(
-                            f"[yellow]Found a subfolder:"
+                            f"[yellow]Found subfolder:"
                             f" {working_dir_path}/{file},"
-                            f" it will be ignored[/yellow]")
+                            f" use -r for recursive search[/yellow]")
 
                 valid_files.extend(valid_dir_files)
-                rprint(
-                    f"[green]Found {len(valid_dir_files)}"
-                    f" valid log files out of "
-                    f"{len(file_dir)} files[/green]\n")
             # else if path "might" be a valid HTCondor file
             elif working_file_path.__ne__(""):
                 progress.update(task, advance=1)
@@ -2196,6 +2194,10 @@ def run(commandline_args):
                                           std_log=GlobalServant.std_log,
                                           std_err=GlobalServant.std_err,
                                           std_out=GlobalServant.std_out)
+
+        rprint(f"[green]Found {len(valid_files)}"
+               f" valid log files[/green]\n")
+
         if len(valid_files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(1)
