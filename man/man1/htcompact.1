@@ -9,24 +9,27 @@
 .Sh SYNOPSIS
 .Nm
 .Op Ar
-.Op Fl hsav
-.Op Fl m Ar mode
+.Op Fl afhrsv
 .Op Fl Fl help
+.Op Fl Fl files
+.Op Fl m Ar mode
+.Op Fl Fl mode Ar mode
 .Op Fl Fl version
 .Op Fl Fl verbose
-.Op Fl Fl mode Ar mode
 .Op Fl Fl std-log Ar suffix
 .Op Fl Fl std-out Ar suffix
 .Op Fl Fl std-err Ar suffix
 .Op Fl Fl ignore Ar keywords
 .Op Fl Fl show-more Ar keywords
+.Op Fl c Ar config
+.Op Fl Fl config Ar config
 .Op Fl Fl no-config
-.Op Fl Fl to-csv
+.Op Fl Fl recursive
 .Op Fl Fl generate-log-file
 .Op Fl Fl filter Ar keywords Op Fl Fl extend
-.Op Fl Fl print-event-table
 .Op Fl Fl reverse-dns-lookup
-.Op Fl Fl table-format Ar tablefmt
+.Op Fl Fl tolerated-usage Ar threshold
+.Op Fl Fl bad-usage Ar threshold
 .
 .Sh DESCRIPTION
 The
@@ -43,8 +46,19 @@ More details about the different modes below.
 Its arguments are as follows:
 .Bl -tag -width Ds
 .
-.It Ar FILES
-just pass any log files, config files or directories, you just need to separate them by space.
+.It Ar FILES | Fl f Ar FILES | Fl Fl files Ar FILES
+just pass any log files or directories,
+you just need to separate them by space.
+There is no need to use the flags,
+but sometimes you have to use them,
+to escape the previous option, for ex:
+.Bd -literal
+    htcompact --ignore all-resources --files log1 log2
+
+to prevent this, always hand the files first, like:
+
+    htcompact log1 log2 --ignore all-resources
+.Ed
 .
 .It Ar OPTIONS
 .
@@ -52,9 +66,6 @@ just pass any log files, config files or directories, you just need to separate 
 Prints a summary of
 .Nm Ap s
 command\[hy]line options and exits.
-.
-.It Fl Fl print-events-table
-Prints a table of known HTCondor events and their descriptions.
 .
 .It Fl m Ar mode | Fl Fl mode Ar mode
 Specify the mode, to interpret HTCondor log files,
@@ -202,6 +213,13 @@ separate them by space like:
 --ignore times errors
 .Ed
 .
+.It Fl r | Fl Fl recursive
+Run recursively through given directories
+.
+.It Fl c | Fl Fl config Ar config
+Use args specified by a config file.
+Check CONFIG section for more details
+.
 .It Fl Fl no-config
 Do not search for a config file
 .
@@ -222,34 +240,38 @@ This will create a log rotation file: htcompact.log or append output to it.
 The maximum size is limited by 1 MB,
 which means the output starts to rollover on a backup file: htcompact.log.1
 .
-.It Fl Fl table-format Ar format
-the table format for the output
+.It Fl Fl tolerated-usage Ar threshold
+Threshold to warn the user,
+when a given percentage is
+exceeded between used and requested resources
 .
-valid arguments are:
+.It Fl Fl bad-usage Ar threshold
+Threshold to signal overuse/waste of resources,
+when a given percentage is exceeded
+between used and requested resources
 .
-[plain, simple, github, grid, fancy_grid, pipe,
-orgtbl, rst, mediawiki, html, latex, latex_raw,
-latex_booktabs, tsv, pretty]
-.
-default: pretty
 .El
-.
 .Sh CONFIG
 .Bd -literal -compact
-furthermore all these variables|settings can be set inside a config file.
+Args that start with '--' (eg. -f) can also be set in a config file. Config file
+syntax allows: key=value, flag=true, stuff=[a,b,c]
+If an arg is specified in more than one place, then
+commandline values override config file values which override defaults.
+
 See the config specification:
-.Lk https://github.com/psyinfra/htcompact/blob/master/CONFIG.md
-.
+.Lk https://github.com/psyinfra/htcompact/blob/master/config/README.md
+
 The script is also checking for other config files in other places:
 .
-"project_directory/config", "/etc" and "~/.config/htcompact/"
+"project_dir/config/htcomapct.conf",
+ "/etc/htcompact.conf" and "~/.config/htcompact/htcompact.conf"
 .Ed
 .Bd -literal
 with different priorities from 1 (high) to 5 (low):
-Priority[1] find config_file directly
-Priority[2] search for config_file in project_directory/config
-Priority[3] search for config_file in ~/.config/htcompact
-Priority[4] search for config_file in /etc
+Priority[1] -c | --config config_file
+Priority[2] search for config_file in project_dir/config/htcompact.conf
+Priority[3] search for config_file in ~/.config/htcompact/htcompact.conf
+Priority[4] search for config_file in /etc/htcompact.conf
 Priority[5] run with default settings
 .Ed
 .
@@ -262,7 +284,7 @@ Priority[5] run with default settings
 .
 .Sh FILES
 .Bl -tag -width Ds
-.It Pa script/htcompact.conf
+.It Pa config/htcompact.conf
 A default setup for this script.
 .El
 .
@@ -270,8 +292,8 @@ A default setup for this script.
 .Ex -std
 .Bd -literal -compact
 Exit Codes:
-Wrong Options or Arguments: 1
-No given files: 2
+No given files: 1
+Wrong options or arguments: 2
 TypeError: 3
 Keyboard interruption: 4
 .Ed
@@ -283,7 +305,7 @@ htcompact -s log_directory --ignore execution-details --no-config
 htcompact -as log_directory
 htcompact -e 005
 htcompact --filter "" --extend -s --ignore all-resources log_directory
-htcompact htcompact.conf 394_440 -a --show-output --table-format simple
+htcompact htcompact.conf 394_440 -a --show-output
 htcompact --filter aborted -as ~/logs
 OR
 grep -R -l aborted ~/logs | htcompact -as

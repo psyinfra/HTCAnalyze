@@ -17,7 +17,6 @@ htcompact.conf
 #! Setup of the Config file
 
 files = [check-the-htcompact.conf]
-table-format = pretty
 
 # if std-log is not set, every file will be interpreted as a log file,
 # except std-err and std-out files
@@ -53,8 +52,10 @@ filter-extended = false
 ## [err, warn, exception, aborted, abortion, abnormal, fatal]
 
 # more features
-generate-log-file = false
-reverse-dns-lookup = false
+verbose = false
+# generate-log-file = htcompact.log
+reverse-dns-lookup = False
+recursive = False
 
 ```
 
@@ -69,27 +70,28 @@ so it would NOT change the output, if you do not have this config file
 This config file will be installed if you follow the installation on [README](https://github.com/psyinfra/htcompact/blob/master/README.md). \
 But you can also just copy this into a file and run the script with that config file like:
 ```
-htcompact config_file [files][arguments]
+htcompact -c config_file [files][arguments]
 ```
 
 If you just run the script by:
 ```
-htcompact config_file
+htcompact -c config_file
 ```
-This will search for the config_file with the priorities from 1 (high) to 5 (low)
-if NOT --no-config Flag is set:
+This will run the script with the given config_file
 
-1. search config_file directly in the current working directory
-2. search config file from current environment_directory/config (virtual environment)
-3. search for config_file in ~/.config/htcompact
-4. search for config_file in /etc
-5. else go with default settings
 
 Else if you just run the script by just:
 ```
 htcompact
 ```
-This will search for "htcompact.conf" as default in the same order
+This will search for the config_file with the priorities from 1 (high) to 4 (low)
+if NOT --no-config Flag is set:
+
+1.  environment_dir/config/htcompact.conf (virtual environment)
+2.  ~/.config/htcompact/htcompact.conf
+3.  /etc/htcompact.conf
+4.  else go with default settings
+
 
 ##### Note:
 Arguments given by the terminal have a higher priority,\
@@ -98,11 +100,11 @@ but all the other arguments stay defined by the config file.
 
 ## Idea
 
-For example your config file sits in one of these directories:
-1. current_working_directory
-2. project_directory/config
-3. ~/.config/htcompact
-4. /etc
+Just move your config file to one of these locations,
+the name has to be "htcompact.conf":
+1.  project_dir/config
+2.  ~/.config/htcompact
+3.  /etc
 
 <details>
 <summary>
@@ -114,9 +116,9 @@ htcompact_setup.conf
 files = [log_file1 log_directory1]
 
 [htc-files]
-stdlog = .log
-stderr = .err
-stdout = .out
+std-log = .log
+std-err = .err
+std-out = .out
 
 [features]
 mode = summarize
@@ -125,14 +127,17 @@ mode = summarize
 
 You could summarize *log_file1* and every log_file, that's found inside *log_directory1* just by:
 ```
-htcompact htcompact_setup.conf
+htcompact -c htcompact_setup.conf
 ```
 
 The idea is, that for a bunch of settings it's easier to go with config files, \
 so you could have a specified file for just the summary mode and an other file just for the analyser mode and so on ...
 
-If the name of the config file is changed to htcompact.conf the call reduced to:
+If the name of the config file is changed to htcompact.conf 
+and is moved to one of the locations specified above the call reduced to:
 ```
 htcompact
 ```
+
+
 
