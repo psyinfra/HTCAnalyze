@@ -144,6 +144,15 @@ def test_independent_opts():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
+    args = "--recursive --bad 0.3 --tolerated 0.1" \
+           " tests/test_logs".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        ht.run(args)
+    assert ht.GlobalServant.bad_usage_threshold == 0.3
+    assert ht.GlobalServant.tolerated_usage_threshold == 0.1
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
 
 def test_default_mode():
     args = "tests/test_logs/valid_logs/aborted_before_submission.log".split()
