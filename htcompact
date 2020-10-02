@@ -1523,8 +1523,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 # add errors
                 if len(occurred_errors) > 0:
                     for key in occurred_errors.keys():
-                        all_files[term_type][6][key].extend(
-                            occurred_errors[key])
+                        # extend if already existent
+                        if key in  all_files[term_type][6].keys():
+                            all_files[term_type][6][key].extend(
+                                occurred_errors[key])
+                        else:
+                            all_files[term_type][6] = occurred_errors
 
                 if not len(all_files[term_type][4]) == 0:
                     # add usages
