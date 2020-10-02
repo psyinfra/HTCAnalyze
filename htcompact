@@ -1615,10 +1615,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
             logging.exception(err)
+            logging.debug(f"[red]Error with summarizing: {file}[/red]")
             rprint(f"[red]Error with summarizing: {file}[/red]")
             continue
         except TypeError as err:
             logging.exception(err)
+            logging.debug(f"[red]Error with summarizing: {file}[/red]")
             rprint(f"[red] {err}[/red]")
             sys.exit(3)
 
