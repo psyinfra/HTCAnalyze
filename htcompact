@@ -1284,6 +1284,19 @@ def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
     return result_list
 
 
+def _sort_node_dict(node_dict, column):
+    # sorted_dict = dict.fromkeys(node_dict.keys())
+    sorted_dict = {key: [] for key in node_dict.keys()}
+    sort_index = list(sorted_dict.keys()).index(column)
+    zip_data = zip(*node_dict.values())
+    sorted_items = sorted(zip_data, key=lambda tup: tup[sort_index])
+    for item in reversed(sorted_items):
+        for i,key in enumerate(sorted_dict.keys()):
+            sorted_dict[key].append(item[i])
+
+    return sorted_dict
+
+
 def summarize(log_files: list_of_logs) -> log_inf_list:
     """
     Summarises all used resources and the runtime in total and average
@@ -1455,10 +1468,9 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             "Average job duration": runtime_per_node
         }
 
-        result_dict["host-nodes"] = cpu_dict
+        result_dict["host-nodes"] = _sort_node_dict(cpu_dict,"Executed Jobs")
 
     return [result_dict]
-
 
 def analysed_summary(log_files: list_of_logs) -> log_inf_list:
     """
@@ -1727,7 +1739,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
             "Average job duration": runtime_per_node
         }
 
-        result_dict["host-nodes"] = host_nodes_dict
+        result_dict["host-nodes"] = _sort_node_dict(host_nodes_dict,
+                                                    "Executed Jobs")
 
         if len(term_info[6]) > 0:
             temp_err = term_info[6]
