@@ -1999,10 +1999,10 @@ class LogValidator:
                     working_file_path = logs_path
                 # check if only the id was given
                 # and resolve it with the std_log specification
-                elif os.path.isfile(arg + std_log):
-                    working_file_path = arg + std_log
-                elif os.path.isfile(logs_path + std_log):
-                    working_file_path = logs_path + std_log
+                elif os.path.isfile(arg + self.std_log):
+                    working_file_path = arg + self.std_log
+                elif os.path.isfile(logs_path + self.std_log):
+                    working_file_path = logs_path + self.std_log
 
                 # if path is a directory
                 if working_dir_path.__ne__(""):
