@@ -1396,7 +1396,11 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
         exec_dict["Job types"].append("Other exceptions")
         exec_dict["Occurrence"].append(other_exception)
 
-    result_dict["execution-details"] = exec_dict
+    result_dict["execution-details"] = sort_dict_by_col(exec_dict,
+                                                            "Occurrence")
+
+    result_dict["description"] = "The following data only implies" \
+                                      " on sucessful executed jobs"
 
     # do not even try futher if the only files
     # given have been aborted, are still running etc.
@@ -1700,7 +1704,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                               'Average Allocated'],
                 'Usage': np.round(
                     np.array(total_resources_dict['Usage']) / term_info[0],
-                    2).tolist(),
+                    4).tolist(),
                 'Requested': np.round(
                     np.array(total_resources_dict['Requested']) / term_info[0],
                     2).tolist(),
@@ -1745,7 +1749,9 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         "Termination type": list(occurrence_dict.keys()),
         "Appearance": list(occurrence_dict.values())
     }
-    result_list.insert(0, {"execution-details": new_occ})
+    sorted_occ = sort_dict_by_col(new_occ, "Appearance")
+
+    result_list.insert(0, {"execution-details": sorted_occ})
 
     return result_list
 
