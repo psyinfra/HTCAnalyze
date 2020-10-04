@@ -1569,10 +1569,20 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                             'Waiting for execution'][0] += 1
                         all_files[term_type][5][
                             'Waiting for execution'][1] += total_time
+                    elif "Aborted before execution" in \
+                            all_files[term_type][5].keys():
+                        all_files[term_type][5][
+                            'Aborted before execution'][0] += 1
+                        all_files[term_type][5][
+                            'Aborted before execution'][1] += total_time
                     else:
                         count_host_nodes = dict()
-                        count_host_nodes['Waiting for'
-                                         ' execution'] = [1, total_time]
+                        if "Aborted" in term_type:
+                            count_host_nodes['Aborted before'
+                                             ' execution'] = [1, total_time]
+                        else:
+                            count_host_nodes['Waiting for'
+                                             ' execution'] = [1, total_time]
                         all_files[term_type][5] = count_host_nodes
                 else:
                     # other aborted before submission jobs ???
@@ -1598,8 +1608,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 # else if still waiting
                 elif "Submitted from" in job_dict["Execution details"]:
                     count_host_nodes = dict()
-                    count_host_nodes['Waiting for'
-                                     ' execution'] = [1, total_time]
+                    if "Aborted" in term_type:
+                        count_host_nodes['Aborted before'
+                                         ' execution'] = [1, total_time]
+                    else:
+                        count_host_nodes['Waiting for'
+                                         ' execution'] = [1, total_time]
                 # else aborted before submission ?
                 else:
                     count_host_nodes = dict()
