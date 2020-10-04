@@ -61,8 +61,6 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "allocated-resources", "all-resources",
                          "errors"]
 
-DEFAULT_CONFIG_FILE = "htcompact.conf"
-
 
 # class to store and change global variables
 class GlobalPlayer(object):
@@ -222,6 +220,10 @@ class CustomFormatter(argparse.HelpFormatter):
 
 # parser for prioritised flags
 def setup_prioritized_parser():
+    """
+    Prioritized options
+    :return:
+    """
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--no-config",
                         action="store_true")
@@ -579,9 +581,6 @@ def gen_time_dict(
     this function will try to find out the time differences between the events.
     If not all three values are given, it will return None
 
-    Example:
-    Submissio
-
     :param submission_date: Job Sumbission date from the user
     :param execution_date: The date when the job actually started executing
     :param termination_date: The date when the job was finished
@@ -736,8 +735,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                         [event_type_number, "Now", "invalid user address",
                          reason])
                     job_events.append(('Submitted from', "invalid user"))
-                    raise_value_error(
-                        "Submission Host is wrong in file: " + file)
+                    raise_value_error("Wrong submission host: " + file)
 
             # update execution date, execution node
             if event.type == jet.EXECUTE:
@@ -759,8 +757,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
                         [event_type_number, "Now", "invalid host address",
                          reason])
                     job_events.append(('Executing on', "invalid host"))
-                    raise_value_error(
-                        "Execution host address is wrong in file: " + file)
+                    raise_value_error("Wrong execution host: " + file)
 
             # update ram history dict
             if event.type == jet.IMAGE_SIZE:
@@ -851,7 +848,7 @@ def log_to_dict(file: str, sec: int = 0) -> (dict, dict, dict, dict, dict):
     except OSError as err:
         invalid_file = True
         if err.args[0] == "ULOG_RD_ERROR":
-            rprint(f"[red]{err}: Not a valid htcondor logfile: {file}[/red]")
+            rprint(f"[red]{err}: {file}[/red]")
             reason = "Error while reading log file. " \
                      "File was manipulated or contains gpu usage."
             occurred_errors.append(["None", "Now", "ULOG_RD_ERROR", reason])
@@ -1042,6 +1039,17 @@ def show_htcondor_stdout(file: str, std_out=".out") -> str:
 
 
 def get_job_spec_id(file: str, std_log):
+    """
+    Insert a HTCondor file and the suffix
+    and cut of the suffix to get just the job specification id
+
+    Example:
+    get_job_spec_id("43221_23.log", ".log") -> "43221_23"
+
+    :param file:
+    :param std_log:
+    :return:
+    """
     if std_log.__ne__("") and file[-len(std_log):].__eq__(std_log):
         job_spec_id = file[:-len(std_log)]
     else:
@@ -1135,7 +1143,7 @@ def default(log_files: list_of_logs, show_list=[]) -> log_inf_list:
         res_dict = htcondor_log[1]
         times = htcondor_log[2]
 
-        result_dict["file-description"] = f"" \
+        result_dict["description"] = f"" \
             f"[green]The job procedure of : " \
             f"{file}[/green]"
 
@@ -1206,7 +1214,7 @@ def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
             result_dict = dict()
 
             logging.debug(f"Analysing the HTCondor log file: {file}")
-            result_dict["file-description"] = f"[green]" \
+            result_dict["description"] = f"[green]" \
                 f"Job analysis of: {file}[/green]"
 
             job_dict, res_dict, time_dict, \
@@ -1274,9 +1282,23 @@ def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
     return result_list
 
 
+def sort_dict_by_col(node_dict, column):
+    # sorted_dict = dict.fromkeys(node_dict.keys())
+    sorted_dict = {key: [] for key in node_dict.keys()}
+    sort_index = list(sorted_dict.keys()).index(column)
+    zip_data = zip(*node_dict.values())
+    sorted_items = sorted(zip_data, key=lambda tup: tup[sort_index])
+    for item in reversed(sorted_items):
+        for i, key in enumerate(sorted_dict.keys()):
+            sorted_dict[key].append(item[i])
+
+    return sorted_dict
+
+
 def summarize(log_files: list_of_logs) -> log_inf_list:
     """
     Summarises all used resources and the runtime in total and average
+    for normal executed jobs
 
     Runs through the log files via the log_to_dict function
 
@@ -1311,20 +1333,12 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             # continue if Process is still running
             if job_dict['Execution details'][0].__eq__("Process is"):
                 still_running += 1
-                rprint(f"[orange3]Process of {file} is still running, \n"
-                       f"it will be ignored for this summation[/orange3]")
                 continue
-
             elif job_dict['Execution details'][0].__eq__("Process was"):
                 aborted_files += 1
-                rprint(f"[orange3]Process of {file} has been aborted, \n"
-                       f"it will be ignored for this summation[/orange3]")
                 continue
             elif job_dict['Execution details'][0].__eq__("Error"):
                 error_reading_files += 1
-                rprint(f"[orange3]Process of {file} not fully readable,\n"
-                       f"cause it's not matching the htcondor specs,\n"
-                       f"it will be ignored for this summation[/orange3]")
                 continue
             elif len(job_dict) == 0:
                 logging.error(
@@ -1382,7 +1396,11 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
         exec_dict["Job types"].append("Other exceptions")
         exec_dict["Occurrence"].append(other_exception)
 
-    result_dict["execution-details"] = exec_dict
+    result_dict["execution-details"] = \
+        sort_dict_by_col(exec_dict, "Occurrence")
+
+    result_dict["description"] = "The following data only implies" \
+                                 " on sucessful executed jobs"
 
     # do not even try futher if the only files
     # given have been aborted, are still running etc.
@@ -1445,7 +1463,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             "Average job duration": runtime_per_node
         }
 
-        result_dict["host-nodes"] = cpu_dict
+        result_dict["host-nodes"] = sort_dict_by_col(cpu_dict, "Executed Jobs")
 
     return [result_dict]
 
@@ -1523,8 +1541,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 # add errors
                 if len(occurred_errors) > 0:
                     for key in occurred_errors.keys():
-                        all_files[term_type][6][key].extend(
-                            occurred_errors[key])
+                        # extend if already existent
+                        if key in all_files[term_type][6].keys():
+                            all_files[term_type][6][key].extend(
+                                occurred_errors[key])
+                        else:
+                            all_files[term_type][6] = occurred_errors
 
                 if not len(all_files[term_type][4]) == 0:
                     # add usages
@@ -1555,10 +1577,20 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                             'Waiting for execution'][0] += 1
                         all_files[term_type][5][
                             'Waiting for execution'][1] += total_time
+                    elif "Aborted before execution" in \
+                            all_files[term_type][5].keys():
+                        all_files[term_type][5][
+                            'Aborted before execution'][0] += 1
+                        all_files[term_type][5][
+                            'Aborted before execution'][1] += total_time
                     else:
                         count_host_nodes = dict()
-                        count_host_nodes['Waiting for'
-                                         ' execution'] = [1, total_time]
+                        if "Aborted" in term_type:
+                            count_host_nodes['Aborted before'
+                                             ' execution'] = [1, total_time]
+                        else:
+                            count_host_nodes['Waiting for'
+                                             ' execution'] = [1, total_time]
                         all_files[term_type][5] = count_host_nodes
                 else:
                     # other aborted before submission jobs ???
@@ -1584,8 +1616,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 # else if still waiting
                 elif "Submitted from" in job_dict["Execution details"]:
                     count_host_nodes = dict()
-                    count_host_nodes['Waiting for'
-                                     ' execution'] = [1, total_time]
+                    if "Aborted" in term_type:
+                        count_host_nodes['Aborted before'
+                                         ' execution'] = [1, total_time]
+                    else:
+                        count_host_nodes['Waiting for'
+                                         ' execution'] = [1, total_time]
                 # else aborted before submission ?
                 else:
                     count_host_nodes = dict()
@@ -1611,10 +1647,12 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         # Error ocurres when Job was aborted
         except ValueError or KeyError as err:
             logging.exception(err)
+            logging.debug(f"[red]Error with summarizing: {file}[/red]")
             rprint(f"[red]Error with summarizing: {file}[/red]")
             continue
         except TypeError as err:
             logging.exception(err)
+            logging.debug(f"[red]Error with summarizing: {file}[/red]")
             rprint(f"[red] {err}[/red]")
             sys.exit(3)
 
@@ -1626,18 +1664,18 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
 
         # differentiate between terminated and running processes
         if "Error while reading" in term_state:
-            result_dict["file-description"] = "" \
+            result_dict["description"] = "" \
                 "##################################################\n" \
                 "## All files, that caused an [red]" \
                 "error while reading[/red]\n" \
                 "##################################################"
         elif term_state not in ["Waiting", "Executing"]:
-            result_dict["file-description"] = f"" \
+            result_dict["description"] = f"" \
                 f"##################################################\n" \
                 f"## All files with the termination state: {term_state}\n" \
                 f"##################################################"
         else:
-            result_dict["file-description"] = f"" \
+            result_dict["description"] = f"" \
                 f"###########################################\n" \
                 f"## All files, that are currently {term_state}\n" \
                 f"###########################################"
@@ -1666,7 +1704,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                               'Average Allocated'],
                 'Usage': np.round(
                     np.array(total_resources_dict['Usage']) / term_info[0],
-                    2).tolist(),
+                    4).tolist(),
                 'Requested': np.round(
                     np.array(total_resources_dict['Requested']) / term_info[0],
                     2).tolist(),
@@ -1697,7 +1735,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
             "Average job duration": runtime_per_node
         }
 
-        result_dict["host-nodes"] = host_nodes_dict
+        result_dict["host-nodes"] = \
+            sort_dict_by_col(host_nodes_dict, "Executed Jobs")
 
         if len(term_info[6]) > 0:
             temp_err = term_info[6]
@@ -1710,7 +1749,9 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
         "Termination type": list(occurrence_dict.keys()),
         "Appearance": list(occurrence_dict.values())
     }
-    result_list.insert(0, {"execution-details": new_occ})
+    sorted_occ = sort_dict_by_col(new_occ, "Appearance")
+
+    result_list.insert(0, {"execution-details": sorted_occ})
 
     return result_list
 
@@ -1839,164 +1880,179 @@ def filter_for(log_files: list_of_logs,
     return return_dicts
 
 
-def validate_given_logs(file_list: list_of_logs,
-                        recursive=False,
-                        std_log="", std_err=".err",
-                        std_out=".log") -> list_of_logs:
+class LogValidator:
     """
-    This method is supposed to take the given log files
-    (by config or command line argument)
-    and tries to determine if these are valid log files,
-     ignoring the std_log specification, if std_log = "".
+    Create a HTCondor Joblog Validator
 
-    It will run through given directories and check every single file,
-    if accessible, for the
-    HTCondor log file standard,
-    valid log files should start with lines like:
+    Validation is visual represented by rich.progress
 
-    000 (5989.000.000) 03/30 15:48:47
-
-
-    The user will also be informed if a single given file was not found.
 
     """
-    valid_files = list()
-    total = len(file_list)
 
-    logging.info('Validate given log files')
-    with Progress(transient=True) as progress:
+    def __init__(self,
+                 std_log="",
+                 std_err=".err",
+                 std_out=".out",
+                 recursive=False):
+        self.std_log = std_log
+        self.std_err = std_err
+        self.std_out = std_out
+        self.recursive = recursive
 
-        task = progress.add_task("Validating...", total=total, start=False)
+    def validate_file(self, file) -> bool:
+        """
+         Validate a single HTCondor joblog file.
 
-        for arg in file_list:
+        :param file: HTCondor log file
+        :return: True when valid else False
+        """
 
-            path = os.getcwd()  # mainly search in current working directory
-            logs_path = path + "/" + arg  # absolute path
+        # if not ending with stdout
+        if self.std_log.__ne__("") and not file.endswith(self.std_log):
+            return False
 
-            working_dir_path = ""
-            working_file_path = ""
+        # does also not end with sterr and stdout suffix
+        if self.std_err.__ne__("") and file.endswith(self.std_err):
+            return False
+        if self.std_out.__ne__("") and file.endswith(self.std_out):
+            return False
 
-            if os.path.isdir(arg):
-                working_dir_path = arg
-            elif os.path.isdir(logs_path):
-                working_dir_path = logs_path
+        if os.path.getsize(file) == 0:  # file is empty
+            logging.debug(f"{file} is empty")
+            return False
 
-            elif os.path.isfile(arg):
-                working_file_path = arg
-            elif os.path.isfile(logs_path):
-                working_file_path = logs_path
-            # check if only the id was given
-            # and resolve it with the std_log specification
-            elif os.path.isfile(arg + std_log):
-                working_file_path = arg + std_log
-            elif os.path.isfile(logs_path + std_log):
-                working_file_path = logs_path + std_log
+        try:
+            with open(file, "r") as read_file:
 
-            # if path is a directory
-            if working_dir_path.__ne__(""):
-                rprint(
-                    f"[light_coral]Search: {working_dir_path} "
-                    f"for valid log files[/light_coral]")
-                # run through all files and
-                # separate the files into log, error and output files
-                valid_dir_files = list()
-                file_dir = os.listdir(working_dir_path)
-                total += len(file_dir) - 1
-                for file in file_dir:
-                    # ignore hidden files or python modules
-                    if file.startswith(".") or file.startswith("__"):
-                        continue
-                    progress.update(task, total=total, advance=1)
+                if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
+                            read_file.readline()):
 
-                    # if std_log is set, ignore other log files
-                    if std_log.__ne__("") and not file.endswith(std_log):
-                        logging.debug("Ignoring this file, " + file +
-                                      ", because std-log is: " + std_log)
-                        continue
+                    return True
+                else:
+                    return False
+        except Exception:
+            return False
 
-                    # ignore hidden files
-                    if file.startswith("."):
-                        continue
-                    # if it's not a sub folder
-                    if working_dir_path.endswith('/'):
-                        file_path = working_dir_path + file
-                    else:
-                        file_path = working_dir_path + '/' + file
+    def validate_dir(self, directory, progress_details=None) -> list_of_logs:
+        """
+        Validate all files inside the given directory.
 
-                    if os.path.isfile(file_path):
-                        with open(file_path, "r") as read_file:
-                            if os.path.getsize(
-                                    file_path) == 0:  # file is empty
-                                continue
+        :param directory: path to directory with logs
+        :param progress_details: Quadrupel (progress, task, total, advance)
+        :return:
+        """
+        valid_dir_files = list()
+        file_dir = os.listdir(directory)
+        # progress bar given
+        if progress_details is not None:
+            progress = progress_details[0]
+            task = progress_details[1]
+            total = progress_details[2] + len(file_dir) - 1  # minus dir
+            advance = progress_details[3]
+            progress.console.print(
+                f"[light_coral]Search: {directory} "
+                f"for valid log files[/light_coral]")
+        for file in file_dir:
+            if progress_details is not None:
+                progress.update(task, total=total, advance=advance)
 
-                            if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
-                                        read_file.readlines()[0]):
-                                valid_dir_files.append(file_path)
-                    elif recursive:
-                        # extend files by searching through this directory
-                        valid_dir_files.extend(validate_given_logs([file_path],
-                                                                   recursive,
-                                                                   std_log,
-                                                                   std_err,
-                                                                   std_out))
-                    else:
-                        logging.debug(
-                            f"Found subfolder: "
-                            f"{working_dir_path}/{file}"
-                            f", it will be ignored")
-                        progress.console.print(
-                            f"[yellow]Found subfolder:"
-                            f" {working_dir_path}/{file},"
-                            f" use -r for recursive search[/yellow]")
+            # ignore hidden files or python modules
+            if file.startswith(".") or file.startswith("__"):
+                continue
 
-                valid_files.extend(valid_dir_files)
-            # else if path "might" be a valid HTCondor file
-            elif working_file_path.__ne__(""):
-                progress.update(task, advance=1)
+            # if std_log is set, ignore other log files
+            if self.std_log.__ne__("") and not file.endswith(self.std_log):
+                logging.debug("Ignoring this file, " + file +
+                              ", because std-log is: " + self.std_log)
+                continue
 
-                # if std_log is set, ignore other log files
-                if std_log.__ne__("") and \
-                        not working_file_path.endswith(std_log):
-                    logging.debug("Ignoring this file, " +
-                                  working_file_path +
-                                  ", because std_log is set to: " + std_log)
-                    continue
+            # backslash handling
+            if directory.endswith('/'):
+                file_path = directory + file
+            else:
+                file_path = directory + '/' + file
 
-                if std_err.__ne__("") \
-                        and working_file_path.endswith(std_err)\
-                        or std_out.__ne__("") \
-                        and working_file_path.endswith(std_out):
-                    logging.debug(
-                        f"Only log files accepted,"
-                        f" ignored this file: {working_file_path}")
-                    continue
+            if os.path.isfile(file_path):
+                if self.validate_file(file_path):
+                    valid_dir_files.append(file_path)
 
-                with open(working_file_path, "r") as read_file:
+            elif self.recursive:
+                # total = total -1
+                # extend files by searching through this directory
+                valid_dir_files.extend(
+                    self.validate_dir(file_path, progress_details))
+            else:
+                logging.debug(
+                    f"Found subfolder: "
+                    f"{file_path}"
+                    f", it will be ignored")
 
-                    if os.path.getsize(
-                            working_file_path) == 0:  # file is empty
-                        progress.console.print(
-                            f"[red]How dare you, the file is empty:"
-                            f" {read_file.name} :([/red]")
+        return valid_dir_files
 
-                    elif re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
-                                  read_file.readlines()[0]):
-                        logging.debug(
-                            f"{read_file.name} is a valid HTCondor log file")
+    def htcompact_validation(self, file_list: list_of_logs) -> list_of_logs:
+        """
+        Function designed especially for this script.
+        Filters given files for valid HTCondor log files,
+        the process will be visual presented by rich.progress
 
+        :param file_list: list of HTCondor logs, that need to be validated
+        :return: list with valid HTCondor log files
+        """
+        valid_files = list()
+        total = len(file_list)
+
+        logging.info('Validate given log files')
+        with Progress(transient=True) as progress:
+
+            task = progress.add_task("Validating...", total=total, start=False)
+            for arg in file_list:
+
+                path = os.getcwd()  # mainly search in cwd
+                logs_path = path + "/" + arg  # absolute path
+
+                working_dir_path = ""
+                working_file_path = ""
+
+                if os.path.isdir(arg):
+                    working_dir_path = arg
+                elif os.path.isdir(logs_path):
+                    working_dir_path = logs_path
+
+                elif os.path.isfile(arg):
+                    working_file_path = arg
+                elif os.path.isfile(logs_path):
+                    working_file_path = logs_path
+                # check if only the id was given
+                # and resolve it with the std_log specification
+                elif os.path.isfile(arg + self.std_log):
+                    working_file_path = arg + self.std_log
+                elif os.path.isfile(logs_path + self.std_log):
+                    working_file_path = logs_path + self.std_log
+
+                # if path is a directory
+                if working_dir_path.__ne__(""):
+
+                    progress_details = progress, task, total, 1
+                    valid_dir_files = self.validate_dir(working_dir_path,
+                                                        progress_details)
+                    valid_files.extend(valid_dir_files)
+
+                # else if path "might" be a valid HTCondor file
+                elif working_file_path.__ne__(""):
+                    progress.update(task, advance=1)
+
+                    if self.validate_file(working_file_path):
                         valid_files.append(working_file_path)
                     else:
-                        logging.debug(
-                            f"The given file {read_file.name}"
-                            f" is not a valid HTCondor log file")
                         progress.console.print(
-                            f"[yellow]The given file {read_file.name} "
+                            f"[yellow]The given file {working_file_path} "
                             f"is not a valid HTCondor log file[/yellow]")
-            else:
-                logging.error(f"The given file: {arg} does not exist")
-                rprint(f"[red]The given file: {arg} does not exist[/red]")
 
-    return valid_files
+                else:
+                    logging.error(f"The given file: {arg} does not exist")
+                    rprint(f"[red]The given file: {arg} does not exist[/red]")
+
+        return valid_files
 
 
 def setup_logging_tool(log_file=None, verbose_mode=False):
@@ -2060,6 +2116,22 @@ def print_results(log_files: list_of_logs,
                   filter_keywords=list,
                   filter_extended=False,
                   **kwargs) -> str:
+    """
+    Resolves the given log fiels by the specified mode and
+    prints out the result.
+    Before doing that it will remove sections specified by the ignore_list
+    and show information specified by show_list
+    It is also possible to filter the files by specified filter keywords
+
+    :param log_files:
+    :param mode:
+    :param ignore_list:
+    :param show_list:
+    :param filter_keywords:
+    :param filter_extended:
+    :param kwargs:
+    :return:
+    """
 
     if len(filter_keywords) > 0:
         results = filter_for(log_files,
@@ -2098,8 +2170,8 @@ def print_results(log_files: list_of_logs,
                 rprint("[red]NoneType object found,"
                        " this should not happen[/red]")
 
-        if "file-description" in mystery:
-            rprint(mystery["file-description"])
+        if "description" in mystery:
+            rprint(mystery["description"])
 
         if "execution-details" in mystery:
             if "execution-details" in ignore_list:
@@ -2161,7 +2233,7 @@ def run(commandline_args):
 
     :return:
     """
-    # before running make sure Global Parameters are set to normal
+    # before running make sure Global Parameters are set to default
     GlobalServant.reset()
 
     if not isinstance(commandline_args, list):
@@ -2189,14 +2261,16 @@ def run(commandline_args):
             logging.debug("Reading from stdin")
         if GlobalServant.redirecting_stdout:
             logging.debug("Output is getting redirected")
-        valid_files = validate_given_logs(param_dict["files"],
-                                          param_dict["recursive"],
-                                          std_log=GlobalServant.std_log,
-                                          std_err=GlobalServant.std_err,
-                                          std_out=GlobalServant.std_out)
 
-        rprint(f"[green]Found {len(valid_files)}"
-               f" valid log files[/green]\n")
+        Validator = LogValidator(GlobalServant.std_log,
+                                 GlobalServant.std_err,
+                                 GlobalServant.std_out,
+                                 param_dict["recursive"])
+
+        valid_files = Validator.htcompact_validation(param_dict["files"])
+
+        rprint(f"[green]{len(valid_files)}"
+               f" valid log file(s)[/green]\n")
 
         if len(valid_files) == 0:
             rprint("[red]No valid HTCondor log files found[/red]")
