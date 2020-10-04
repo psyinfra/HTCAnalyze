@@ -61,8 +61,6 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "allocated-resources", "all-resources",
                          "errors"]
 
-DEFAULT_CONFIG_FILE = "htcompact.conf"
-
 
 # class to store and change global variables
 class GlobalPlayer(object):
@@ -222,6 +220,10 @@ class CustomFormatter(argparse.HelpFormatter):
 
 # parser for prioritised flags
 def setup_prioritized_parser():
+    """
+    Prioritized options
+    :return:
+    """
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--no-config",
                         action="store_true")
@@ -578,9 +580,6 @@ def gen_time_dict(
     Depending on the given arguments,
     this function will try to find out the time differences between the events.
     If not all three values are given, it will return None
-
-    Example:
-    Submissio
 
     :param submission_date: Job Sumbission date from the user
     :param execution_date: The date when the job actually started executing
@@ -1042,6 +1041,17 @@ def show_htcondor_stdout(file: str, std_out=".out") -> str:
 
 
 def get_job_spec_id(file: str, std_log):
+    """
+    Insert a HTCondor file and the suffix
+    and cut of the suffix to get just the job specification id
+
+    Example:
+    get_job_spec_id("43221_23.log", ".log") -> "43221_23"
+
+    :param file:
+    :param std_log:
+    :return:
+    """
     if std_log.__ne__("") and file[-len(std_log):].__eq__(std_log):
         job_spec_id = file[:-len(std_log)]
     else:
@@ -1524,7 +1534,7 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
                 if len(occurred_errors) > 0:
                     for key in occurred_errors.keys():
                         # extend if already existent
-                        if key in  all_files[term_type][6].keys():
+                        if key in all_files[term_type][6].keys():
                             all_files[term_type][6][key].extend(
                                 occurred_errors[key])
                         else:
@@ -1864,10 +1874,13 @@ class LogValidator:
         self.std_out = std_out
         self.recursive = recursive
 
-    def set_progress_details(self, progress, task, total, advance=1):
-        self.progress_details = progress, task, total, advance
-
     def validate_file(self, file) -> bool:
+        """
+         Validate a single HTCondor joblog file.
+
+        :param file: HTCondor log file
+        :return: True when valid else False
+        """
 
         # if not ending with stdout
         if self.std_log.__ne__("") and not file.endswith(self.std_log):
@@ -1897,6 +1910,7 @@ class LogValidator:
 
     def validate_dir(self, directory, progress_details=None) -> list_of_logs:
         """
+        Validate all files inside the given directory.
 
         :param directory: path to directory with logs
         :param progress_details: Quadrupel (progress, task, total, advance)
@@ -1950,7 +1964,7 @@ class LogValidator:
 
         return valid_dir_files
 
-    def htcompact_validation(self,file_list: list_of_logs) -> list_of_logs:
+    def htcompact_validation(self, file_list: list_of_logs) -> list_of_logs:
         """
         Function designed especially for this script.
         Filters given files for valid HTCondor log files,
@@ -2077,6 +2091,22 @@ def print_results(log_files: list_of_logs,
                   filter_keywords=list,
                   filter_extended=False,
                   **kwargs) -> str:
+    """
+    Resolves the given log fiels by the specified mode and
+    prints out the result.
+    Before doing that it will remove sections specified by the ignore_list
+    and show information specified by show_list
+    It is also possible to filter the files by specified filter keywords
+
+    :param log_files:
+    :param mode:
+    :param ignore_list:
+    :param show_list:
+    :param filter_keywords:
+    :param filter_extended:
+    :param kwargs:
+    :return:
+    """
 
     if len(filter_keywords) > 0:
         results = filter_for(log_files,
@@ -2178,7 +2208,7 @@ def run(commandline_args):
 
     :return:
     """
-    # before running make sure Global Parameters are set to normal
+    # before running make sure Global Parameters are set to default
     GlobalServant.reset()
 
     if not isinstance(commandline_args, list):
