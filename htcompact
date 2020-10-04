@@ -1289,7 +1289,7 @@ def sort_dict_by_col(node_dict, column):
     zip_data = zip(*node_dict.values())
     sorted_items = sorted(zip_data, key=lambda tup: tup[sort_index])
     for item in reversed(sorted_items):
-        for i,key in enumerate(sorted_dict.keys()):
+        for i, key in enumerate(sorted_dict.keys()):
             sorted_dict[key].append(item[i])
 
     return sorted_dict
@@ -1396,11 +1396,11 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
         exec_dict["Job types"].append("Other exceptions")
         exec_dict["Occurrence"].append(other_exception)
 
-    result_dict["execution-details"] = sort_dict_by_col(exec_dict,
-                                                            "Occurrence")
+    result_dict["execution-details"] = \
+        sort_dict_by_col(exec_dict, "Occurrence")
 
     result_dict["description"] = "The following data only implies" \
-                                      " on sucessful executed jobs"
+                                 " on sucessful executed jobs"
 
     # do not even try futher if the only files
     # given have been aborted, are still running etc.
@@ -1463,7 +1463,7 @@ def summarize(log_files: list_of_logs) -> log_inf_list:
             "Average job duration": runtime_per_node
         }
 
-        result_dict["host-nodes"] = sort_dict_by_col(cpu_dict,"Executed Jobs")
+        result_dict["host-nodes"] = sort_dict_by_col(cpu_dict, "Executed Jobs")
 
     return [result_dict]
 
@@ -1735,8 +1735,8 @@ def analysed_summary(log_files: list_of_logs) -> log_inf_list:
             "Average job duration": runtime_per_node
         }
 
-        result_dict["host-nodes"] = sort_dict_by_col(host_nodes_dict,
-                                                    "Executed Jobs")
+        result_dict["host-nodes"] = \
+            sort_dict_by_col(host_nodes_dict, "Executed Jobs")
 
         if len(term_info[6]) > 0:
             temp_err = term_info[6]
