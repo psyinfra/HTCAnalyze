@@ -1,4 +1,27 @@
 #!/usr/bin/env python3
+"""
+
+This script is basically reading information from HTCondor log files,
+by using the htcondor module
+and stores it into dictionaries.
+By that it's simple to analyse the data.
+
+The script makes the information compact and easy to under stand,
+that's the reason for the name htcompact
+
+Single logs can be read quite easily,
+but also it's possible to summarize a whole directory with logs
+to see for ex. the average runtime and usage of all the logs
+
+Exit Codes:
+ Normal Termination: 0
+ No given files: 1
+ Wrong Options or Arguments: 2
+ TypeError: 3
+ Keyboard interruption: 4
+
+"""
+
 import datetime
 import argparse
 import logging
@@ -15,41 +38,16 @@ import htcondor
 import numpy as np
 from htcondor import JobEventType as jet
 
-from modules.logvalidator import LogValidator
+from htcompact.logvalidator import LogValidator
 from rich import print as rprint, box
 from rich.progress import track, Progress, Table
 from plotille import Figure
 
-
+# typing identities
 log_inf_list = List[dict]
 list_of_logs = List[str]
 date_time = datetime.datetime
 timedelta = datetime.timedelta
-
-"""
-
-This script is basically reading information from HTCondor log files,
-by using the htcondor module
-and stores it into dictionaries.
-By that it's simple to analyse the data.
-
-The script makes the information compact and easy to under stand,
-that's the reason for the name htcompact
-
-Single logs can be read quite easily,
-but also it's possible to summarize a whole directory with logs
-to see for ex. the average runtime and usage of all the logs
-
-"""
-
-# Exit Codes
-"""
- Normal Termination: 0
- No given files: 1
- Wrong Options or Arguments: 2
- TypeError: 3
- Keyboard interruption: 4
-"""
 
 # global variables
 ALLOWED_MODES = {"a": "analyse",
@@ -1093,191 +1091,6 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
     return table
 
 
-# in order that plotille has nothing like a int converter,
-# I have to set it up manually to show the y - label in number format
-def _int_formatter(val, chars, delta, left=False):
-    """
-    Usage of this is shown here:
-    https://github.com/tammoippen/plotille/issues/11
-
-    :param val:
-    :param chars:
-    :param delta:
-    :param left:
-    :return:
-    """
-    align = '<' if left else ''
-    return '{:{}{}d}'.format(int(val), align, chars)
-
-
-def default(log_files: list_of_logs, show_list=[]) -> log_inf_list:
-    """
-    Print the default output for a given list of log files
-
-    This mode is just an easy view,
-     on what the script is actually doing.
-
-    :param log_files:
-    :return: list of dicts
-    """
-
-    logging.info('Starting the default mode')
-
-    std_log = GlobalServant.std_log
-    std_err = GlobalServant.std_err
-    std_out = GlobalServant.std_out
-
-    list_of_dicts = list()
-    # current_path = os.getcwd()
-    # go through all given logs
-    for file in track(log_files, transient=True, description="Processing..."):
-
-        result_dict = dict()
-        htcondor_log = log_to_dict(file)
-
-        job_dict = htcondor_log[0]
-        res_dict = htcondor_log[1]
-        times = htcondor_log[2]
-
-        result_dict["description"] = f"" \
-            f"[green]The job procedure of : " \
-            f"{file}[/green]"
-
-        result_dict["execution-details"] = job_dict
-
-        result_dict["times"] = times
-        if not len(res_dict) == 0:  # make sure res_df is not None
-
-            res_dict = GlobalServant.manage_thresholds(res_dict)
-
-            result_dict["all-resources"] = res_dict
-
-        if len(show_list) > 0:
-            job_spec_id = get_job_spec_id(file, std_log)
-            if 'std-err' in show_list:
-                result_dict['stderr'] = htcondor_stderr(
-                    job_spec_id + std_err, std_err)
-            if 'std-out' in show_list:
-                result_dict['stdout'] = htcondor_stdout(
-                    job_spec_id + std_out, std_out)
-
-        list_of_dicts.append(result_dict)
-
-    if len(list_of_dicts) == 0:
-        rprint("[yellow]Nothing found,"
-               " please use \"man htcompact\" "
-               "or \"htcompact -h\" for help[/yellow]", end="")
-
-    return list_of_dicts
-
-
-def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
-    """
-
-    :param log_files: list of valid HTCondor log files
-    :return: list with information of each log file
-    """
-    logging.info('Starting the analyser mode')
-
-    if len(log_files) == 0:
-        return "No files to analyse"
-    elif len(log_files) > 5 and not GlobalServant.redirecting_stdout:
-        print(
-            "More than five files are given, "
-            "this mode is meant to be used for single job analysis.\n"
-            "This will change nothing,"
-            " but you should rather do it just for a file one by one")
-        if not GlobalServant.reading_stdin:
-            x = input("Want to continue (y/n): ")
-            if x != "y":
-                rprint('[red]Process stopped[/red]')
-                sys.exit(0)
-
-    result_list = list()
-
-    std_log = GlobalServant.std_log
-    std_err = GlobalServant.std_err
-    std_out = GlobalServant.std_out
-
-    # create progressbar, do not redirect output
-    with Progress(transient=True, redirect_stdout=False,
-                  redirect_stderr=False) as progress:
-
-        task = progress.add_task("Analysing...", total=len(log_files))
-
-        for file in log_files:
-            progress.update(task, advance=1)
-            result_dict = dict()
-
-            logging.debug(f"Analysing the HTCondor log file: {file}")
-            result_dict["description"] = f"[green]" \
-                f"Job analysis of: {file}[/green]"
-
-            job_dict, res_dict, time_dict, \
-                ram_history, occurred_errors = log_to_dict(file)
-            if len(job_dict) != 0:
-                result_dict["execution-details"] = job_dict
-
-            if len(time_dict) > 0:
-                result_dict["times"] = time_dict
-
-            if len(res_dict) > 0:
-                result_dict["all-resources"] = \
-                    GlobalServant.manage_thresholds(res_dict)
-
-            # show HTCondor errors
-            if len(occurred_errors) > 0:
-                result_dict["errors"] = occurred_errors
-
-            # managing the ram history
-            if len(ram_history) > 0:
-                ram = np.array(ram_history.get('Image size updates'))
-                dates = np.array(ram_history.get('Dates'))
-
-                if len(ram) > 1:
-
-                    fig = Figure()
-                    fig.width = 55
-                    fig.height = 15
-                    fig.set_x_limits(min_=min(dates))
-                    min_ram = int(min(ram))  # raises an error if not casted
-                    fig.set_y_limits(min_=min_ram)
-                    fig.y_label = "Usage"
-                    fig.x_label = "Time"
-
-                    # this will use the self written function _
-                    # num_formatter, to convert the y-label to int values
-                    fig.register_label_formatter(float, _int_formatter)
-                    fig.plot(dates, ram, lc='green', label="Continuous Graph")
-                    fig.scatter(dates, ram, lc='red', label="Single Values")
-
-                    # if redirected, the Legend is useless
-                    if GlobalServant.redirecting_stdout:
-                        result_dict["ram-history"] = fig.show()
-                    else:
-                        result_dict["ram-history"] = fig.show(legend=True)
-                else:
-                    result_dict["ram-history"] = f"" \
-                        f"Single memory update found:\n" \
-                        f"Memory usage on the {dates[0]}" \
-                        f" was updatet to {ram[0]} MB"
-
-            if len(show_list) > 0:
-                job_spec_id = get_job_spec_id(file, std_log)
-                if 'std-err' in show_list:
-                    result_dict['stderr'] = htcondor_stderr(
-                        job_spec_id + std_err,
-                        std_err)
-                if 'std-out' in show_list:
-                    result_dict['stdout'] = htcondor_stdout(
-                        job_spec_id + std_out,
-                        std_out)
-
-            result_list.append(result_dict)
-
-    return result_list
-
-
 def sort_dict_by_col(dictionary, column):
     """
     Sort a dictionary by the given column.
@@ -1301,589 +1114,22 @@ def sort_dict_by_col(dictionary, column):
     return sorted_dict
 
 
-def summarize(log_files: list_of_logs) -> log_inf_list:
+def _int_formatter(val, chars, delta, left=False):
     """
-    Summarises all used resources and the runtime in total and average
-    for normal executed jobs
+    Usage of this is shown here:
+    https://github.com/tammoippen/plotille/issues/11
 
-    Runs through the log files via the log_to_dict function
+    in order that plotille has nothing like a int converter,
+    I have to set it up manually to show the y - label in number format
 
+    :param val:
+    :param chars:
+    :param delta:
+    :param left:
     :return:
     """
-
-    logging.info('Starting the summarizer mode')
-
-    valid_files = len(log_files)
-    # no given files
-    if valid_files == 0:
-        return "No files to summarize"
-
-    # allocated all diffrent datatypes, easier to handle
-    result_dict = dict()
-
-    aborted_files = 0
-    still_running = 0
-    error_reading_files = 0
-    other_exception = 0
-    normal_runtime = datetime.timedelta()
-    host_nodes = dict()
-
-    total_usages = np.array([0, 0, 0], dtype=float)
-    total_requested = np.array([0, 0, 0], dtype=float)
-    total_allocated = np.array([0, 0, 0], dtype=float)
-
-    for file in track(log_files, transient=True, description="Summarizing..."):
-        try:
-            job_dict, res_dict, time_dict, _, _ = log_to_dict(file)
-
-            # continue if Process is still running
-            if job_dict['Execution details'][0].__eq__("Process is"):
-                still_running += 1
-                continue
-            elif job_dict['Execution details'][0].__eq__("Process was"):
-                aborted_files += 1
-                continue
-            elif job_dict['Execution details'][0].__eq__("Error"):
-                error_reading_files += 1
-                continue
-            elif len(job_dict) == 0:
-                logging.error(
-                    "if this even get's printed out, more work is needed")
-                rprint(f"[orange3]Process of {file} is strange, \n"
-                       f"don't know how to handle this yet[/orange3]")
-                other_exception += 1
-                continue
-
-            if "Total runtime" in time_dict["Dates and times"]:
-                normal_runtime += time_dict['Values'][3]
-            host = job_dict['Values'][2]
-            if host in host_nodes:
-                host_nodes[host][0] += 1
-                host_nodes[host][1] += time_dict['Values'][3]
-            else:
-                host_nodes[host] = [1, time_dict['Values'][3]]
-
-            total_usages += np.nan_to_num(res_dict["Usage"])
-            total_requested += np.nan_to_num(res_dict["Requested"])
-            total_allocated += np.nan_to_num(res_dict["Allocated"])
-
-        # Error ocurres when Job was aborted
-        except ValueError or KeyError as err:
-            logging.exception(err)
-            rprint(f"[red]Error with summarizing: {file}[/red]")
-            continue
-        except TypeError as err:
-            logging.exception(err)
-            rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-            sys.exit(3)
-
-    # calc difference of successful executed jobs
-    n = valid_files - aborted_files - still_running\
-        - other_exception - error_reading_files
-
-    average_runtime = normal_runtime / n if n != 0 else normal_runtime
-    average_runtime = datetime.timedelta(days=average_runtime.days,
-                                         seconds=average_runtime.seconds)
-
-    exec_dict = {
-        "Job types": ["normal executed jobs"],
-        "Occurrence": [n]
-    }
-    if aborted_files > 0:
-        exec_dict["Job types"].append("Aborted jobs")
-        exec_dict["Occurrence"].append(aborted_files)
-    if still_running > 0:
-        exec_dict["Job types"].append("Still running jobs")
-        exec_dict["Occurrence"].append(still_running)
-    if error_reading_files > 0:
-        exec_dict["Job types"].append("Error while reading")
-        exec_dict["Occurrence"].append(error_reading_files)
-    if other_exception > 0:
-        exec_dict["Job types"].append("Other exceptions")
-        exec_dict["Occurrence"].append(other_exception)
-
-    result_dict["execution-details"] = \
-        sort_dict_by_col(exec_dict, "Occurrence")
-
-    result_dict["description"] = "The following data only implies" \
-                                 " on sucessful executed jobs"
-
-    # do not even try futher if the only files
-    # given have been aborted, are still running etc.
-    if n == 0:
-        return [result_dict]
-
-    create_desc = "The following data only implies on sucessful executed jobs"
-    if aborted_files > 0 or still_running > 0 \
-            or other_exception > 0 or error_reading_files:
-        create_desc += "\n[light_grey]" \
-            "Use the analysed-summary mode" \
-            " for more details about the other jobs" \
-            "[/light_grey]"
-
-    result_dict["summation-description"] = create_desc
-
-    time_desc_list = list()
-    time_value_list = list()
-    if normal_runtime != datetime.timedelta(0, 0, 0):
-        time_desc_list.append("Total runtime")
-        time_value_list.append(normal_runtime)
-    if average_runtime:
-        time_desc_list.append("Average runtime")
-        time_value_list.append(average_runtime)
-
-    result_dict["times"] = {
-        "Times": time_desc_list,
-        "Values": time_value_list
-    }
-
-    if n != 0:  # do nothing, if all valid jobs were aborted
-
-        average_dict = {
-            "Resources": ['Average Cpu', 'Average Disk (KB)',
-                          'Average Memory (MB)'],
-            "Usage": np.round(total_usages / n, 4),
-            "Requested": np.round(total_requested / n, 2),
-            "Allocated": np.round(total_allocated / n, 2)
-
-        }
-
-        average_dict = GlobalServant.manage_thresholds(average_dict)
-
-        result_dict["all-resources"] = average_dict
-
-    if len(host_nodes) > 0:
-
-        executed_jobs = list()
-        runtime_per_node = list()
-        for val in host_nodes.values():
-            executed_jobs.append(val[0])
-            average_job_duration = val[1] / val[0]
-            runtime_per_node.append(
-                datetime.timedelta(average_job_duration.days,
-                                   average_job_duration.seconds))
-
-        cpu_dict = {
-            "Host Nodes": list(host_nodes.keys()),
-            "Executed Jobs": executed_jobs,
-            "Average job duration": runtime_per_node
-        }
-
-        result_dict["host-nodes"] = sort_dict_by_col(cpu_dict, "Executed Jobs")
-
-    return [result_dict]
-
-
-def analysed_summary(log_files: list_of_logs) -> log_inf_list:
-    """
-        analyse the summarized log files,
-        this is meant to give the ultimate output
-        about every single log event in average etc.
-
-        Runs through the log files via the log_to_dict function
-
-        :return: string
-        """
-
-    logging.info('Starting the analysed summary mode')
-
-    valid_files = len(log_files)
-    # no given files
-    if valid_files == 0:
-        return "No files for the analysed summary"
-
-    # fill this dict with information by the execution type of the jobs
-    all_files = dict()
-    list_of_gpu_names = list()  # list of gpus found
-    occurrence_dict = dict()
-
-    for file in track(log_files, transient=True, description="Summarizing..."):
-
-        (job_dict, res_dict, time_dict,
-         ram_history, occurred_errors) = log_to_dict(file)
-
-        if len(occurred_errors) > 0:
-            create_file_list = list()
-            for i in range(len(occurred_errors["Event Number"])):
-                create_file_list.append(file)
-            occurred_errors['File'] = create_file_list
-
-        refactor_job_dict = dict(
-            zip(job_dict["Execution details"], job_dict["Values"]))
-        job_keys = list(refactor_job_dict.keys())
-        to_host = None
-        if "Executing on" in job_keys:
-            to_host = refactor_job_dict["Executing on"]
-
-        term_type = job_dict["Values"][0]
-
-        # if time dict exists
-        time_keys = list()
-        if time_dict:
-            refactor_time_dict = dict(
-                zip(time_dict["Dates and times"], time_dict["Values"]))
-            time_keys = list(refactor_time_dict.keys())
-        if "Waiting time" in time_keys:
-            waiting_time = refactor_time_dict["Waiting time"]
-        else:
-            waiting_time = datetime.timedelta()
-        if "Execution runtime" in time_keys:
-            runtime = refactor_time_dict["Execution runtime"]
-        else:
-            runtime = datetime.timedelta()
-        if "Total runtime" in time_keys:
-            total_time = refactor_time_dict["Total runtime"]
-        else:
-            total_time = datetime.timedelta()
-
-        try:
-            if term_type in all_files:
-                # logging.debug(all_files[termination_type])
-                all_files[term_type][0] += 1  # count number
-                all_files[term_type][1] += waiting_time
-                all_files[term_type][2] += runtime
-                all_files[term_type][3] += total_time
-
-                # add errors
-                if len(occurred_errors) > 0:
-                    for key in occurred_errors.keys():
-                        # extend if already existent
-                        if key in all_files[term_type][6].keys():
-                            all_files[term_type][6][key].extend(
-                                occurred_errors[key])
-                        else:
-                            all_files[term_type][6] = occurred_errors
-
-                if not len(all_files[term_type][4]) == 0:
-                    # add usages
-
-                    all_files[term_type][4]["Usage"] += np.nan_to_num(
-                        res_dict["Usage"])
-                    # add requested
-                    all_files[term_type][4][
-                        "Requested"] += np.nan_to_num(res_dict["Requested"])
-                    # allocated
-                    all_files[term_type][4][
-                        "Allocated"] += np.nan_to_num(res_dict["Allocated"])
-
-                # add cpu
-                if to_host is not None:
-                    # cpu known ???
-                    if to_host in all_files[term_type][5].keys():
-                        all_files[term_type][5][to_host][0] += 1
-                        all_files[term_type][5][to_host][
-                            1] += total_time
-                    else:
-                        all_files[term_type][5][to_host] = [1, total_time]
-                elif "Submitted from" in job_dict["Execution details"]:
-                    # other waiting jobs ???
-                    if 'Waiting for execution' in \
-                            all_files[term_type][5].keys():
-                        all_files[term_type][5][
-                            'Waiting for execution'][0] += 1
-                        all_files[term_type][5][
-                            'Waiting for execution'][1] += total_time
-                    elif "Aborted before execution" in \
-                            all_files[term_type][5].keys():
-                        all_files[term_type][5][
-                            'Aborted before execution'][0] += 1
-                        all_files[term_type][5][
-                            'Aborted before execution'][1] += total_time
-                    else:
-                        count_host_nodes = dict()
-                        if "Aborted" in term_type:
-                            count_host_nodes['Aborted before'
-                                             ' execution'] = [1, total_time]
-                        else:
-                            count_host_nodes['Waiting for'
-                                             ' execution'] = [1, total_time]
-                        all_files[term_type][5] = count_host_nodes
-                else:
-                    # other aborted before submission jobs ???
-                    if 'Aborted before submission' in \
-                            all_files[term_type][5].keys():
-                        all_files[term_type][5][
-                            'Aborted before submission'][0] += 1
-                        all_files[term_type][5][
-                            'Aborted before submission'][1] += total_time
-                    else:
-                        count_host_nodes = dict()
-                        count_host_nodes['Aborted before '
-                                         'submission'] = [1, total_time]
-                        all_files[term_type][5] = count_host_nodes
-
-            # else new entry
-            else:
-                # if host exists
-                if "Executing on" in job_dict["Execution details"]:
-                    # to_host = job_dict["Values"][2]
-                    count_host_nodes = dict()
-                    count_host_nodes[to_host] = [1, total_time]
-                # else if still waiting
-                elif "Submitted from" in job_dict["Execution details"]:
-                    count_host_nodes = dict()
-                    if "Aborted" in term_type:
-                        count_host_nodes['Aborted before'
-                                         ' execution'] = [1, total_time]
-                    else:
-                        count_host_nodes['Waiting for'
-                                         ' execution'] = [1, total_time]
-                # else aborted before submission ?
-                else:
-                    count_host_nodes = dict()
-                    count_host_nodes['Aborted before'
-                                     ' submission'] = [1, total_time]
-
-                # convert nan values to 0
-                if len(res_dict) > 0:
-                    res_dict["Usage"] = np.nan_to_num(res_dict["Usage"])
-                    res_dict["Requested"] = np.nan_to_num(
-                        res_dict["Requested"])
-                    res_dict["Allocated"] = np.nan_to_num(
-                        res_dict["Allocated"])
-
-                all_files[term_type] = [1,
-                                        waiting_time,
-                                        runtime,
-                                        total_time,
-                                        res_dict,
-                                        count_host_nodes,
-                                        occurred_errors]
-
-        # Error ocurres when Job was aborted
-        except ValueError or KeyError as err:
-            logging.exception(err)
-            logging.debug(f"[red]Error with summarizing: {file}[/red]")
-            rprint(f"[red]Error with summarizing: {file}[/red]")
-            continue
-        except TypeError as err:
-            logging.exception(err)
-            logging.debug(f"[red]Error with summarizing: {file}[/red]")
-            rprint(f"[red] {err}[/red]")
-            sys.exit(3)
-
-    # Now put everything together
-    result_list = list()
-    for term_state in all_files:
-        term_info = all_files[term_state]
-        result_dict = dict()
-
-        # differentiate between terminated and running processes
-        if "Error while reading" in term_state:
-            result_dict["description"] = "" \
-                "##################################################\n" \
-                "## All files, that caused an [red]" \
-                "error while reading[/red]\n" \
-                "##################################################"
-        elif term_state not in ["Waiting", "Executing"]:
-            result_dict["description"] = f"" \
-                f"##################################################\n" \
-                f"## All files with the termination state: {term_state}\n" \
-                f"##################################################"
-        else:
-            result_dict["description"] = f"" \
-                f"###########################################\n" \
-                f"## All files, that are currently {term_state}\n" \
-                f"###########################################"
-
-        n = int(term_info[0])
-        occurrence_dict[term_state] = str(n)
-
-        times = np.array([term_info[1], term_info[2], term_info[3]])
-        av_times = times / n
-        format_av_times = [
-            datetime.timedelta(days=time.days, seconds=time.seconds) for time
-            in av_times]
-
-        time_dict = {
-            "Times": ["Waiting time", "Runtime", "Total"],
-            "Average": format_av_times,
-            "Total": times
-        }
-
-        result_dict["times"] = time_dict
-
-        if not len(term_info[4]) == 0:
-            total_resources_dict = term_info[4]
-            avg_dict = {
-                'Resources': ['Average Cpu', ' Average Disk (KB)',
-                              'Average Allocated'],
-                'Usage': np.round(
-                    np.array(total_resources_dict['Usage']) / term_info[0],
-                    4).tolist(),
-                'Requested': np.round(
-                    np.array(total_resources_dict['Requested']) / term_info[0],
-                    2).tolist(),
-                'Allocated': np.round(
-                    np.array(total_resources_dict['Allocated']) / term_info[0],
-                    2).tolist()
-            }
-            if 'Assigned' in total_resources_dict.keys():
-                avg_dict['Resources'].append('Gpu')
-                avg_dict['Assigned'] = ['', '', '',
-                                        ", ".join(list_of_gpu_names)]
-
-            avg_dict = GlobalServant.manage_thresholds(avg_dict)
-            result_dict["all-resources"] = avg_dict
-
-        executed_jobs = list()
-        runtime_per_node = list()
-        for val in term_info[5].values():
-            executed_jobs.append(val[0])
-            average_job_duration = val[1] / val[0]
-            runtime_per_node.append(
-                datetime.timedelta(average_job_duration.days,
-                                   average_job_duration.seconds))
-
-        host_nodes_dict = {
-            "Host Nodes": list(term_info[5].keys()),
-            "Executed Jobs": executed_jobs,
-            "Average job duration": runtime_per_node
-        }
-
-        result_dict["host-nodes"] = \
-            sort_dict_by_col(host_nodes_dict, "Executed Jobs")
-
-        if len(term_info[6]) > 0:
-            temp_err = term_info[6]
-            del temp_err["Reason"]  # remove reason, cause thats just too much
-            result_dict["errors"] = temp_err
-
-        result_list.append(result_dict)
-
-    new_occ = {
-        "Termination type": list(occurrence_dict.keys()),
-        "Appearance": list(occurrence_dict.values())
-    }
-    sorted_occ = sort_dict_by_col(new_occ, "Appearance")
-
-    result_list.insert(0, {"execution-details": sorted_occ})
-
-    return result_list
-
-
-# search in the files for the keywords
-def filter_for(log_files: list_of_logs,
-               keywords: list,
-               extend=False,
-               mode=None,
-               show_list=[]) -> log_inf_list:
-    """
-    Filter for a list of keywords, which can be extended
-    and print out every file which matches the pattern (not case sensitive)
-    The filtered files can be analysed summarise, etc afterwards,
-    else this function will return None
-
-    :param log_files:
-    :param keywords:
-    :param extend:
-    :return:
-        list with dicts depending on the used mode,
-        to forward the filtered files,
-
-        None if no forwarding is set
-    """
-    logging.info('Starting the filter mode')
-
-    # if the keywords are given as a string, try to create a list
-    if isinstance(keywords, list):
-        keyword_list = keywords
-    else:
-        logging.debug(
-            f"Filter mode only accepts a string"
-            f" or list with keywords, not {keywords}")
-        raise_type_error("Expecting a list or a string")
-
-    # if extend is set, keywords like err will
-    # also look for keywords like warn exception, aborted, etc.
-    if extend:  # apply some rules
-        # the error list
-        err_list = ["err", "warn", "exception", "aborted", "abortion",
-                    "abnormal", "fatal"]
-
-        # remove keyword if already in err_list
-        for i in range(len(keyword_list)):
-            if (keyword_list[i]).lower() in err_list:
-                keyword_list.remove(keyword_list[i])
-
-        keyword_list.extend(err_list)  # extend search
-
-        rprint("[green]Keyword List was extended,"
-               " now search for these keywords:[/green]",
-               keyword_list)
-    else:
-        rprint("[green]Search for these keywords:[/green]", keyword_list)
-
-    if len(keyword_list) == 1 and keyword_list[0] == "":
-        logging.debug("Empty filter, don't know what to do")
-        return "[yellow]" \
-            "Don't know what to do with an empty filter,\n" \
-            "if you activate the filter mode in the config file, \n" \
-            "please add a [filter] section with the filter" \
-            "_keywords = your_filter[/yellow]"
-
-    logging.debug(f"These are the keywords to look for: {keyword_list}")
-
-    # now search
-    found_at_least_one = False
-    found_logs = []
-    for file in track(log_files, transient=True, description="Filtering..."):
-        found = False
-        with open(file, "r") as read_file:
-            for line in read_file:
-                for keyword in keyword_list:
-                    if re.search(keyword.lower(), line.lower()):
-                        if not found_at_least_one:
-                            print("Matches:")
-                        rprint(f"[grey74]{keyword} in:\t{file}[/grey74] ")
-                        found = True
-                        found_at_least_one = True
-                        break
-                if found:
-                    found_logs.append(file)
-                    break
-
-    return_dicts = None
-    if not found_at_least_one:
-        rprint("[red]Unable to find these keywords:[/red]", keyword_list)
-        rprint("[red]maybe try again with similar expressions[/red]")
-
-    elif mode is not None:
-        print(f"Total count: {len(found_logs)}")
-        if mode.__eq__("default"):
-            return_dicts = default(found_logs, show_list)
-        elif mode.__eq__("analysed-summary"):
-            rprint("[magenta]Give an analysed summary"
-                   " for these files[/magenta]")
-            return_dicts = analysed_summary(found_logs)
-        elif mode.__eq__("summarize"):
-            rprint("[magenta]Summarize these files[/magenta]")
-            return_dicts = summarize(found_logs)
-        elif mode.__eq__("analyse"):
-            rprint("[magenta]Analyse these files[/magenta]")
-            return_dicts = analyse(found_logs, show_list)
-    # if not reading from stdin or redirected
-    elif not GlobalServant.reading_stdin \
-            and not GlobalServant.redirecting_stdout:
-        rprint("[blue]Want do do more?[/blue]")
-        x = input(
-            "default(d), summarize(s), analyse(a),"
-            " analysed summary(as), exit(e): ")
-        if x == "d":
-            return_dicts = default(found_logs, show_list)
-        elif x == "s":
-            return_dicts = summarize(found_logs)
-        elif x == "a":
-            return_dicts = analyse(found_logs, show_list)
-        elif x == "as":
-            return_dicts = analysed_summary(found_logs)
-        elif x == "e":
-            sys.exit(0)
-        else:
-            print('Not a valid argument, quitting ...')
-            sys.exit(0)
-
-    return return_dicts
+    align = '<' if left else ''
+    return '{:{}{}d}'.format(int(val), align, chars)
 
 
 def setup_logging_tool(log_file=None, verbose_mode=False):
@@ -1938,6 +1184,767 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
         log = logging.getLogger()
         log.setLevel(logging.DEBUG)
         log.addHandler(stdout_handler)
+        sys.exit(0)
+
+
+class HTCompact:
+
+    def __init__(self, std_log, std_err, std_out, show_list=None):
+        self.std_log = std_log
+        self.std_err = std_err
+        self.std_out = std_out
+        if show_list is None:
+            self.show_list = []
+        else:
+            self.show_list = show_list
+
+    def default(self, log_files: list_of_logs) -> log_inf_list:
+        """
+        Print the default output for a given list of log files
+
+        This mode is just an easy view,
+         on what the script is actually doing.
+
+        :param log_files:
+        :return: list of dicts
+        """
+
+        logging.info('Starting the default mode')
+
+        list_of_dicts = list()
+        # current_path = os.getcwd()
+        # go through all given logs
+        for file in track(log_files, transient=True,
+                          description="Processing..."):
+
+            result_dict = dict()
+            htcondor_log = log_to_dict(file)
+
+            job_dict = htcondor_log[0]
+            res_dict = htcondor_log[1]
+            times = htcondor_log[2]
+
+            result_dict["description"] = f"" \
+                f"[green]The job procedure of : " \
+                f"{file}[/green]"
+
+            result_dict["execution-details"] = job_dict
+
+            result_dict["times"] = times
+            if not len(res_dict) == 0:  # make sure res_df is not None
+
+                res_dict = GlobalServant.manage_thresholds(res_dict)
+
+                result_dict["all-resources"] = res_dict
+
+            if len(self.show_list) > 0:
+                job_spec_id = get_job_spec_id(file, self.std_log)
+                if 'std-err' in self.show_list:
+                    result_dict['stderr'] = htcondor_stderr(
+                        job_spec_id + self.std_err, self.std_err)
+                if 'std-out' in self.show_list:
+                    result_dict['stdout'] = htcondor_stdout(
+                        job_spec_id + self.std_out, self.std_out)
+
+            list_of_dicts.append(result_dict)
+
+        if len(list_of_dicts) == 0:
+            rprint("[yellow]Nothing found,"
+                   " please use \"man htcompact\" "
+                   "or \"htcompact -h\" for help[/yellow]", end="")
+
+        return list_of_dicts
+
+    def analyse(self, log_files: list_of_logs) -> log_inf_list:
+        """
+
+        :param log_files: list of valid HTCondor log files
+        :return: list with information of each log file
+        """
+        logging.info('Starting the analyser mode')
+
+        if len(log_files) == 0:
+            return "No files to analyse"
+        elif len(log_files) > 5 and not GlobalServant.redirecting_stdout:
+            print(
+                "More than five files are given, "
+                "this mode is meant to be used for single job analysis.\n"
+                "This will change nothing,"
+                " but you should rather do it just for a file one by one")
+            if not GlobalServant.reading_stdin:
+                x = input("Want to continue (y/n): ")
+                if x != "y":
+                    rprint('[red]Process stopped[/red]')
+                    sys.exit(0)
+
+        result_list = list()
+
+        # create progressbar, do not redirect output
+        with Progress(transient=True, redirect_stdout=False,
+                      redirect_stderr=False) as progress:
+
+            task = progress.add_task("Analysing...", total=len(log_files))
+
+            for file in log_files:
+                progress.update(task, advance=1)
+                result_dict = dict()
+
+                logging.debug(f"Analysing the HTCondor log file: {file}")
+                result_dict["description"] = f"[green]" \
+                    f"Job analysis of: {file}[/green]"
+
+                job_dict, res_dict, time_dict, \
+                    ram_history, occurred_errors = log_to_dict(file)
+                if len(job_dict) != 0:
+                    result_dict["execution-details"] = job_dict
+
+                if len(time_dict) > 0:
+                    result_dict["times"] = time_dict
+
+                if len(res_dict) > 0:
+                    result_dict["all-resources"] = \
+                        GlobalServant.manage_thresholds(res_dict)
+
+                # show HTCondor errors
+                if len(occurred_errors) > 0:
+                    result_dict["errors"] = occurred_errors
+
+                # managing the ram history
+                if len(ram_history) > 0:
+                    ram = np.array(ram_history.get('Image size updates'))
+                    dates = np.array(ram_history.get('Dates'))
+
+                    if len(ram) > 1:
+
+                        fig = Figure()
+                        fig.width = 55
+                        fig.height = 15
+                        fig.set_x_limits(min_=min(dates))
+                        min_ram = int(min(ram))  # raises error if not casted
+                        fig.set_y_limits(min_=min_ram)
+                        fig.y_label = "Usage"
+                        fig.x_label = "Time"
+
+                        # this will use the self written function _
+                        # num_formatter, to convert the y-label to int values
+                        fig.register_label_formatter(float, _int_formatter)
+                        fig.plot(dates, ram, lc='green',
+                                 label="Continuous Graph")
+                        fig.scatter(dates, ram, lc='red',
+                                    label="Single Values")
+
+                        # if redirected, the Legend is useless
+                        if GlobalServant.redirecting_stdout:
+                            result_dict["ram-history"] = fig.show()
+                        else:
+                            result_dict["ram-history"] = fig.show(legend=True)
+                    else:
+                        result_dict["ram-history"] = f"" \
+                            f"Single memory update found:\n" \
+                            f"Memory usage on the {dates[0]}" \
+                            f" was updatet to {ram[0]} MB"
+
+                if len(self.show_list) > 0:
+                    job_spec_id = get_job_spec_id(file, self.std_log)
+                    if 'std-err' in self.show_list:
+                        result_dict['stderr'] = htcondor_stderr(
+                            job_spec_id + self.std_err,
+                            self.std_err)
+                    if 'std-out' in self.show_list:
+                        result_dict['stdout'] = htcondor_stdout(
+                            job_spec_id + self.std_out,
+                            self.std_out)
+
+                result_list.append(result_dict)
+
+        return result_list
+
+    def summarize(self, log_files: list_of_logs) -> log_inf_list:
+        """
+        Summarises all used resources and the runtime in total and average
+        for normal executed jobs
+
+        Runs through the log files via the log_to_dict function
+
+        :return:
+        """
+
+        logging.info('Starting the summarizer mode')
+
+        valid_files = len(log_files)
+        # no given files
+        if valid_files == 0:
+            return "No files to summarize"
+
+        # allocated all diffrent datatypes, easier to handle
+        result_dict = dict()
+
+        aborted_files = 0
+        still_running = 0
+        error_reading_files = 0
+        other_exception = 0
+        normal_runtime = datetime.timedelta()
+        host_nodes = dict()
+
+        total_usages = np.array([0, 0, 0], dtype=float)
+        total_requested = np.array([0, 0, 0], dtype=float)
+        total_allocated = np.array([0, 0, 0], dtype=float)
+
+        for file in track(log_files, transient=True,
+                          description="Summarizing..."):
+            try:
+                job_dict, res_dict, time_dict, _, _ = log_to_dict(file)
+
+                # continue if Process is still running
+                if job_dict['Execution details'][0].__eq__("Process is"):
+                    still_running += 1
+                    continue
+                elif job_dict['Execution details'][0].__eq__("Process was"):
+                    aborted_files += 1
+                    continue
+                elif job_dict['Execution details'][0].__eq__("Error"):
+                    error_reading_files += 1
+                    continue
+                elif len(job_dict) == 0:
+                    logging.error(
+                        "if this even get's printed out, more work is needed")
+                    rprint(f"[orange3]Process of {file} is strange, \n"
+                           f"don't know how to handle this yet[/orange3]")
+                    other_exception += 1
+                    continue
+
+                if "Total runtime" in time_dict["Dates and times"]:
+                    normal_runtime += time_dict['Values'][3]
+                host = job_dict['Values'][2]
+                if host in host_nodes:
+                    host_nodes[host][0] += 1
+                    host_nodes[host][1] += time_dict['Values'][3]
+                else:
+                    host_nodes[host] = [1, time_dict['Values'][3]]
+
+                total_usages += np.nan_to_num(res_dict["Usage"])
+                total_requested += np.nan_to_num(res_dict["Requested"])
+                total_allocated += np.nan_to_num(res_dict["Allocated"])
+
+            # Error ocurres when Job was aborted
+            except ValueError or KeyError as err:
+                logging.exception(err)
+                rprint(f"[red]Error with summarizing: {file}[/red]")
+                continue
+            except TypeError as err:
+                logging.exception(err)
+                rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+                sys.exit(3)
+
+        # calc difference of successful executed jobs
+        n = valid_files - aborted_files - still_running \
+            - other_exception - error_reading_files
+
+        average_runtime = normal_runtime / n if n != 0 else normal_runtime
+        average_runtime = datetime.timedelta(days=average_runtime.days,
+                                             seconds=average_runtime.seconds)
+
+        exec_dict = {
+            "Job types": ["normal executed jobs"],
+            "Occurrence": [n]
+        }
+        if aborted_files > 0:
+            exec_dict["Job types"].append("Aborted jobs")
+            exec_dict["Occurrence"].append(aborted_files)
+        if still_running > 0:
+            exec_dict["Job types"].append("Still running jobs")
+            exec_dict["Occurrence"].append(still_running)
+        if error_reading_files > 0:
+            exec_dict["Job types"].append("Error while reading")
+            exec_dict["Occurrence"].append(error_reading_files)
+        if other_exception > 0:
+            exec_dict["Job types"].append("Other exceptions")
+            exec_dict["Occurrence"].append(other_exception)
+
+        result_dict["execution-details"] = \
+            sort_dict_by_col(exec_dict, "Occurrence")
+
+        result_dict["description"] = "The following data only implies" \
+                                     " on sucessful executed jobs"
+
+        # do not even try futher if the only files
+        # given have been aborted, are still running etc.
+        if n == 0:
+            return [result_dict]
+
+        create_desc = "The following data implies" \
+                      " only on sucessful executed jobs"
+        if aborted_files > 0 or still_running > 0 \
+                or other_exception > 0 or error_reading_files:
+            create_desc += "\n[light_grey]" \
+                           "Use the analysed-summary mode" \
+                           " for more details about the other jobs" \
+                           "[/light_grey]"
+
+        result_dict["summation-description"] = create_desc
+
+        time_desc_list = list()
+        time_value_list = list()
+        if normal_runtime != datetime.timedelta(0, 0, 0):
+            time_desc_list.append("Total runtime")
+            time_value_list.append(normal_runtime)
+        if average_runtime:
+            time_desc_list.append("Average runtime")
+            time_value_list.append(average_runtime)
+
+        result_dict["times"] = {
+            "Times": time_desc_list,
+            "Values": time_value_list
+        }
+
+        if n != 0:  # do nothing, if all valid jobs were aborted
+
+            average_dict = {
+                "Resources": ['Average Cpu', 'Average Disk (KB)',
+                              'Average Memory (MB)'],
+                "Usage": np.round(total_usages / n, 4),
+                "Requested": np.round(total_requested / n, 2),
+                "Allocated": np.round(total_allocated / n, 2)
+
+            }
+
+            average_dict = GlobalServant.manage_thresholds(average_dict)
+
+            result_dict["all-resources"] = average_dict
+
+        if len(host_nodes) > 0:
+
+            executed_jobs = list()
+            runtime_per_node = list()
+            for val in host_nodes.values():
+                executed_jobs.append(val[0])
+                average_job_duration = val[1] / val[0]
+                runtime_per_node.append(
+                    datetime.timedelta(average_job_duration.days,
+                                       average_job_duration.seconds))
+
+            cpu_dict = {
+                "Host Nodes": list(host_nodes.keys()),
+                "Executed Jobs": executed_jobs,
+                "Average job duration": runtime_per_node
+            }
+
+            result_dict["host-nodes"] = sort_dict_by_col(cpu_dict,
+                                                         "Executed Jobs")
+
+        return [result_dict]
+
+    def analysed_summary(self, log_files: list_of_logs) -> log_inf_list:
+        """
+            analyse the summarized log files,
+            this is meant to give the ultimate output
+            about every single log event in average etc.
+
+            Runs through the log files via the log_to_dict function
+
+            :return: string
+            """
+
+        logging.info('Starting the analysed summary mode')
+
+        valid_files = len(log_files)
+        # no given files
+        if valid_files == 0:
+            return "No files for the analysed summary"
+
+        # fill this dict with information by the execution type of the jobs
+        all_files = dict()
+        list_of_gpu_names = list()  # list of gpus found
+        occurrence_dict = dict()
+
+        for file in track(log_files, transient=True,
+                          description="Summarizing..."):
+
+            (job_dict, res_dict, time_dict,
+             ram_history, occurred_errors) = log_to_dict(file)
+
+            if len(occurred_errors) > 0:
+                create_file_list = list()
+                for i in range(len(occurred_errors["Event Number"])):
+                    create_file_list.append(file)
+                occurred_errors['File'] = create_file_list
+
+            refactor_job_dict = dict(
+                zip(job_dict["Execution details"], job_dict["Values"]))
+            job_keys = list(refactor_job_dict.keys())
+            to_host = None
+            if "Executing on" in job_keys:
+                to_host = refactor_job_dict["Executing on"]
+
+            term_type = job_dict["Values"][0]
+
+            # if time dict exists
+            time_keys = list()
+            if time_dict:
+                refactor_time_dict = dict(
+                    zip(time_dict["Dates and times"], time_dict["Values"]))
+                time_keys = list(refactor_time_dict.keys())
+            if "Waiting time" in time_keys:
+                waiting_time = refactor_time_dict["Waiting time"]
+            else:
+                waiting_time = datetime.timedelta()
+            if "Execution runtime" in time_keys:
+                runtime = refactor_time_dict["Execution runtime"]
+            else:
+                runtime = datetime.timedelta()
+            if "Total runtime" in time_keys:
+                total_time = refactor_time_dict["Total runtime"]
+            else:
+                total_time = datetime.timedelta()
+
+            try:
+                if term_type in all_files:
+                    # logging.debug(all_files[termination_type])
+                    all_files[term_type][0] += 1  # count number
+                    all_files[term_type][1] += waiting_time
+                    all_files[term_type][2] += runtime
+                    all_files[term_type][3] += total_time
+
+                    # add errors
+                    if len(occurred_errors) > 0:
+                        for key in occurred_errors.keys():
+                            # extend if already existent
+                            if key in all_files[term_type][6].keys():
+                                all_files[term_type][6][key].extend(
+                                    occurred_errors[key])
+                            else:
+                                all_files[term_type][6] = occurred_errors
+
+                    if not len(all_files[term_type][4]) == 0:
+                        # add usages
+
+                        all_files[term_type][4]["Usage"] += np.nan_to_num(
+                            res_dict["Usage"])
+                        # add requested
+                        all_files[term_type][4][
+                            "Requested"] += \
+                            np.nan_to_num(res_dict["Requested"])
+                        # allocated
+                        all_files[term_type][4]["Allocated"] += \
+                            np.nan_to_num(res_dict["Allocated"])
+
+                    # add cpu
+                    if to_host is not None:
+                        # cpu known ???
+                        if to_host in all_files[term_type][5].keys():
+                            all_files[term_type][5][to_host][0] += 1
+                            all_files[term_type][5][to_host][
+                                1] += total_time
+                        else:
+                            all_files[term_type][5][to_host] = [1, total_time]
+                    elif "Submitted from" in job_dict["Execution details"]:
+                        # other waiting jobs ???
+                        if 'Waiting for execution' in \
+                                all_files[term_type][5].keys():
+                            all_files[term_type][5][
+                                'Waiting for execution'][0] += 1
+                            all_files[term_type][5][
+                                'Waiting for execution'][1] += total_time
+                        elif "Aborted before execution" in \
+                                all_files[term_type][5].keys():
+                            all_files[term_type][5][
+                                'Aborted before execution'][0] += 1
+                            all_files[term_type][5][
+                                'Aborted before execution'][1] += total_time
+                        else:
+                            n_host_nodes = dict()
+                            if "Aborted" in term_type:
+                                n_host_nodes['Aborted before'
+                                             ' execution'] = [1, total_time]
+                            else:
+                                n_host_nodes['Waiting for'
+                                             ' execution'] = [1, total_time]
+                            all_files[term_type][5] = n_host_nodes
+                    else:
+                        # other aborted before submission jobs ???
+                        if 'Aborted before submission' in \
+                                all_files[term_type][5].keys():
+                            all_files[term_type][5][
+                                'Aborted before submission'][0] += 1
+                            all_files[term_type][5][
+                                'Aborted before submission'][1] += total_time
+                        else:
+                            n_host_nodes = dict()
+                            n_host_nodes['Aborted before '
+                                         'submission'] = [1, total_time]
+                            all_files[term_type][5] = n_host_nodes
+
+                # else new entry
+                else:
+                    # if host exists
+                    if "Executing on" in job_dict["Execution details"]:
+                        # to_host = job_dict["Values"][2]
+                        n_host_nodes = dict()
+                        n_host_nodes[to_host] = [1, total_time]
+                    # else if still waiting
+                    elif "Submitted from" in job_dict["Execution details"]:
+                        n_host_nodes = dict()
+                        if "Aborted" in term_type:
+                            n_host_nodes['Aborted before'
+                                         ' execution'] = [1, total_time]
+                        else:
+                            n_host_nodes['Waiting for'
+                                         ' execution'] = [1, total_time]
+                    # else aborted before submission ?
+                    else:
+                        n_host_nodes = dict()
+                        n_host_nodes['Aborted before'
+                                     ' submission'] = [1, total_time]
+
+                    # convert nan values to 0
+                    if len(res_dict) > 0:
+                        res_dict["Usage"] = np.nan_to_num(res_dict["Usage"])
+                        res_dict["Requested"] = np.nan_to_num(
+                            res_dict["Requested"])
+                        res_dict["Allocated"] = np.nan_to_num(
+                            res_dict["Allocated"])
+
+                    all_files[term_type] = [1,
+                                            waiting_time,
+                                            runtime,
+                                            total_time,
+                                            res_dict,
+                                            n_host_nodes,
+                                            occurred_errors]
+
+            # Error ocurres when Job was aborted
+            except ValueError or KeyError as err:
+                logging.exception(err)
+                logging.debug(f"[red]Error with summarizing: {file}[/red]")
+                rprint(f"[red]Error with summarizing: {file}[/red]")
+                continue
+            except TypeError as err:
+                logging.exception(err)
+                logging.debug(f"[red]Error with summarizing: {file}[/red]")
+                rprint(f"[red] {err}[/red]")
+                sys.exit(3)
+
+        # Now put everything together
+        result_list = list()
+        for term_state in all_files:
+            term_info = all_files[term_state]
+            result_dict = dict()
+
+            # differentiate between terminated and running processes
+            if "Error while reading" in term_state:
+                result_dict["description"] = "" \
+                     "##################################################\n" \
+                     "## All files, that caused an [red]" \
+                     "error while reading[/red]\n" \
+                     "##################################################"
+            elif term_state not in ["Waiting", "Executing"]:
+                result_dict["description"] = f"" \
+                    f"##################################################\n" \
+                    f"## All files with the termination state: {term_state}\n"\
+                    f"##################################################"
+            else:
+                result_dict["description"] = f"" \
+                    f"###########################################\n" \
+                    f"## All files, that are currently {term_state}\n" \
+                    f"###########################################"
+
+            n = int(term_info[0])
+            occurrence_dict[term_state] = str(n)
+
+            times = np.array([term_info[1], term_info[2], term_info[3]])
+            av_times = times / n
+            format_av_times = [
+                datetime.timedelta(days=time.days, seconds=time.seconds)
+                for time in av_times]
+
+            time_dict = {
+                "Times": ["Waiting time", "Runtime", "Total"],
+                "Average": format_av_times,
+                "Total": times
+            }
+
+            result_dict["times"] = time_dict
+
+            if not len(term_info[4]) == 0:
+                total_resources_dict = term_info[4]
+                avg_dict = {
+                    'Resources': ['Average Cpu', ' Average Disk (KB)',
+                                  'Average Allocated'],
+                    'Usage': np.round(
+                        np.array(total_resources_dict['Usage']) / term_info[0],
+                        4).tolist(),
+                    'Requested': np.round(
+                        np.array(total_resources_dict['Requested']) /
+                        term_info[0], 2).tolist(),
+                    'Allocated': np.round(
+                        np.array(total_resources_dict['Allocated']) /
+                        term_info[0], 2).tolist()
+                }
+                if 'Assigned' in total_resources_dict.keys():
+                    avg_dict['Resources'].append('Gpu')
+                    avg_dict['Assigned'] = ['', '', '',
+                                            ", ".join(list_of_gpu_names)]
+
+                avg_dict = GlobalServant.manage_thresholds(avg_dict)
+                result_dict["all-resources"] = avg_dict
+
+            executed_jobs = list()
+            runtime_per_node = list()
+            for val in term_info[5].values():
+                executed_jobs.append(val[0])
+                average_job_duration = val[1] / val[0]
+                runtime_per_node.append(
+                    datetime.timedelta(average_job_duration.days,
+                                       average_job_duration.seconds))
+
+            host_nodes_dict = {
+                "Host Nodes": list(term_info[5].keys()),
+                "Executed Jobs": executed_jobs,
+                "Average job duration": runtime_per_node
+            }
+
+            result_dict["host-nodes"] = \
+                sort_dict_by_col(host_nodes_dict, "Executed Jobs")
+
+            if len(term_info[6]) > 0:
+                temp_err = term_info[6]
+                del temp_err["Reason"]  # remove reason
+                result_dict["errors"] = temp_err
+
+            result_list.append(result_dict)
+
+        new_occ = {
+            "Termination type": list(occurrence_dict.keys()),
+            "Appearance": list(occurrence_dict.values())
+        }
+        sorted_occ = sort_dict_by_col(new_occ, "Appearance")
+
+        result_list.insert(0, {"execution-details": sorted_occ})
+
+        return result_list
+
+    def filter_for(self,
+                   log_files: list_of_logs,
+                   keywords: list,
+                   extend=False,
+                   mode=None) -> log_inf_list:
+        """
+        Filter for a list of keywords, which can be extended
+        and print out every file which matches the pattern (not case sensitive)
+        The filtered files can be analysed summarise, etc afterwards,
+        else this function will return None
+
+        :param log_files:
+        :param keywords:
+        :param extend:
+        :param mode:
+        :return:
+            list with dicts depending on the used mode,
+            to forward the filtered files,
+
+            None if no forwarding is set
+        """
+        logging.info('Starting the filter mode')
+
+        # if the keywords are given as a string, try to create a list
+        if isinstance(keywords, list):
+            keyword_list = keywords
+        else:
+            logging.debug(
+                f"Filter mode only accepts a string"
+                f" or list with keywords, not {keywords}")
+            raise_type_error("Expecting a list or a string")
+
+        # if extend is set, keywords like err will
+        # also look for keywords like warn exception, aborted, etc.
+        if extend:  # apply some rules
+            # the error list
+            err_list = ["err", "warn", "exception", "aborted", "abortion",
+                        "abnormal", "fatal"]
+
+            # remove keyword if already in err_list
+            for i in range(len(keyword_list)):
+                if (keyword_list[i]).lower() in err_list:
+                    keyword_list.remove(keyword_list[i])
+
+            keyword_list.extend(err_list)  # extend search
+
+            rprint("[green]Keyword List was extended,"
+                   " now search for these keywords:[/green]",
+                   keyword_list)
+        else:
+            rprint("[green]Search for these keywords:[/green]", keyword_list)
+
+        if len(keyword_list) == 1 and keyword_list[0] == "":
+            logging.debug("Empty filter, don't know what to do")
+            return "[yellow]" \
+                   "Don't know what to do with an empty filter,\n" \
+                   "if you activate the filter mode in the config file, \n" \
+                   "please add a [filter] section with the filter" \
+                   "_keywords = your_filter[/yellow]"
+
+        logging.debug(f"These are the keywords to look for: {keyword_list}")
+
+        # now search
+        found_at_least_one = False
+        found_logs = []
+        for file in track(log_files, transient=True,
+                          description="Filtering..."):
+            found = False
+            with open(file, "r") as read_file:
+                for line in read_file:
+                    for keyword in keyword_list:
+                        if re.search(keyword.lower(), line.lower()):
+                            if not found_at_least_one:
+                                print("Matches:")
+                            rprint(f"[grey74]{keyword} in:\t{file}[/grey74] ")
+                            found = True
+                            found_at_least_one = True
+                            break
+                    if found:
+                        found_logs.append(file)
+                        break
+
+        return_dicts = None
+        if not found_at_least_one:
+            rprint("[red]Unable to find these keywords:[/red]", keyword_list)
+            rprint("[red]maybe try again with similar expressions[/red]")
+
+        elif mode is not None:
+            print(f"Total count: {len(found_logs)}")
+            if mode.__eq__("default"):
+                return_dicts = self.default(found_logs)
+            elif mode.__eq__("analysed-summary"):
+                rprint("[magenta]Give an analysed summary"
+                       " for these files[/magenta]")
+                return_dicts = self.analysed_summary(found_logs)
+            elif mode.__eq__("summarize"):
+                rprint("[magenta]Summarize these files[/magenta]")
+                return_dicts = self.summarize(found_logs)
+            elif mode.__eq__("analyse"):
+                rprint("[magenta]Analyse these files[/magenta]")
+                return_dicts = self.analyse(found_logs)
+        # if not reading from stdin or redirected
+        elif not GlobalServant.reading_stdin \
+                and not GlobalServant.redirecting_stdout:
+            rprint("[blue]Want do do more?[/blue]")
+            x = input(
+                "default(d), summarize(s), analyse(a),"
+                " analysed summary(as), exit(e): ")
+            if x == "d":
+                return_dicts = self.default(found_logs)
+            elif x == "s":
+                return_dicts = self.summarize(found_logs)
+            elif x == "a":
+                return_dicts = self.analyse(found_logs)
+            elif x == "as":
+                return_dicts = self.analysed_summary(found_logs)
+            elif x == "e":
+                sys.exit(0)
+            else:
+                print('Not a valid argument, quitting ...')
+
+        return return_dicts
 
 
 def print_results(log_files: list_of_logs,
@@ -1964,22 +1971,26 @@ def print_results(log_files: list_of_logs,
     :return:
     """
 
+    HTCAnalyser = HTCompact(GlobalServant.std_log,
+                            GlobalServant.std_err,
+                            GlobalServant.std_out,
+                            show_list)
+
     if len(filter_keywords) > 0:
-        results = filter_for(log_files,
-                             keywords=filter_keywords,
-                             extend=filter_extended,
-                             mode=mode,
-                             show_list=show_list)
+        results = HTCAnalyser.filter_for(log_files,
+                                         keywords=filter_keywords,
+                                         extend=filter_extended,
+                                         mode=mode)
     elif mode.__eq__("default"):
-        results = default(log_files, show_list)  # force default with -d
+        results = HTCAnalyser.default(log_files)  # force default with -d
     elif mode.__eq__("analysed-summary"):
-        results = analysed_summary(log_files)  # analysed summary ?
+        results = HTCAnalyser.analysed_summary(log_files)  # analysed summary ?
     elif mode.__eq__("summarize"):
-        results = summarize(log_files)  # summarize information
+        results = HTCAnalyser.summarize(log_files)  # summarize information
     elif mode.__eq__("analyse"):
-        results = analyse(log_files, show_list)  # analyse the given log_files
+        results = HTCAnalyser.analyse(log_files)  # analyse the given log_files
     else:
-        results = default(log_files, show_list)
+        results = HTCAnalyser.default(log_files)
         # anyways try to print default output
 
     # This can happen, when for example the filter mode is not forwarded
@@ -2053,7 +2064,7 @@ def print_results(log_files: list_of_logs,
                 table = wrap_dict_to_table(mystery["host-nodes"])
                 rprint(table)
 
-        #### Show more section ####
+        # Show more section
         if "stdout" in mystery and mystery["stdout"] != "":
             rprint("\n[bold cyan]Standard output (std-out):[/bold cyan]")
             rprint(mystery["stdout"])
@@ -2135,7 +2146,7 @@ def run(commandline_args):
         sys.exit(4)
 
 
-if __name__ == "__main__":
+def main():
     """
     This is the main function,
     which runs the script, if not imported as a module
@@ -2143,3 +2154,7 @@ if __name__ == "__main__":
     :return: exit status 0-4
     """
     run(sys.argv[1:])
+
+
+if __name__ == "__main__":
+    main()
