@@ -1018,18 +1018,15 @@ def htcondor_stdout(file: str, std_out=".out") -> str:
             output_string += "".join(output_content.readlines())
     except NameError as err:
         logging.exception(err)
-        rprint(
-            "[red]The smart_output_output method requires a " +
-            std_out + " file as parameter[/red]")
+        rprint("[red]The smart_output_output method requires a " +
+               std_out + " file as parameter[/red]")
     except FileNotFoundError:
         relevant = file.split("/")[-2:]
         match = re.match(r".*?([0-9]{3,}_[0-9]+)" + std_out, relevant[1])
-        rprint(
-            f"[yellow]There is no related {std_out}"
-            f" file: {relevant[1]} in the directory:\n"
-            f"[/yellow]"
-            f"[cyan]'{os.path.abspath(relevant[0])}'\n"
-            f" with the prefix: {match[1]}[/cyan]")
+        rprint(f"[yellow]There is no related {std_out}"
+               f" file: {relevant[1]} in the directory:\n"
+               f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
+               f" with the prefix: {match[1]}[/cyan]")
     except TypeError as err:
         logging.exception(err)
         # we continue here no exit needed
@@ -2223,11 +2220,11 @@ def print_results(log_files: list_of_logs,
                 rprint(table)
 
         #### Show more section ####
-        if "stdout" in mystery:
+        if "stdout" in mystery and mystery["stdout"] != "":
             rprint("\n[bold cyan]Standard output (std-out):[/bold cyan]")
             rprint(mystery["stdout"])
 
-        if "stderr" in mystery:
+        if "stderr" in mystery and mystery["stderr"] != "":
             rprint("\n[bold cyan]Standard errors (std-err):[/bold cyan]")
             rprint(mystery["stderr"])
 
