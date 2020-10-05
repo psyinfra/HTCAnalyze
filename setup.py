@@ -25,12 +25,13 @@ setup(name='htcompact',
             "configargparse == 1.2.3",
             "rich >= 3.0.3"
       ],
-      dependency_links=[
-            'https://github.com/astanin/python-tabulate.git'
-      ],
-      scripts=[
-            'htcompact'
-      ],
+      entry_points={
+            'console_scripts': [
+                  'htcompact=htcomapct.main:main',
+                  'htcanalyser=htcompact.main:main',
+                  'htsummarizer=htcompact.main:main'
+            ],
+      },
       data_files=[
             ('config', ['config/htcompact.conf']),
             ('share/man/man1', ['man/man1/htcompact.1'])
