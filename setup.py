@@ -25,9 +25,12 @@ setup(name='htcompact',
             "configargparse == 1.2.3",
             "rich >= 3.0.3"
       ],
+      tests_require=[
+            'pytest>=6.0.1'
+      ],
       entry_points={
             'console_scripts': [
-                  'htcompact=htcomapct.main:main',
+                  'htcompact=htcompact.main:main',
                   'htcanalyser=htcompact.main:main',
                   'htsummarizer=htcompact.main:main'
             ],
