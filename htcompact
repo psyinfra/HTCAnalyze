@@ -423,8 +423,8 @@ def manage_params(args: list) -> dict:
 
     # get files from prio_parsed
     files_list = list()
-    for li in prio_parsed.more_files:
-        files_list.extend(li)
+    for log_file in prio_parsed.more_files:
+        files_list.extend(log_file)
 
     if prio_parsed.config:
         # do not use config files if --no-config flag is set
@@ -446,16 +446,14 @@ def manage_params(args: list) -> dict:
         cmd_dict = vars(commands_parsed).copy()
 
         # extend files list by given paths
-        for li in commands_parsed.path:
-            files_list.extend(li)
+        for log_paths in commands_parsed.path:
+            files_list.extend(log_paths)
         # add files, if none are given by terminal
         if len(files_list) == 0:
-            for li in cmd_dict["more_files"]:
+            for log_paths in cmd_dict["more_files"]:
                 # make sure that empty strings are not getting inserted
-                if len(li) == 1 and li[0] != "":
-                    files_list.extend(li)
-
-        # TODO: generate_log_file = True -> convert to bool
+                if len(log_paths) == 1 and log_paths[0] != "":
+                    files_list.extend(log_paths)
 
         # remove empty string from lists, because configargparse
         # inserts empty strings, when list is empty
@@ -545,26 +543,26 @@ def manage_params(args: list) -> dict:
     if cmd_dict['std_out'] is None:
         cmd_dict['std_out'] = ".out"
 
-    # Todo
-    # if cmd_dict['save_config'] is not None:
-    #     config_name = cmd_dict['save_config']
-    #     del cmd_dict["save_config"]
-    #     for key, value in dict(cmd_dict).items():
-    #         if value is None:
-    #             del cmd_dict[key]
-    #     new_nsp = argparse.Namespace(**cmd_dict)
-    #     print(commands_parsed)
-    #     print(new_nsp)
-    #     print(cmd_dict)
-    #     cmd_parser.write_config_file(new_nsp, [config_name], True)
     return cmd_dict
 
 
 def raise_value_error(message: str) -> ValueError:
+    """
+    Raise Value Error with message
+
+    :param message: str
+    :return:
+    """
     raise ValueError(message)
 
 
 def raise_type_error(message: str) -> TypeError:
+    """
+    Raise Type Error with message
+
+    :param message:
+    :return:
+    """
     raise TypeError(message)
 
 
@@ -1278,11 +1276,21 @@ def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
     return result_list
 
 
-def sort_dict_by_col(node_dict, column):
-    # sorted_dict = dict.fromkeys(node_dict.keys())
-    sorted_dict = {key: [] for key in node_dict.keys()}
+def sort_dict_by_col(dictionary, column):
+    """
+    Sort a dictionary by the given column.
+
+    The dictionary must have key: list items
+    where all lists have the same length
+
+    :param dictionary:
+    :param column:
+    :return:
+    """
+    # sorted_dict = dict.fromkeys(dictionary.keys())
+    sorted_dict = {key: [] for key in dictionary.keys()}
     sort_index = list(sorted_dict.keys()).index(column)
-    zip_data = zip(*node_dict.values())
+    zip_data = zip(*dictionary.values())
     sorted_items = sorted(zip_data, key=lambda tup: tup[sort_index])
     for item in reversed(sorted_items):
         for i, key in enumerate(sorted_dict.keys()):
