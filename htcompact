@@ -568,7 +568,6 @@ def raise_type_error(message: str) -> TypeError:
     raise TypeError(message)
 
 
-# Todo: time differences over end of year
 def gen_time_dict(
         submission_date: date_time,
         execution_date: date_time = None,
@@ -595,18 +594,18 @@ def gen_time_dict(
 
     time_desc = list()
     time_vals = list()
-    running_over_neyear = False
+    running_over_newyear = False
 
     # calculate the time difference to last year,
     # if the date is higher that today of running jobs
     # this means the execution started before newyear
     if termination_date is None:
         if submission_date and submission_date > today:
-            running_over_neyear = True
+            running_over_newyear = True
             submission_date = submission_date.replace(
                 year=submission_date.year - 1)
         if execution_date and execution_date > today:
-            running_over_neyear = True
+            running_over_newyear = True
             execution_date = execution_date.replace(
                 year=execution_date.year - 1)
 
@@ -614,7 +613,7 @@ def gen_time_dict(
         execution_date = execution_date
         # new year ?
         if submission_date > execution_date:
-            running_over_neyear = True
+            running_over_newyear = True
             submission_date = submission_date.replace(
                 year=submission_date.year - 1)
         waiting_time = execution_date - submission_date
@@ -624,14 +623,14 @@ def gen_time_dict(
         if execution_date:
             # new year ?
             if execution_date > termination_date:
-                running_over_neyear = True
+                running_over_newyear = True
                 execution_date = execution_date.replace(
                     year=execution_date.year - 1)
             runtime = termination_date - execution_date
         if submission_date:
             # new year ?
             if submission_date > termination_date:
-                running_over_neyear = True
+                running_over_newyear = True
                 submission_date = submission_date.replace(
                     year=submission_date.year - 1)
             total_time = termination_date - submission_date
@@ -644,7 +643,7 @@ def gen_time_dict(
 
     # now after collecting all available values try to produce a dict
     # if new year was hitted by one of them, show the year as well
-    if running_over_neyear:
+    if running_over_newyear:
         if submission_date:
             time_desc.append("Submission date")
             time_vals.append(submission_date)
