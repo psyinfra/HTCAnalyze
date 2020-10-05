@@ -2,8 +2,7 @@
 import sys
 import pytest
 import io
-import imp
-ht = imp.load_source('htcompact', 'htcompact')
+from htcompact import main as ht
 
 
 # To make a copy of stdin and stdout
