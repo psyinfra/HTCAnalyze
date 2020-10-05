@@ -943,7 +943,7 @@ def gethostbyaddr(ip):
         return ip
 
 
-def show_htcondor_stderr(file: str, std_err=".err") -> str:
+def htcondor_stderr(file: str, std_err=".err") -> str:
     """
 
     :param file: HTCondor stderr file
@@ -992,7 +992,7 @@ def show_htcondor_stderr(file: str, std_err=".err") -> str:
         return output_string
 
 
-def show_htcondor_stdout(file: str, std_out=".out") -> str:
+def htcondor_stdout(file: str, std_out=".out") -> str:
     """
     :param: HTCondor stdout file
     :param std_out: stdout suffix, default: .out
@@ -1159,10 +1159,10 @@ def default(log_files: list_of_logs, show_list=[]) -> log_inf_list:
         if len(show_list) > 0:
             job_spec_id = get_job_spec_id(file, std_log)
             if 'std-err' in show_list:
-                result_dict['stderr'] = show_htcondor_stderr(
+                result_dict['stderr'] = htcondor_stderr(
                     job_spec_id + std_err, std_err)
             if 'std-out' in show_list:
-                result_dict['stdout'] = show_htcondor_stdout(
+                result_dict['stdout'] = htcondor_stdout(
                     job_spec_id + std_out, std_out)
 
         list_of_dicts.append(result_dict)
@@ -1269,11 +1269,11 @@ def analyse(log_files: list_of_logs, show_list=[]) -> log_inf_list:
             if len(show_list) > 0:
                 job_spec_id = get_job_spec_id(file, std_log)
                 if 'std-err' in show_list:
-                    result_dict['stderr'] = show_htcondor_stderr(
+                    result_dict['stderr'] = htcondor_stderr(
                         job_spec_id + std_err,
                         std_err)
                 if 'std-out' in show_list:
-                    result_dict['stdout'] = show_htcondor_stdout(
+                    result_dict['stdout'] = htcondor_stdout(
                         job_spec_id + std_out,
                         std_out)
 
@@ -2222,9 +2222,16 @@ def print_results(log_files: list_of_logs,
                 table = wrap_dict_to_table(mystery["host-nodes"])
                 rprint(table)
 
-        print()
+        #### Show more section ####
+        if "stdout" in mystery:
+            rprint("\n[bold cyan]Standard output (std-out):[/bold cyan]")
+            rprint(mystery["stdout"])
 
-        # TODO: show-more section
+        if "stderr" in mystery:
+            rprint("\n[bold cyan]Standard errors (std-err):[/bold cyan]")
+            rprint(mystery["stderr"])
+
+        print()
 
 
 def run(commandline_args):
