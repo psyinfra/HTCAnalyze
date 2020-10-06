@@ -3,6 +3,7 @@ import sys
 import io
 import pytest
 from htcompact import main as ht
+from htcompact.htcanalyser import HTCAnalyser as htcan
 
 
 # To make a copy of stdin and stdout
@@ -81,7 +82,8 @@ def test_wrong_opts_or_args():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 2
 
-    # Argument starts with -, this will not raise an error, but is considered sceptical
+    # Argument starts with -,
+    # this will not raise an error, but is considered sceptical
     args = "--std-log -log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
@@ -112,7 +114,8 @@ def test_show_values():
 def test_ignore_values():
     args = "--ignore execution-details times host-nodes " \
            "used-resources requested-resources allocated-resources " \
-           "all-resources errors -as tests/test_logs/valid_logs/gpu_usage.log".split()
+           "all-resources errors -as " \
+           "tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -124,10 +127,6 @@ def test_independent_opts():
            "--std-err=.error --reverse-dns-lookup".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
-    assert ht.GlobalServant.std_log == ".log"
-    assert ht.GlobalServant.std_err == ".error"
-    assert ht.GlobalServant.std_out == ".output"
-    assert ht.GlobalServant.reverse_dns_lookup is True
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 1  # no valid file is given
 
@@ -136,19 +135,13 @@ def test_independent_opts():
            "--reverse-dns-lookup tests/test_logs/valid_logs".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
-    assert ht.GlobalServant.std_log == ".log"
-    assert ht.GlobalServant.std_err == ".error"
-    assert ht.GlobalServant.std_out == ".output"
-    assert ht.GlobalServant.reverse_dns_lookup is True
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
-    args = "--recursive --bad 0.3 --tolerated 0.1" \
+    args = "--recursive --bad-usage 0.3 --tolerated-usage 0.1" \
            " tests/test_logs".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
-    assert ht.GlobalServant.bad_usage_threshold == 0.3
-    assert ht.GlobalServant.tolerated_usage_threshold == 0.1
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
@@ -161,7 +154,7 @@ def test_default_mode():
     assert pytest_wrapped_e.value.code == 0
 
     args = "--mode default tests/test_" \
-           "logs/valid_logs/aborted_before_submission.log".split()
+           "logs/valid_logs".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -300,18 +293,18 @@ def test_redirection():
     args = "tests/test_logs/valid_logs/ --filter gpu".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
     assert ht.GlobalServant.reading_stdin is False
     assert ht.GlobalServant.redirecting_stdout is True
+    assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
     sys.stdout = open('test_output.txt', 'w')
     args = "-a tests/test_logs/valid_logs/".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
     assert ht.GlobalServant.reading_stdin is False
     assert ht.GlobalServant.redirecting_stdout is True
+    assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
     sys.stdout = PseudoTTY(copy_sys_stdout, True)  # change back to not redirecting
@@ -321,8 +314,8 @@ def test_redirection():
     args = "-a --std-log=.logging".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
-    assert ht.GlobalServant.redirecting_stdout is False
     assert ht.GlobalServant.reading_stdin is True
+    assert ht.GlobalServant.redirecting_stdout is False
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 1  # because std_log is .logging
 
@@ -330,8 +323,8 @@ def test_redirection():
     args = "--filter gpu --std-log=.logging -a".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
-    assert ht.GlobalServant.redirecting_stdout is False
     assert ht.GlobalServant.reading_stdin is True
+    assert ht.GlobalServant.redirecting_stdout is False
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
@@ -343,8 +336,8 @@ def test_redirection():
     args = "--filter gpu --std-log=.logging -a".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
-    assert ht.GlobalServant.redirecting_stdout is True
     assert ht.GlobalServant.reading_stdin is True
+    assert ht.GlobalServant.redirecting_stdout is True
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
