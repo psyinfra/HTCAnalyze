@@ -560,9 +560,7 @@ def print_results(htcanalyser: HTCAnalyser,
             filter_for(log_files,
                        keywords=filter_keywords,
                        extend=filter_extended,
-                       mode=mode,
-                       reading_stdin=GlobalServant.reading_stdin,
-                       redirecting_stdout=GlobalServant.redirecting_stdout)
+                       mode=mode)
     elif mode.__eq__("default"):
         results = htcanalyser.default(log_files)  # force default with -d
     elif mode.__eq__("analysed-summary"):
@@ -570,7 +568,8 @@ def print_results(htcanalyser: HTCAnalyser,
     elif mode.__eq__("summarize"):
         results = htcanalyser.summarize(log_files)  # summarize information
     elif mode.__eq__("analyse"):
-        results = htcanalyser.analyse(log_files)  # analyse the given log_files
+        show_legend = not GlobalServant.redirecting_stdout  # redirected ?
+        results = htcanalyser.analyse(log_files, show_legend)  # analyse
     else:
         results = htcanalyser.default(log_files)
         # anyways try to print default output
