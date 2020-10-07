@@ -171,8 +171,8 @@ def test_analyser_mode():
     assert pytest_wrapped_e.value.code == 0
 
     # dictionary
-    ht.input = lambda x: 'y'
-    args = "-m a tests/test_logs/valid_logs/".split()
+    sys.stdout = open('test_output.txt', 'w')
+    args = "-m a tests/test_logs/valid_logs/normal_log.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -213,137 +213,36 @@ def test_analysed_summary():
 
 def test_filter_mode():
 
-    sys.stdin = PseudoTTY(copy_sys_stdin, True)
-    sys.stdout = PseudoTTY(copy_sys_stdout, True)
-
-    ht.input = lambda x: 'd'
-    args = "tests/test_logs/valid_logs --filter gpu --extend".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is False\
-           and ht.GlobalServant.redirecting_stdout is False
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    ht.input = lambda x: 'a'
-    args = "tests/test_logs/valid_logs --filter gpu --extend".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is False \
-           and ht.GlobalServant.redirecting_stdout is False
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    ht.input = lambda x: 's'
-    args = "tests/test_logs/valid_logs --filter gpu --extend".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is False\
-           and ht.GlobalServant.redirecting_stdout is False
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    ht.input = lambda x: 'as'
-    args = "tests/test_logs/valid_logs --filter gpu --extend".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is False \
-           and ht.GlobalServant.redirecting_stdout is False
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    ht.input = lambda x: 'e'
-    args = "tests/test_logs/valid_logs --filter gpu --extend".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is False \
-           and ht.GlobalServant.redirecting_stdout is False
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    args = "--filter gpu -a tests/test_logs/valid_logs/gpu_usage.log".split()
+    args = "tests/test_logs/valid_logs --filter err --extend".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
-    args = "--filter gpu -as tests/test_logs/valid_logs/gpu_usage.log".split()
+    args = "--filter err -a tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
-    args = "--filter gpu -s tests/test_logs/valid_logs/gpu_usage.log".split()
+    args = "--filter err -as tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
-    args = "--filter gpu --mode default" \
+    args = "--filter err -s tests/test_logs/valid_logs/gpu_usage.log".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        ht.run(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
+    args = "--filter err --mode default" \
            " tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
-
-
-def test_redirection():
-    # test stdout
-    sys.stdout = open('test_output.txt', 'w')
-    args = "tests/test_logs/valid_logs/ --filter gpu".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is False
-    assert ht.GlobalServant.redirecting_stdout is True
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    sys.stdout = open('test_output.txt', 'w')
-    args = "-a tests/test_logs/valid_logs/".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is False
-    assert ht.GlobalServant.redirecting_stdout is True
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    sys.stdout = PseudoTTY(copy_sys_stdout, True)  # change back to not redirecting
-
-    # test stdin
-    sys.stdin = io.StringIO('tests/test_logs/valid_logs/gpu_usage.log')
-    args = "-a --std-log=.logging".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is True
-    assert ht.GlobalServant.redirecting_stdout is False
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 1  # because std_log is .logging
-
-    sys.stdin = io.StringIO('tests/test_logs/valid_logs')
-    args = "--filter gpu --std-log=.logging -a".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is True
-    assert ht.GlobalServant.redirecting_stdout is False
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    sys.stdin = PseudoTTY(copy_sys_stdin, True)  # change back
-
-    # test both
-    sys.stdout = open('test_output.txt', 'w')
-    sys.stdin = io.StringIO('tests/test_logs/valid_logs')
-    args = "--filter gpu --std-log=.logging -a".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert ht.GlobalServant.reading_stdin is True
-    assert ht.GlobalServant.redirecting_stdout is True
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    # change back to default
-    sys.stdout = PseudoTTY(copy_sys_stdout, True)
-    sys.stdin = PseudoTTY(copy_sys_stdin, True)
 
 
 def _all_modes_by_logfiles(logfile, return_value):
