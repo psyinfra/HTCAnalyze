@@ -22,6 +22,7 @@ timedelta = datetime.timedelta
 
 
 class HTCAnalyser:
+
     """
     This class is able to analyse HTCondor Joblogs by the modes
     default,
@@ -78,11 +79,13 @@ class HTCAnalyser:
     def manage_thresholds(self, resources: dict) -> dict:
         """
 
-            The important part is that the keywords "Usage", "Requested" exists
-            and that at least 3 values are given: cpu, disk, memory
+            The important part is that the keywords exist
+            "Usage", "Requested"
+            marks everything with the colors
+            green, yellow, red, by the specified thresholds
 
         :param resources:
-        :return:
+        :return: resources with colors on usage column
         """
 
         resources.update(Usage=list(
@@ -153,7 +156,6 @@ class HTCAnalyser:
                 f" with the prefix: {match[1]}[/cyan]")
         except TypeError as err:
             logging.exception(err)
-            # we continue here no exit needed
         finally:
             return output_string
 
@@ -185,9 +187,7 @@ class HTCAnalyser:
                    f" with the prefix: {match[1]}[/cyan]")
         except TypeError as err:
             logging.exception(err)
-            # we continue here no exit needed
         finally:
-
             return output_string
 
     def get_job_spec_id(self, file: str):
@@ -209,9 +209,7 @@ class HTCAnalyser:
             job_spec_id = os.path.splitext(file)[0]
         return job_spec_id
 
-    def log_to_dict(self,
-                    file: str,
-                    sec: int = 0
+    def log_to_dict(self, file: str, sec: int = 0
                     ) -> (dict, dict, dict, dict, dict):
         """
         Read the log file with the htcondor module.
@@ -467,7 +465,7 @@ class HTCAnalyser:
             self.store_dns_lookups[ip] = reversed_dns[0]
             # return
             return reversed_dns[0]
-        except Exception:
+        except KeyError:
             logging.debug('Not able to resolve the IP: ' + ip)
             # also store
             self.store_dns_lookups[ip] = ip
@@ -536,6 +534,7 @@ class HTCAnalyser:
         """
 
         :param log_files: list of valid HTCondor log files
+        :param show_legend:
         :return: list with information of each log file
         """
         logging.info('Starting the analyser mode')
@@ -841,22 +840,19 @@ class HTCAnalyser:
 
             # if time dict exists
             time_keys = list()
+            waiting_time = datetime.timedelta()
+            runtime = datetime.timedelta()
+            total_time = datetime.timedelta()
             if time_dict:
                 refactor_time_dict = dict(
                     zip(time_dict["Dates and times"], time_dict["Values"]))
                 time_keys = list(refactor_time_dict.keys())
             if "Waiting time" in time_keys:
                 waiting_time = refactor_time_dict["Waiting time"]
-            else:
-                waiting_time = datetime.timedelta()
             if "Execution runtime" in time_keys:
                 runtime = refactor_time_dict["Execution runtime"]
-            else:
-                runtime = datetime.timedelta()
             if "Total runtime" in time_keys:
                 total_time = refactor_time_dict["Total runtime"]
-            else:
-                total_time = datetime.timedelta()
 
             try:
                 if term_type in all_files:
@@ -1088,9 +1084,7 @@ class HTCAnalyser:
                    log_files: list_of_logs,
                    keywords: list,
                    extend=False,
-                   mode=None,
-                   reading_stdin=False,
-                   redirecting_stdout=False) -> log_inf_list:
+                   mode=None) -> log_inf_list:
         """
         Filter for a list of keywords, which can be extended
         and print out every file which matches the pattern (not case sensitive)
@@ -1126,9 +1120,9 @@ class HTCAnalyser:
                         "abnormal", "fatal"]
 
             # remove keyword if already in err_list
-            for i in range(len(keyword_list)):
-                if (keyword_list[i]).lower() in err_list:
-                    keyword_list.remove(keyword_list[i])
+            for keyword in keyword_list:
+                if keyword.lower() in err_list:
+                    keyword_list.remove(keyword)
 
             keyword_list.extend(err_list)  # extend search
 
@@ -1187,24 +1181,6 @@ class HTCAnalyser:
             elif mode.__eq__("analyse"):
                 rprint("[magenta]Analyse these files[/magenta]")
                 return_dicts = self.analyse(found_logs)
-        # if not reading from stdin or redirected
-        elif not reading_stdin and not redirecting_stdout:
-            rprint("[blue]Want do do more?[/blue]")
-            x = input(
-                "default(d), summarize(s), analyse(a),"
-                " analysed summary(as), exit(e): ")
-            if x == "d":
-                return_dicts = self.default(found_logs)
-            elif x == "s":
-                return_dicts = self.summarize(found_logs)
-            elif x == "a":
-                return_dicts = self.analyse(found_logs)
-            elif x == "as":
-                return_dicts = self.analysed_summary(found_logs)
-            elif x == "e":
-                sys.exit(0)
-            else:
-                print('Not a valid argument, quitting ...')
 
         return return_dicts
 
