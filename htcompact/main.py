@@ -178,6 +178,7 @@ class CustomFormatter(argparse.HelpFormatter):
             else:
                 return ',\n  '.join(parts)
 
+
 # parser for prioritised flags
 def setup_prioritized_parser():
     """
@@ -670,7 +671,7 @@ def run(commandline_args):
         commandline_args = commandline_args.split()
 
     try:
-        start = datetime.datetime.now()  # start date for runtime
+        start = date_time.now()  # start date for runtime
 
         GlobalServant.check_for_redirection()
         # if exit parameters are given that will interrupt this script,
@@ -715,7 +716,7 @@ def run(commandline_args):
 
         print_results(htcanalyser, log_files=valid_files, **param_dict)
 
-        end = datetime.datetime.now()  # end date for runtime
+        end = date_time.now()  # end date for runtime
 
         logging.debug(f"Runtime: {end - start}")  # runtime of this script
 
