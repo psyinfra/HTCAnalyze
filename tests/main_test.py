@@ -187,6 +187,4 @@ def test_manage_params():
     res_dict = ht.manage_params(args)
     assert res_dict["mode"] == "analysed-summary"
 
-
-
 # Todo: other methods test

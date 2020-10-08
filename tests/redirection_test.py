@@ -59,4 +59,3 @@ def test_input_and_output():
     assert ht.GlobalServant.reading_stdin is True
     assert ht.GlobalServant.stdin_input == [normal_log_str]
     assert ht.GlobalServant.redirecting_stdout is True
-

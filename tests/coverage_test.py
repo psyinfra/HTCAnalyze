@@ -1,9 +1,7 @@
 
 import sys
-import io
 import pytest
 from htcompact import main as ht
-from htcompact.htcanalyser import HTCAnalyser as htcan
 
 
 # To make a copy of stdin and stdout

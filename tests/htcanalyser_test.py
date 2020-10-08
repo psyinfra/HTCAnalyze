@@ -57,7 +57,7 @@ def test_gen_time_dict():
 
     # test only submission and termination date given
     time_dict = gen_time_dict(submission_date=sub_date,
-                                    termination_date=term_date)
+                              termination_date=term_date)
     assert time_dict['Dates and times'] == ['Submission date',
                                             'Termination date',
                                             'Total runtime']
@@ -68,8 +68,8 @@ def test_gen_time_dict():
 
     # test only execution and termination date given
     time_dict = gen_time_dict(submission_date=None,
-                                    execution_date=exec_date,
-                                    termination_date=term_date)
+                              execution_date=exec_date,
+                              termination_date=term_date)
     execution_runtime = term_date - exec_date
     assert time_dict['Dates and times'] == ['Execution date',
                                             'Termination date',
@@ -80,8 +80,8 @@ def test_gen_time_dict():
 
     # test all given
     time_dict = gen_time_dict(submission_date=sub_date,
-                                    execution_date=exec_date,
-                                    termination_date=term_date)
+                              execution_date=exec_date,
+                              termination_date=term_date)
     assert time_dict['Dates and times'] == ['Submission date',
                                             'Execution date',
                                             'Termination date',
@@ -122,15 +122,18 @@ def test_sort_dict_by_column():
     sorted_dict = sort_dict_by_col(test_dict, "Key3", reverse=False)
     assert sorted_dict == sorted_by_key3
 
-    sorted_by_key1_reversed = {'Key1': ['Wondering', 'Was', 'Me', "It's", 'I', 'Hello'],
-                               'Key2': [4, 2, 6, 3, 5, 1],
-                               'Key3': ['f', 'e', 'd', 'b', 'c', 'a']}
-    sorted_by_key2_reversed = {'Key1': ['Me', 'I', 'Wondering', "It's", 'Was', 'Hello'],
-                               'Key2': [6, 5, 4, 3, 2, 1],
-                               'Key3': ['d', 'c', 'f', 'b', 'e', 'a']}
-    sorted_by_key3_reversed = {'Key1': ['Wondering', 'Was', 'Me', 'I', "It's", 'Hello'],
-                               'Key2': [4, 2, 6, 5, 3, 1],
-                               'Key3': ['f', 'e', 'd', 'c', 'b', 'a']}
+    sorted_by_key1_reversed = {
+        'Key1': ['Wondering', 'Was', 'Me', "It's", 'I', 'Hello'],
+        'Key2': [4, 2, 6, 3, 5, 1],
+        'Key3': ['f', 'e', 'd', 'b', 'c', 'a']}
+    sorted_by_key2_reversed = {
+        'Key1': ['Me', 'I', 'Wondering', "It's", 'Was', 'Hello'],
+        'Key2': [6, 5, 4, 3, 2, 1],
+        'Key3': ['d', 'c', 'f', 'b', 'e', 'a']}
+    sorted_by_key3_reversed = {
+        'Key1': ['Wondering', 'Was', 'Me', 'I', "It's", 'Hello'],
+        'Key2': [4, 2, 6, 5, 3, 1],
+        'Key3': ['f', 'e', 'd', 'c', 'b', 'a']}
 
     sorted_dict = sort_dict_by_col(test_dict, "Key1")
 
@@ -220,12 +223,12 @@ def test_log_to_dict(htcan):
                             'Waiting time',
                             'Execution runtime',
                             'Total runtime'],
-                            'Values': ['07/11 20:39:51',
-                                       '07/11 20:39:54',
-                                       '07/11 20:45:50',
-                                       datetime.timedelta(seconds=3),
-                                       datetime.timedelta(seconds=356),
-                                       datetime.timedelta(seconds=359)]}
+        'Values': ['07/11 20:39:51',
+                   '07/11 20:39:54',
+                   '07/11 20:45:50',
+                   datetime.timedelta(seconds=3),
+                   datetime.timedelta(seconds=356),
+                   datetime.timedelta(seconds=359)]}
 
     assert ram_history_dict == {
         'Dates': [datetime.datetime(2020, 7, 11, 20, 40, 3),
