@@ -1,8 +1,8 @@
 # HTCAnalyse
 
-[![Build Status](https://travis-ci.org/psyinfra/htcompact.svg?branch=master)](https://travis-ci.org/psyinfra/htcompact)
-[![codecov](https://codecov.io/gh/psyinfra/htcompact/branch/master/graph/badge.svg)](https://codecov.io/gh/psyinfra/htcompact)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/d8fff0409968467d855a0efbf2ab8f7d)](https://www.codacy.com/gh/psyinfra/htcompact?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=psyinfra/htcompact&amp;utm_campaign=Badge_Grade)
+[![Build Status](https://travis-ci.org/psyinfra/HTCAnalyser.svg?branch=master)](https://travis-ci.org/psyinfra/HTCAnalyser)
+[![codecov](https://codecov.io/gh/psyinfra/HTCAnalyser/branch/master/graph/badge.svg)](https://codecov.io/gh/psyinfra/HTCAnalyser)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/d8fff0409968467d855a0efbf2ab8f7d)](https://www.codacy.com/gh/psyinfra/HTCAnalyser?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=psyinfra/HTCAnalyser&amp;utm_campaign=Badge_Grade)
 
 Search through HTCondor log files to extract information, identify patterns, and
 even build graphs (such as resource utilization).
@@ -23,7 +23,7 @@ pip install git+https://github.com/psyinfra/HTCAnalyser.git
 A config file (`htcanalyser.conf`) is also provided, to control the default behavior of
 htcanalyse. This is especially useful when installing system-wide, or for
 adjusting various warning/error thresholds. See
-[CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md) for
+[CONFIG](https://github.com/psyinfra/HTCAnalyser/blob/master/config/README.md) for
 more information
 #### Notice:
 - The script is using the python module htcondor 8.9.8, which is not working on macOS devices.
@@ -64,7 +64,7 @@ htcanalyse path_to_logs/job_5991_* -s  (summarize all files starting with: job_5
 htcanalyse path_to_logs/395_2.log --table-format=pretty
 ```
 
-lets consider we also have a config file (see: [CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md)) \
+lets consider we also have a config file (see: [CONFIG](https://github.com/psyinfra/HTCAnalyser/blob/master/config/README.md)) \
 a default htcanalyser.conf should already exist inside the project folder
 
 possible configurations could be reduced to something like:
@@ -78,10 +78,10 @@ htcanalyse [files/directories] -c htcanalyser.conf (ignores files/directories se
 you'll find the tests in: /tests \\
 to simply run the tests:
 - pytest tests 
-More details see: [TESTS](https://github.com/psyinfra/htcompact/blob/master/tests/README.md)
+More details see: [TESTS](https://github.com/psyinfra/HTCAnalyser/blob/master/tests/README.md)
 
 where all arguments, files and directories can be set inside that config file \
-see: [CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md)
+see: [CONFIG](https://github.com/psyinfra/HTCAnalyser/blob/master/config/README.md)
 
 Examples:
 
@@ -105,12 +105,12 @@ Examples:
     ```
 - summarizer mode:
 
-    ![Example](https://github.com/psyinfra/htcompact/blob/master/examples/example_summary_mode.png)
+    ![Example](https://github.com/psyinfra/HTCAnalyser/blob/master/examples/example_summary_mode.png)
 
 - analyser mode:
 
-    ![Example](https://github.com/psyinfra/htcompact/blob/master/examples/example_analyser_mode.png)
+    ![Example](https://github.com/psyinfra/HTCAnalyser/blob/master/examples/example_analyser_mode.png)
 
 - analysed summary mode:
 
-    ![Example](https://github.com/psyinfra/htcompact/blob/master/examples/example_analysed_summary_mode.png)
+    ![Example](https://github.com/psyinfra/HTCAnalyser/blob/master/examples/example_analysed_summary_mode.png)
