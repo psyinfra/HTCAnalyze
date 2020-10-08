@@ -51,15 +51,6 @@ def test_check_for_redirection():
            and ht.GlobalServant.redirecting_stdout is True
 
 
-# def test_reverse_dns_lookup():
-#     ht.GlobalServant.reset()
-#     ht.gethostbyaddr("172.217.0.0")
-#     assert ht.GlobalServant.store_dns_lookups["172.217.0.0"]\
-#            == "ord38s04-in-f0.1e100.net"
-#     ht.gethostbyaddr("NoIP")
-#     assert ht.GlobalServant.store_dns_lookups["NoIP"] == "NoIP"
-
-
 def test_manage_params():
     ht.GlobalServant.reset()
 

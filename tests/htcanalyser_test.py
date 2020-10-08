@@ -280,3 +280,8 @@ def test_log_to_dict(htcan):
                    'via condor_rm (by user tkadelka)']}
 
 
+def test_reverse_dns_lookup(htcan):
+    htcan.gethostbyaddr("172.217.0.0")
+    assert htcan.store_dns_lookups["172.217.0.0"] == "ord38s04-in-f0.1e100.net"
+    htcan.gethostbyaddr("NoIP")
+    assert htcan.store_dns_lookups["NoIP"] == "NoIP"
