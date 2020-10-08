@@ -4,28 +4,6 @@ import pytest
 from htcompact import main as ht
 
 
-# To make a copy of stdin and stdout
-class PseudoTTY(object):
-
-    def __init__(self, underlying, isset):
-        self.__underlying = underlying
-        self.__isset = isset
-
-    def __getattr__(self, name):
-        return getattr(self.__underlying, name)
-
-    def isatty(self):
-        return self.__isset
-
-
-# print("Stdin is set: ",sys.stdin.isatty())
-# sdtin and stdout isatty should return true
-copy_sys_stdin = sys.stdin
-copy_sys_stdout = sys.stdout
-sys.stdin = PseudoTTY(copy_sys_stdin, True)
-sys.stdout = PseudoTTY(copy_sys_stdout, True)
-
-
 def _help():
     args = "-h".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
