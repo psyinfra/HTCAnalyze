@@ -1,10 +1,12 @@
+"""Coverage test."""
 
 import sys
 import pytest
-from htcompact import main as ht
+from htcanalyser import main as ht
 
 
 class PseudoTTY(object):
+    """Pseudo terminal."""
 
     def __init__(self, underlying, isset):
         """

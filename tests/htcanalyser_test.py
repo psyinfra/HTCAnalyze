@@ -2,7 +2,7 @@
 import datetime
 import pytest
 import numpy as np
-from htcompact.htcanalyser import HTCAnalyser, gen_time_dict, sort_dict_by_col
+from htcanalyser.htcanalyser import HTCAnalyser, gen_time_dict, sort_dict_by_col
 
 
 def test_gen_time_dict():

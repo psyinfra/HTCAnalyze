@@ -2,7 +2,7 @@
 import sys
 import pytest
 import io
-from htcompact import main as ht
+from htcanalyser import main as ht
 
 
 # To make a copy of stdin and stdout
@@ -98,7 +98,7 @@ def test_manage_params():
     args = "--reverse-dns-lookup --no-config --generate-log -v".split()
     res_dict = ht.manage_params(args)
     assert res_dict["reverse_dns_lookup"] is True
-    assert res_dict["generate_log_file"] == "htcompact.log"
+    assert res_dict["generate_log_file"] == "htcanalyser.log"
     assert res_dict["verbose"] is True
 
     args = "--what_is_this".split()

@@ -1,6 +1,6 @@
 import sys
 import io
-from htcompact import main as ht
+from htcanalyser import main as ht
 
 
 class PseudoTTY(object):
