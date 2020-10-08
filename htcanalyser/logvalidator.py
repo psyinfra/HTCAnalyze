@@ -1,3 +1,5 @@
+"""HTCondor job log validator."""
+
 import logging
 import os
 import re
@@ -7,11 +9,12 @@ from rich.progress import Progress
 
 class LogValidator:
     """
-    Create a HTCondor Joblog Validator
+    Create a HTCondor Joblog Validator.
 
     Validation is visual represented by rich.progress
 
-
+    The way files are validated is by regex,
+    because the htcondor module takes too much time.
     """
 
     def __init__(self,
@@ -19,6 +22,7 @@ class LogValidator:
                  std_err=".err",
                  std_out=".out",
                  recursive=False):
+        """Initialize."""
         self.std_log = std_log
         self.std_err = std_err
         self.std_out = std_out
@@ -26,12 +30,11 @@ class LogValidator:
 
     def validate_file(self, file) -> bool:
         """
-         Validate a single HTCondor joblog file.
+        Validate a single HTCondor joblog file.
 
         :param file: HTCondor log file
         :return: True when valid else False
         """
-
         # if not ending with stdout
         if self.std_log.__ne__("") and not file.endswith(self.std_log):
             return False
@@ -117,6 +120,7 @@ class LogValidator:
     def htcompact_validation(self, file_list):
         """
         Function designed especially for this script.
+
         Filters given files for valid HTCondor log files,
         the process will be visual presented by rich.progress
 

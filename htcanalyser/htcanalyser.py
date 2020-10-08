@@ -1,3 +1,5 @@
+"""module to summarize and analyse HTCondor log files."""
+
 import datetime
 import logging
 import os
@@ -23,16 +25,17 @@ timedelta = datetime.timedelta
 
 class HTCAnalyser:
     """
+    This class is able to analyse HTCondor Joblogs.
 
-    This class is able to analyse HTCondor Joblogs by the modes
-    default,
-    analyse,
-    summarize,
-    analysed-summary,
-    filter_for
+    The modes:
+        default,
+        analyse,
+        summarize,
+        analysed-summary,
+        filter_for
 
     """
-
+    
     def __init__(self,
                  std_log="",
                  std_err=".err",
@@ -42,6 +45,8 @@ class HTCAnalyser:
                  tolerated_usage=None,
                  bad_usage=None):
         """
+        Initialize HTCAnalyser.
+
         The None defaults are necessary,
         cause None should be handled correctly if given
 
@@ -79,16 +84,16 @@ class HTCAnalyser:
 
     def manage_thresholds(self, resources: dict) -> dict:
         """
+        Manage thresholds.
 
-            The important part is that the keywords exist
-            "Usage", "Requested"
-            marks everything with the colors
-            green, yellow, red, by the specified thresholds
+        The important part is that the keywords exist
+        "Usage", "Requested"
+        marks everything with the colors
+        (green, yellow, red) - (good, warning, bad)
 
-        :param resources:
+        :param resources: resource dictionary
         :return: resources with colors on usage column
         """
-
         resources.update(Usage=list(
             resources["Usage"]))  # change to list, to avoid numpy type errors
         for i in range(len(resources['Resources'])):
@@ -124,11 +129,11 @@ class HTCAnalyser:
 
     def htcondor_stderr(self, file: str) -> str:
         """
+        Read HTCondor stderr files.
 
         :param file: HTCondor stderr file
         :return: filtered content
         """
-
         output_string = ""
         try:
             if os.path.getsize(file) == 0:
@@ -162,10 +167,11 @@ class HTCAnalyser:
 
     def htcondor_stdout(self, file: str) -> str:
         """
+        Read HTCondor stdout files.
+
         :param: HTCondor stdout file
         :return: content
         """
-
         output_string = ""
         try:
 
@@ -191,17 +197,19 @@ class HTCAnalyser:
         finally:
             return output_string
 
-    def get_job_spec_id(self, file: str):
+    def get_job_spec_id(self, file: str) -> str:
         """
-        Insert a HTCondor file and the suffix
-        and cut of the suffix to get just the job specification id
+        Get job specification id from a HTCondor file.
+
+        Insert a HTCondor file cut of the suffix,
+         to get just the job specification id
 
         Example:
         get_job_spec_id("43221_23.log", ".log") -> "43221_23"
 
         :param file:
         :param std_log:
-        :return:
+        :return: file prefix
         """
         if self.std_log.__ne__("") \
                 and file[-len(self.std_log):].__eq__(self.std_log):
@@ -214,8 +222,9 @@ class HTCAnalyser:
                     ) -> (dict, dict, dict, dict, dict):
         """
         Read the log file with the htcondor module.
+
         Return five dicts holding information about:
-        execution node, used resources, times, used ram history, errors .
+        execution node, used resources, times, used ram history and errors
 
         :type file: str
         :param file: HTCondor log file
@@ -451,9 +460,12 @@ class HTCAnalyser:
 
     def gethostbyaddr(self, ip):
         """
-            this function is supposed to filter a given
-             ip for it's representative domain name like google.com
-            :return: resolved domain name, else give back the ip
+        Get dns entry py Ipv4 address.
+
+        this function is supposed to filter a given
+        ip for it's representative domain name like google.com
+
+        :return: resolved domain name, else give back the ip
         """
         try:
             if ip in list(self.store_dns_lookups.keys()):
@@ -474,15 +486,14 @@ class HTCAnalyser:
 
     def default(self, log_files: list_of_logs) -> log_inf_list:
         """
-        Print the default output for a given list of log files
+        Create the default output for a given list of log files.
 
         This mode is just an easy view,
-         on what the script is actually doing.
+        on what the script is actually doing.
 
         :param log_files:
         :return: list of dicts
         """
-
         logging.info('Starting the default mode')
 
         list_of_dicts = list()
@@ -533,6 +544,7 @@ class HTCAnalyser:
                 log_files: list_of_logs,
                 show_legend=True) -> log_inf_list:
         """
+        Analyse the given log files one by one.
 
         :param log_files: list of valid HTCondor log files
         :param show_legend:
@@ -622,14 +634,15 @@ class HTCAnalyser:
 
     def summarize(self, log_files: list_of_logs) -> log_inf_list:
         """
-        Summarises all used resources and the runtime in total and average
-        for normal executed jobs
+        Summarize all given log files.
 
         Runs through the log files via the log_to_dict function
+        Creates average runtimes and average use of resources
+        for normal terminated HTCondor Jobs.
+        Other types of execution will be ignored
 
         :return:
         """
-
         logging.info('Starting the summarizer mode')
 
         valid_files = len(log_files)
@@ -797,15 +810,24 @@ class HTCAnalyser:
 
     def analysed_summary(self, log_files: list_of_logs) -> log_inf_list:
         """
-            analyse the summarized log files,
-            this is meant to give the ultimate output
-            about every single log event in average etc.
+        Summarize log files and analyse the results.
 
-            Runs through the log files via the log_to_dict function
+        This is meant to give the ultimate output
+        about every single job state in average etc.
 
-            :return: string
-            """
+        Creates information based on the job state.
+        The common states are:
+        - Normal termination
+        - Abnormal termination
+        - Waiting for execution
+        - Currently running
+        - Aorted
+        - Aborted before submission
+        - Aborted before execution
+        - error while reading
 
+        :return: list of log information based on the job state
+        """
         logging.info('Starting the analysed summary mode')
 
         valid_files = len(log_files)
@@ -1087,10 +1109,15 @@ class HTCAnalyser:
                    extend=False,
                    mode=None) -> log_inf_list:
         """
-        Filter for a list of keywords, which can be extended
-        and print out every file which matches the pattern (not case sensitive)
+        Filter for given keywords.
+
+        The keywords can be extended by:
+        "err", "warn", "exception", "aborted", "abortion", "abnormal", "fatal"
+
+        The filtering is NOT case sensitive.
+
         The filtered files can be analysed summarise, etc afterwards,
-        else this function will return None
+        else this function will return the files
 
         :param log_files:
         :param keywords:
@@ -1098,9 +1125,7 @@ class HTCAnalyser:
         :param mode:
         :return:
             list with dicts depending on the used mode,
-            to forward the filtered files,
-
-            None if no forwarding is set
+            list of files if mode is None
         """
         logging.info('Starting the filter mode')
 
@@ -1188,7 +1213,7 @@ class HTCAnalyser:
 
 def raise_value_error(message: str) -> ValueError:
     """
-    Raise Value Error with message
+    Raise Value Error with message.
 
     :param message: str
     :return:
@@ -1198,7 +1223,7 @@ def raise_value_error(message: str) -> ValueError:
 
 def raise_type_error(message: str) -> TypeError:
     """
-    Raise Type Error with message
+    Raise Type Error with message.
 
     :param message:
     :return:
@@ -1208,6 +1233,8 @@ def raise_type_error(message: str) -> TypeError:
 
 def _int_formatter(val, chars, delta, left=False):
     """
+    Format float to int.
+
     Usage of this is shown here:
     https://github.com/tammoippen/plotille/issues/11
 
@@ -1229,8 +1256,9 @@ def gen_time_dict(submission_date: date_time = None,
                   termination_date: date_time = None
                   ) -> (timedelta, timedelta, timedelta):
     """
-    Takes in three dates, at least one must be given,
-    return the timedelta objects,
+    Generate a time dict.
+
+    Takes in three dates, return the timedelta objects.
     Depending on the given arguments,
     this function will try to calculate
     the time differences between the events.

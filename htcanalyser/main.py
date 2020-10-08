@@ -1,25 +1,13 @@
-#!/usr/bin/env python3
-
 """
 
-This script is basically reading information from HTCondor log files,
-by using the htcondor module
-and stores it into dictionaries.
-By that it's simple to analyse the data.
-
-The script makes the information compact and easy to under stand,
-that's the reason for the name htcompact
-
-Single logs can be read quite easily,
-but also it's possible to summarize a whole directory with logs
-to see for ex. the average runtime and usage of all the logs
+Handle config setup and commandline arguments.
 
 Exit Codes:
- Normal Termination: 0
- No given files: 1
- Wrong Options or Arguments: 2
- TypeError: 3
- Keyboard interruption: 4
+    Normal Termination: 0
+    No given files: 1
+    Wrong Options or Arguments: 2
+    TypeError: 3
+    Keyboard interruption: 4
 
 """
 
@@ -33,8 +21,8 @@ from typing import List
 
 import configargparse
 
-from htcompact.htcanalyser import HTCAnalyser, raise_value_error
-from htcompact.logvalidator import LogValidator
+from htcanalyser.htcanalyser import HTCAnalyser, raise_value_error
+from htcanalyser.logvalidator import LogValidator
 from rich import print as rprint, box
 from rich.progress import Table
 
@@ -59,33 +47,29 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
 
 # class to store and change global variables
 class GlobalPlayer(object):
+    """handle global variables."""
 
     def __init__(self):
-        """
-        initialize
-        """
+        """initialize."""
         self.redirecting_stdout = None
         self.reading_stdin = None
         self.stdin_input = None
 
     def reset(self):
-
-        # redirection tools
+        """reset variables."""
         self.redirecting_stdout = None
         self.reading_stdin = None
         self.stdin_input = None
 
     def check_for_redirection(self):
         """
-        This method should be activated first, when output is generated
+        Check if reading from stdin or redirecting stdout.
+
         It changes the global variables of GlobalServant,
         if stdin or stdout is set
 
-        This is useful to escape color sequences,
-        or to avoid user input
         :return:
         """
-
         self.redirecting_stdout = not sys.stdout.isatty()
         self.reading_stdin = not sys.stdin.isatty()
 
@@ -100,14 +84,14 @@ GlobalServant = GlobalPlayer()
 
 def setup_logging_tool(log_file=None, verbose_mode=False):
     """
-        Set up the logging device,
+        Set up the logging device.
+
         to generate a log file, with --generate-log-file
         or to print more descriptive output with the verbose mode to stdout
 
         both modes are compatible together
     :return:
     """
-
     # disable the loggeing tool by default
     logging.getLogger().disabled = True
 
@@ -155,8 +139,10 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
 class CustomFormatter(argparse.HelpFormatter):
     """
 
-    Custom formatter for setting argparse formatter_class. Identical to the
-    default formatter, except that very long option strings are split into two
+    Custom formatter for setting argparse formatter_class.
+
+    Identical to the default formatter,
+     except that very long option strings are split into two
     lines.
 
     Solution discussed on: https://bit.ly/32CkCWK
@@ -185,11 +171,11 @@ class CustomFormatter(argparse.HelpFormatter):
                 return ',\n  '.join(parts)
 
 
-# parser for prioritised flags
 def setup_prioritized_parser():
     """
-    Prioritized options
-    :return:
+    Prioritized options.
+
+    :return: parser
     """
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--no-config",
@@ -211,11 +197,11 @@ def setup_prioritized_parser():
 def setup_commandline_parser(default_config_files=[])\
         -> configargparse.ArgumentParser:
     """
-    Defines parser with all arguments listed below
-    :param default_config_files: list with config file hierarchy to look for
-    :return:
-    """
+    Define parser with all arguments listed below.
 
+    :param default_config_files: list with config file hierarchy to look for
+    :return: parser
+    """
     parser = configargparse.\
         ArgumentParser(formatter_class=CustomFormatter,
                        default_config_files=default_config_files)
@@ -352,7 +338,8 @@ def setup_commandline_parser(default_config_files=[])\
 
 def manage_params(args: list) -> dict:
     """
-    Uses the argparse parser defined in define_parser()
+    manage params.
+
     returns a dict looking like (default):
 
      {'verbose': False,
@@ -371,11 +358,9 @@ def manage_params(args: list) -> dict:
       ....
       }
 
-
     :param args: list of args
     :return: dict with params
     """
-
     # listen to stdin and add these files
     if GlobalServant.reading_stdin:
         logging.debug("Listening to arguments from stdin")
@@ -507,6 +492,8 @@ def manage_params(args: list) -> dict:
 
 def wrap_dict_to_table(table_dict, title="") -> Table:
     """
+    Wrap dict to rich table.
+
     Takes a dict of the format :
     {
         column1: [Header1, Header2, Header3]
@@ -517,9 +504,8 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
     without too much work
     :param table_dict:
     :param title: title of table
-    :return:
+    :return: table
     """
-
     if len(table_dict) == 0:
         return
 
@@ -553,6 +539,8 @@ def print_results(htcanalyser: HTCAnalyser,
                   filter_extended=False,
                   **kwargs) -> str:
     """
+    Create the ouput specified by the mode.
+
     :param log_files:
     :param mode:
     :param ignore_list:
@@ -561,7 +549,6 @@ def print_results(htcanalyser: HTCAnalyser,
     :param kwargs:
     :return:
     """
-
     if len(filter_keywords) > 0:
         results = htcanalyser.\
             filter_for(log_files,
@@ -666,8 +653,9 @@ def print_results(htcanalyser: HTCAnalyser,
 
 def run(commandline_args):
     """
-    Run this script
+    Run this script.
 
+    :param commandline_args: list of args
     :return:
     """
     # before running make sure Global Parameters are set to default
@@ -742,14 +730,10 @@ def run(commandline_args):
 
 
 def main():
-    """
-    This is the main function,
-    which runs the script, if not imported as a module
-
-    :return: exit status 0-4
-    """
+    """main function (entry point)."""
     run(sys.argv[1:])
 
 
 if __name__ == "main":
+    """execute module."""
     main()
