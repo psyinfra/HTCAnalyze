@@ -22,14 +22,15 @@ timedelta = datetime.timedelta
 
 
 class HTCAnalyser:
-
     """
+
     This class is able to analyse HTCondor Joblogs by the modes
     default,
     analyse,
     summarize,
     analysed-summary,
     filter_for
+
     """
 
     def __init__(self,

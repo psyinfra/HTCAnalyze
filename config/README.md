@@ -1,4 +1,4 @@
-## Structure:
+## Structure
 
 The default htcsetup.conf looks like this:
 <details>
@@ -93,7 +93,7 @@ if NOT --no-config Flag is set:
 4.  else go with default settings
 
 
-##### Note:
+##### Note
 Arguments given by the terminal have a higher priority,\
 so that the settings in the config file for that particular argument will be ignored (not overwritten),\
 but all the other arguments stay defined by the config file.

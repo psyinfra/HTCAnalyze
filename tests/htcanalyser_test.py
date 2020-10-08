@@ -181,8 +181,7 @@ def test_manage_thresholds(htcan):
 
 
 def test_log_to_dict(htcan):
-    """
-    Tests the log_to_dict function of HTCAnalyser class.
+    """Tests the log_to_dict function of HTCAnalyser class.
 
     Only the following files are tested:
 

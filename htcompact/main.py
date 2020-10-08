@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 
 This script is basically reading information from HTCondor log files,
@@ -60,6 +61,9 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
 class GlobalPlayer(object):
 
     def __init__(self):
+        """
+        initialize
+        """
         self.redirecting_stdout = None
         self.reading_stdin = None
         self.stdin_input = None
@@ -149,7 +153,9 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
 
 
 class CustomFormatter(argparse.HelpFormatter):
-    """Custom formatter for setting argparse formatter_class. Identical to the
+    """
+
+    Custom formatter for setting argparse formatter_class. Identical to the
     default formatter, except that very long option strings are split into two
     lines.
 
