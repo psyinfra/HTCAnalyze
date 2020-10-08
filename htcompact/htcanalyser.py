@@ -465,7 +465,7 @@ class HTCAnalyser:
             self.store_dns_lookups[ip] = reversed_dns[0]
             # return
             return reversed_dns[0]
-        except KeyError:
+        except socket.gaierror:
             logging.debug('Not able to resolve the IP: ' + ip)
             # also store
             self.store_dns_lookups[ip] = ip
