@@ -2,8 +2,7 @@
 import sys
 import pytest
 import io
-import imp
-ht = imp.load_source('htcompact', 'htcompact')
+from htcanalyser import main as ht
 
 
 # To make a copy of stdin and stdout
@@ -52,15 +51,6 @@ def test_check_for_redirection():
            and ht.GlobalServant.redirecting_stdout is True
 
 
-def test_reverse_dns_lookup():
-    ht.GlobalServant.reset()
-    ht.gethostbyaddr("172.217.0.0")
-    assert ht.GlobalServant.store_dns_lookups["172.217.0.0"]\
-           == "ord38s04-in-f0.1e100.net"
-    ht.gethostbyaddr("NoIP")
-    assert ht.GlobalServant.store_dns_lookups["NoIP"] == "NoIP"
-
-
 def test_manage_params():
     ht.GlobalServant.reset()
 
@@ -77,10 +67,10 @@ def test_manage_params():
 
     # normal parameters
     args = "--std-log=.logging --std-out=.output --std-err=.error".split()
-    ht.manage_params(args)
-    assert ht.GlobalServant.std_log == ".logging"
-    assert ht.GlobalServant.std_out == ".output"
-    assert ht.GlobalServant.std_err == ".error"
+    res_dict = ht.manage_params(args)
+    assert res_dict["std_log"] == ".logging"
+    assert res_dict["std_out"] == ".output"
+    assert res_dict["std_err"] == ".error"
 
     args = "--show std-err std-out --ignore execution-details " \
            "times errors host-nodes used-resources " \
@@ -107,8 +97,8 @@ def test_manage_params():
 
     args = "--reverse-dns-lookup --no-config --generate-log -v".split()
     res_dict = ht.manage_params(args)
-    assert ht.GlobalServant.reverse_dns_lookup is True
-    assert res_dict["generate_log_file"] == "htcompact.log"
+    assert res_dict["reverse_dns_lookup"] is True
+    assert res_dict["generate_log_file"] == "htcanalyser.log"
     assert res_dict["verbose"] is True
 
     args = "--what_is_this".split()
@@ -187,7 +177,5 @@ def test_manage_params():
     args = "-m as".split()
     res_dict = ht.manage_params(args)
     assert res_dict["mode"] == "analysed-summary"
-
-
 
 # Todo: other methods test

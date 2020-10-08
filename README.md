@@ -1,4 +1,4 @@
-# HTCompact
+# HTCAnalyse
 
 [![Build Status](https://travis-ci.org/psyinfra/htcompact.svg?branch=master)](https://travis-ci.org/psyinfra/htcompact)
 [![codecov](https://codecov.io/gh/psyinfra/htcompact/branch/master/graph/badge.svg)](https://codecov.io/gh/psyinfra/htcompact)
@@ -15,13 +15,13 @@ pip install git+https://github.com/psyinfra/htcompact.git
 I recommend using a [virtual environment](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/),
 (if you're not already); it makes life a lot tidier.
 ```
-python3 -m venv ~/htcompact
-source ~/htcompact/bin/activate
+python3 -m venv ~/htcanalyse
+source ~/htcanalyse/bin/activate
 pip install git+https://github.com/psyinfra/htcompact.git
 ```
 
-A config file (`htcompact.conf`) is also provided, to control the default behavior of
-htcompact. This is especially useful when installing system-wide, or for
+A config file (`htcanalyser.conf`) is also provided, to control the default behavior of
+htcanalyse. This is especially useful when installing system-wide, or for
 adjusting various warning/error thresholds. See
 [CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md) for
 more information
@@ -29,9 +29,9 @@ more information
 - The script is using the python module htcondor 8.9.8, which is not working on macOS devices.
 
 ## Getting Started
-- *htcompact --help* for detailed description
+- *htcanalyse --help* for detailed description
 - general use:
-`htcompact \[files] \[directories] \[args]`
+`htcanalyse \[files] \[directories] \[args]`
 
 Let's assume that we have a directory called `logs/` containing these files:
 ```
@@ -51,27 +51,27 @@ logs >
 
 #### possible configurations:
 ```
-htcompact -h (show a detailed description to all functionalities)
+htcanalyse -h (show a detailed description to all functionalities)
 
-htcompact path_to_logs/job_5991_0.log
+htcanalyse path_to_logs/job_5991_0.log
 
-htcompact path_to_logs/job_5991_0 path_to_logs/job_5992_23.log
+htcanalyse path_to_logs/job_5991_0 path_to_logs/job_5992_23.log
 
-htcompact path_to_logs (run through all files inside the logs directory)
+htcanalyse path_to_logs (run through all files inside the logs directory)
 
-htcompact path_to_logs/job_5991_* -s  (summarize all files starting with: job_5991_)
+htcanalyse path_to_logs/job_5991_* -s  (summarize all files starting with: job_5991_)
 
-htcompact path_to_logs/395_2.log --table-format=pretty
+htcanalyse path_to_logs/395_2.log --table-format=pretty
 ```
 
 lets consider we also have a config file (see: [CONFIG](https://github.com/psyinfra/htcompact/blob/master/config/README.md)) \
-a default htcompact.conf should already exist inside the project folder
+a default htcanalyser.conf should already exist inside the project folder
 
 possible configurations could be reduced to something like:
 ```
-htcompact -c htcomapct.conf
+htcanalyse -c htcanalyser.conf
 or
-htcompact [files/directories] -c htcompact.conf (ignores files/directories set inside the config file)
+htcanalyse [files/directories] -c htcanalyser.conf (ignores files/directories set inside the config file)
 ```
 
 ### Testing:
