@@ -10,14 +10,14 @@ even build graphs (such as resource utilization).
 ## Installation
 **HTCompact** can be installed directly from GitHub using pip:
 ```
-pip install git+https://github.com/psyinfra/htcompact.git
+pip install git+https://github.com/psyinfra/HTCAnalyser.git
 ```
 I recommend using a [virtual environment](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/),
 (if you're not already); it makes life a lot tidier.
 ```
 python3 -m venv ~/htcanalyse
 source ~/htcanalyse/bin/activate
-pip install git+https://github.com/psyinfra/htcompact.git
+pip install git+https://github.com/psyinfra/HTCAnalyser.git
 ```
 
 A config file (`htcanalyser.conf`) is also provided, to control the default behavior of
