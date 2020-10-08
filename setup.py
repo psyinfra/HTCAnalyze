@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-# Todo: test
-
 from setuptools import setup, find_packages
 
 with open("README.md", "r") as readme:
@@ -30,9 +28,9 @@ setup(name='htcompact',
       ],
       entry_points={
             'console_scripts': [
-                  'htcompact=htcompact.main:main',
-                  'htcanalyser=htcompact.main:main',
-                  'htsummarizer=htcompact.main:main'
+                  'htcanalyse=htcanalyser.main:main',
+                  'htanalyse=htcanalyser.main:main',
+                  'htcan=htcanalyser.main:main'
             ],
       },
       data_files=[
