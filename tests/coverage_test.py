@@ -4,6 +4,39 @@ import pytest
 from htcompact import main as ht
 
 
+class PseudoTTY(object):
+
+    def __init__(self, underlying, isset):
+        """
+
+        :param underlying:
+        :param isset:
+        """
+        self.__underlying = underlying
+        self.__isset = isset
+
+    def __getattr__(self, name):
+        """
+
+        :param name:
+        :return:
+        """
+        return getattr(self.__underlying, name)
+
+    def isatty(self):
+        """
+
+        :return:
+        """
+        return self.__isset
+
+
+copy_sys_stdin = sys.stdin
+copy_sys_stdout = sys.stdout
+sys.stdin = PseudoTTY(copy_sys_stdin, True)
+sys.stdout = PseudoTTY(copy_sys_stdout, True)
+
+
 def _help():
     args = "-h".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
