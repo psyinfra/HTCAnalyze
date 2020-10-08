@@ -72,9 +72,9 @@ class HTCAnalyser:
             self.tolerated_usage = tolerated_usage
 
         if bad_usage is None:
-            self.bad_usage_threshold = 0.25
+            self.bad_usage = 0.25
         else:
-            self.bad_usage_threshold = bad_usage
+            self.bad_usage = bad_usage
 
     def manage_thresholds(self, resources: dict) -> dict:
         """
@@ -97,10 +97,10 @@ class HTCAnalyser:
                 deviation = float(resources['Usage'][i]) / float(
                     resources['Requested'][i])
 
-                # color red if more than bad_usage_thresholds % away
+                # color red if more than bad_usages % away
                 # from the requested value
-                if deviation >= 1 + self.bad_usage_threshold \
-                        or deviation <= 1 - self.bad_usage_threshold:
+                if deviation >= 1 + self.bad_usage \
+                        or deviation <= 1 - self.bad_usage:
                     resources['Usage'][i] = f"[red]" \
                         f"{str(resources['Usage'][i])}[/red]"
 
@@ -243,8 +243,8 @@ class HTCAnalyser:
             for event in jel.events(sec):
                 event_type_number = event.get('EventTypeNumber')
                 # convert time to datetime object
-                date = datetime.datetime.strptime(event.get('EventTime'),
-                                                  "%Y-%m-%dT%H:%M:%S")
+                date = date_time.strptime(event.get('EventTime'),
+                                          "%Y-%m-%dT%H:%M:%S")
                 # update submit date, submission host
                 if event.type == jet.SUBMIT:
                     time_dict["Submission date"] = date
@@ -419,8 +419,8 @@ class HTCAnalyser:
         if len(job_events) > 0:
             desc, val = zip(*job_events)
             job_events_dict = {
-                "Execution details": desc,
-                "Values": val
+                "Execution details": list(desc),
+                "Values": list(val)
             }
 
         # convert errors into a dictionary
@@ -643,7 +643,7 @@ class HTCAnalyser:
         still_running = 0
         error_reading_files = 0
         other_exception = 0
-        normal_runtime = datetime.timedelta()
+        normal_runtime = timedelta()
         host_nodes = dict()
 
         total_usages = np.array([0, 0, 0], dtype=float)
@@ -701,8 +701,8 @@ class HTCAnalyser:
             - other_exception - error_reading_files
 
         average_runtime = normal_runtime / n if n != 0 else normal_runtime
-        average_runtime = datetime.timedelta(days=average_runtime.days,
-                                             seconds=average_runtime.seconds)
+        average_runtime = timedelta(days=average_runtime.days,
+                                    seconds=average_runtime.seconds)
 
         exec_dict = {
             "Job types": ["normal executed jobs"],
@@ -745,7 +745,7 @@ class HTCAnalyser:
 
         time_desc_list = list()
         time_value_list = list()
-        if normal_runtime != datetime.timedelta(0, 0, 0):
+        if normal_runtime != timedelta(0, 0, 0):
             time_desc_list.append("Total runtime")
             time_value_list.append(normal_runtime)
         if average_runtime:
@@ -780,8 +780,8 @@ class HTCAnalyser:
                 executed_jobs.append(val[0])
                 average_job_duration = val[1] / val[0]
                 runtime_per_node.append(
-                    datetime.timedelta(average_job_duration.days,
-                                       average_job_duration.seconds))
+                    timedelta(average_job_duration.days,
+                              average_job_duration.seconds))
 
             cpu_dict = {
                 "Host Nodes": list(host_nodes.keys()),
@@ -840,9 +840,9 @@ class HTCAnalyser:
 
             # if time dict exists
             time_keys = list()
-            waiting_time = datetime.timedelta()
-            runtime = datetime.timedelta()
-            total_time = datetime.timedelta()
+            waiting_time = timedelta()
+            runtime = timedelta()
+            total_time = timedelta()
             if time_dict:
                 refactor_time_dict = dict(
                     zip(time_dict["Dates and times"], time_dict["Values"]))
@@ -1011,7 +1011,7 @@ class HTCAnalyser:
             times = np.array([term_info[1], term_info[2], term_info[3]])
             av_times = times / n
             format_av_times = [
-                datetime.timedelta(days=time.days, seconds=time.seconds)
+                timedelta(days=time.days, seconds=time.seconds)
                 for time in av_times]
 
             time_dict = {
@@ -1051,8 +1051,8 @@ class HTCAnalyser:
                 executed_jobs.append(val[0])
                 average_job_duration = val[1] / val[0]
                 runtime_per_node.append(
-                    datetime.timedelta(average_job_duration.days,
-                                       average_job_duration.seconds))
+                    timedelta(average_job_duration.days,
+                              average_job_duration.seconds))
 
             host_nodes_dict = {
                 "Host Nodes": list(term_info[5].keys()),
@@ -1223,13 +1223,13 @@ def _int_formatter(val, chars, delta, left=False):
     return '{:{}{}d}'.format(int(val), align, chars)
 
 
-def gen_time_dict(submission_date: date_time,
+def gen_time_dict(submission_date: date_time = None,
                   execution_date: date_time = None,
                   termination_date: date_time = None
                   ) -> (timedelta, timedelta, timedelta):
     """
     Takes in three dates, at least one must be given,
-    return the datetime.timedelta objects,
+    return the timedelta objects,
     Depending on the given arguments,
     this function will try to calculate
     the time differences between the events.
@@ -1244,7 +1244,7 @@ def gen_time_dict(submission_date: date_time,
     waiting_time = None
     runtime = None
     total_time = None
-    today = datetime.datetime.now()
+    today = date_time.now()
     today = today.replace(microsecond=0)  # remove unnecessary microseconds
 
     time_desc = list()
@@ -1272,6 +1272,7 @@ def gen_time_dict(submission_date: date_time,
             submission_date = submission_date.replace(
                 year=submission_date.year - 1)
         waiting_time = execution_date - submission_date
+
     if termination_date:
         if waiting_time:
             pass
@@ -1337,15 +1338,19 @@ def gen_time_dict(submission_date: date_time,
     return time_dict
 
 
-def sort_dict_by_col(dictionary, column):
+def sort_dict_by_col(dictionary, column, reverse=True):
     """
     Sort a dictionary by the given column.
 
     The dictionary must have key: list items
     where all lists have the same length
 
+    The order is reversed
+    [1,4,2,3,5] -> [5,4,3,2,1]
+
     :param dictionary:
     :param column:
+    :param reversed:
     :return:
     """
     # sorted_dict = dict.fromkeys(dictionary.keys())
@@ -1353,7 +1358,9 @@ def sort_dict_by_col(dictionary, column):
     sort_index = list(sorted_dict.keys()).index(column)
     zip_data = zip(*dictionary.values())
     sorted_items = sorted(zip_data, key=lambda tup: tup[sort_index])
-    for item in reversed(sorted_items):
+    if reverse:
+        sorted_items = reversed(sorted_items)
+    for item in sorted_items:
         for i, key in enumerate(sorted_dict.keys()):
             sorted_dict[key].append(item[i])
 
