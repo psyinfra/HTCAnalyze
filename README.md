@@ -1,8 +1,8 @@
 # HTCAnalyse
 
-[![Build Status](https://travis-ci.org/psyinfra/htcompact.svg?branch=master)](https://travis-ci.org/psyinfra/htcompact)
-[![codecov](https://codecov.io/gh/psyinfra/htcompact/branch/master/graph/badge.svg)](https://codecov.io/gh/psyinfra/htcompact)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/d8fff0409968467d855a0efbf2ab8f7d)](https://www.codacy.com/gh/psyinfra/htcompact?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=psyinfra/htcompact&amp;utm_campaign=Badge_Grade)
+[![Build Status](https://travis-ci.org/psyinfra/HTCAnalyser.svg?branch=master)](https://travis-ci.org/psyinfra/HTCAnalyser)
+[![codecov](https://codecov.io/gh/psyinfra/HTCAnalyser/branch/master/graph/badge.svg)](https://codecov.io/gh/psyinfra/HTCAnalyser)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/d8fff0409968467d855a0efbf2ab8f7d)](https://www.codacy.com/gh/psyinfra/HTCAnalyser?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=psyinfra/HTCAnalyser&amp;utm_campaign=Badge_Grade)
 
 Search through HTCondor log files to extract information, identify patterns, and
 even build graphs (such as resource utilization).
