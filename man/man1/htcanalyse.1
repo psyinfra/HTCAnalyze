@@ -3,7 +3,7 @@
 .Os \" Current operating system.
 .
 .Sh NAME
-.Nm htcompact
+.Nm htcanalyse
 .Nd summarize and analyse HTCondor job log files
 .
 .Sh SYNOPSIS
@@ -53,11 +53,11 @@ There is no need to use the flags,
 but sometimes you have to use them,
 to escape the previous option, for ex:
 .Bd -literal
-    htcompact --ignore all-resources --files log1 log2
+    htcanalyse --ignore all-resources --files log1 log2
 
 to prevent this, always hand the files first, like:
 
-    htcompact log1 log2 --ignore all-resources
+    htcanalyse log1 log2 --ignore all-resources
 .Ed
 .
 .It Ar OPTIONS
@@ -236,9 +236,9 @@ but printing it to stdout
 .It Fl Fl generate-log-file
 Related to the verbose mode,
 this will generate the same output but not onto the terminal.
-This will create a log rotation file: htcompact.log or append output to it.
+This will create a log rotation file: htcanalyser.log or append output to it.
 The maximum size is limited by 1 MB,
-which means the output starts to rollover on a backup file: htcompact.log.1
+which means the output starts to rollover on a backup file: htcanalyser.log.1
 .
 .It Fl Fl tolerated-usage Ar threshold
 Threshold to warn the user,
@@ -264,14 +264,14 @@ See the config specification:
 The script is also checking for other config files in other places:
 .
 "project_dir/config/htcomapct.conf",
- "/etc/htcompact.conf" and "~/.config/htcompact/htcompact.conf"
+ "/etc/htcanalyser.conf" and "~/.config/htcanalyser/htcanalyser.conf"
 .Ed
 .Bd -literal
 with different priorities from 1 (high) to 5 (low):
 Priority[1] -c | --config config_file
-Priority[2] search for config_file in project_dir/config/htcompact.conf
-Priority[3] search for config_file in ~/.config/htcompact/htcompact.conf
-Priority[4] search for config_file in /etc/htcompact.conf
+Priority[2] search for config_file in project_dir/config/htcanalyser.conf
+Priority[3] search for config_file in ~/.config/htcanalyser/htcanalyser.conf
+Priority[4] search for config_file in /etc/htcanalyser.conf
 Priority[5] run with default settings
 .Ed
 .
@@ -284,7 +284,7 @@ Priority[5] run with default settings
 .
 .Sh FILES
 .Bl -tag -width Ds
-.It Pa config/htcompact.conf
+.It Pa config/htcanalyser.conf
 A default setup for this script.
 .El
 .
@@ -300,15 +300,15 @@ Keyboard interruption: 4
 .
 .Sh EXAMPLES
 .Bd -literal
-htcompact -a 398_440.log
-htcompact -s log_directory --ignore execution-details --no-config
-htcompact -as log_directory
-htcompact -e 005
-htcompact --filter "" --extend -s --ignore all-resources log_directory
-htcompact htcompact.conf 394_440 -a --show-output
-htcompact --filter aborted -as ~/logs
+htcanalyse -a 398_440.log
+htcanalyse -s log_directory --ignore execution-details --no-config
+htcanalyse -as log_directory
+htcanalyse -e 005
+htcanalyse --filter "" --extend -s --ignore all-resources log_directory
+htcanalyse htcanalyser.conf 394_440 -a --show-output
+htcanalyse --filter aborted -as ~/logs
 OR
-grep -R -l aborted ~/logs | htcompact -as
+grep -R -l aborted ~/logs | htcanalyse -as
 .Ed
 .
 .Sh SEE ALSO

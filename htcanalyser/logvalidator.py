@@ -117,7 +117,7 @@ class LogValidator:
 
         return valid_dir_files
 
-    def htcompact_validation(self, file_list):
+    def common_validation(self, file_list):
         """
         Function designed especially for this script.
 

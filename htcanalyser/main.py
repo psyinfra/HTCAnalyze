@@ -234,11 +234,11 @@ def setup_commandline_parser(default_config_files=[])\
                         default=None)
     parser.add_argument("--generate-log-file",
                         nargs="?",
-                        const="htcompact.log",
+                        const="htcanalyser.log",
                         default=None,
                         help="generates output about the process,"
                              " which is mostly useful for developers, "
-                             "if no file is specified, default: htcompact.log")
+                             "if no file is specified, default: htcanalyser.log")
 
     all_vals = []
     for item in ALLOWED_MODES.items():
@@ -370,7 +370,7 @@ def manage_params(args: list) -> dict:
     prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
     # first of all check for prioritised/exit params
     if prio_parsed.version:
-        print("Version: v1.2.3")
+        print("Version: v1.3.0")
         sys.exit(0)
 
     # get files from prio_parsed
@@ -382,7 +382,7 @@ def manage_params(args: list) -> dict:
         # do not use config files if --no-config flag is set
         if prio_parsed.no_config:
             # if as well config is set, exit, because of conflict
-            print("htcompact: error: conflict between"
+            print("htcanalyse: error: conflict between"
                   " --no-config and --config")
             sys.exit(2)
         # else add config again
@@ -390,9 +390,9 @@ def manage_params(args: list) -> dict:
 
     # parse config file if not --no-config is set, might change nothing
     if not prio_parsed.no_config:
-        config_paths = ['/etc/htcompact.conf',
-                        '~/.config/htcompact/htcompact.conf',
-                        sys.prefix + '/config/htcompact.conf']
+        config_paths = ['/etc/htcanalyser.conf',
+                        '~/.config/htcanalyser/htcanalyser.conf',
+                        sys.prefix + '/config/htcanalyser.conf']
         cmd_parser = setup_commandline_parser(config_paths)
         commands_parsed = cmd_parser.parse_args(args)
         cmd_dict = vars(commands_parsed).copy()
@@ -471,7 +471,7 @@ def manage_params(args: list) -> dict:
                 raise_value_error("--show only allowed"
                                   " with default and analyser mode")
     except ValueError as err:
-        print("htcompact: error: " + str(err))
+        print("htcanalyse: error: " + str(err))
         sys.exit(2)
 
     # delete unnecessary information
@@ -675,7 +675,7 @@ def run(commandline_args):
         setup_logging_tool(param_dict["generate_log_file"],
                            param_dict["verbose"])
 
-        logging.debug("-------Start of htcompact scipt-------")
+        logging.debug("-------Start of htcanalyser scipt-------")
 
         htcanalyser = \
             HTCAnalyser(std_log=param_dict["std_log"],
@@ -699,7 +699,7 @@ def run(commandline_args):
                                  std_err=param_dict["std_err"],
                                  recursive=param_dict["recursive"])
 
-        valid_files = validator.htcompact_validation(param_dict["files"])
+        valid_files = validator.common_validation(param_dict["files"])
 
         rprint(f"[green]{len(valid_files)}"
                f" valid log file(s)[/green]\n")
@@ -714,7 +714,7 @@ def run(commandline_args):
 
         logging.debug(f"Runtime: {end - start}")  # runtime of this script
 
-        logging.debug("-------End of htcompact script-------")
+        logging.debug("-------End of htcanalyser script-------")
 
         sys.exit(0)
 

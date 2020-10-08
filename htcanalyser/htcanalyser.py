@@ -535,8 +535,8 @@ class HTCAnalyser:
 
         if len(list_of_dicts) == 0:
             rprint("[yellow]Nothing found,"
-                   " please use \"man htcompact\" "
-                   "or \"htcompact -h\" for help[/yellow]", end="")
+                   " please use \"man htcanalyse\" "
+                   "or \"htcanalyse -h\" for help[/yellow]", end="")
 
         return list_of_dicts
 
