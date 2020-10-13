@@ -2,7 +2,7 @@
 
 import sys
 import pytest
-from htcanalyser import main as ht
+from htcanalyze import main as ht
 
 
 class PseudoTTY(object):
@@ -112,7 +112,7 @@ def test_show_values():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0  # no valid file is given
 
-    # analyse
+    # analyze
     args = "tests/test_logs/valid_logs/normal_log.log " \
            "tests/test_logs/valid_logs/gpu_usage.log " \
            "--show std-err std-out -a".split()
@@ -172,9 +172,9 @@ def test_default_mode():
     assert pytest_wrapped_e.value.code == 0
 
 
-def test_analyser_mode():
+def test_analyze_mode():
 
-    args = "--mode analyse tests/test_logs/valid_" \
+    args = "--mode analyze tests/test_logs/valid_" \
            "logs/aborted_before_submission.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
@@ -190,7 +190,7 @@ def test_analyser_mode():
     assert pytest_wrapped_e.value.code == 0
 
 
-def test_summarizer_mode():
+def test_summarize_mode():
     # single files
     args = "--mode summarize tests/test_" \
            "logs/valid_logs/aborted_before_submission.log".split()
@@ -207,15 +207,15 @@ def test_summarizer_mode():
     assert pytest_wrapped_e.value.code == 0
 
 
-def test_analysed_summary():
-    args = "--mode analysed-summary " \
+def test_analyzed_summary():
+    args = "--mode analyzed-summary " \
            "tests/test_logs/valid_logs/aborted_before_submission.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
-    args = "-m analysed-summary tests/test_logs/valid_logs".split()
+    args = "-m analyzed-summary tests/test_logs/valid_logs".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
