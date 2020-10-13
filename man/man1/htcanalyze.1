@@ -1,5 +1,5 @@
 .Dd September 17, 2020
-.Dt HTCOMPACT 1
+.Dt HTCANALYZE 1
 .Os \" Current operating system.
 .
 .Sh NAME
@@ -259,11 +259,11 @@ If an arg is specified in more than one place, then
 commandline values override config file values which override defaults.
 
 See the config specification:
-.Lk https://github.com/psyinfra/htcompact/blob/master/config/README.md
+.Lk https://github.com/psyinfra/HTCAnalyze/blob/master/config/README.md
 
 The script is also checking for other config files in other places:
 .
-"project_dir/config/htcomapct.conf",
+"project_dir/config/htcanalyze.conf",
  "/etc/htcanalyze.conf" and "~/.config/htcanalyze/htcanalyze.conf"
 .Ed
 .Bd -literal
@@ -314,7 +314,7 @@ grep -R -l aborted ~/logs | htcanalyze -as
 .Sh SEE ALSO
 .Bd -literal
 The repository is available at
-.Lk https://github.com/psyinfra/htcompact
+.Lk https://github.com/psyinfra/HTCAnalyze
 Bug reports, patches, and (constructive) input are always welcome.
 .Ed
 .
