@@ -21,8 +21,8 @@ from typing import List
 
 import configargparse
 
-from htcanalyser.htcanalyser import HTCAnalyser, raise_value_error
-from htcanalyser.logvalidator import LogValidator
+from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
+from htcanalyze.logvalidator import LogValidator
 from rich import print as rprint, box
 from rich.progress import Table
 
@@ -33,9 +33,9 @@ date_time = datetime.datetime
 timedelta = datetime.timedelta
 
 # global variables
-ALLOWED_MODES = {"a": "analyse",
+ALLOWED_MODES = {"a": "analyze",
                  "s": "summarize",
-                 "as": "analysed-summary",
+                 "as": "analyzed-summary",
                  "d": "default"}
 
 ALLOWED_SHOW_VALUES = ["std-err", "std-out"]
@@ -234,11 +234,11 @@ def setup_commandline_parser(default_config_files=[])\
                         default=None)
     parser.add_argument("--generate-log-file",
                         nargs="?",
-                        const="htcanalyser.log",
+                        const="htcanalyze.log",
                         default=None,
                         help="generates output about the process,"
                              " which is mostly useful for developers, "
-                             "if no file is specified, default: htcanalyser.log")
+                             "if no file is specified, default: htcanalyze.log")
 
     all_vals = []
     for item in ALLOWED_MODES.items():
@@ -248,14 +248,14 @@ def setup_commandline_parser(default_config_files=[])\
                         help="Specifiy an interpretation mode",
                         choices=all_vals)
 
-    parser.add_argument("-s", dest="summarizer_mode",
+    parser.add_argument("-s", dest="summarize_mode",
                         help="Short for --mode summarize,"
-                             " combine with -a for analysed-summary mode",
+                             " combine with -a for analyzed-summary mode",
                         action="store_true")
 
-    parser.add_argument("-a", dest="analyser_mode",
-                        help="Short for --mode analyse,"
-                             " combine with -s for analysed-summary mode",
+    parser.add_argument("-a", dest="analyze_mode",
+                        help="Short for --mode analyze,"
+                             " combine with -s for analyzed-summary mode",
                         action="store_true")
 
     parser.add_argument("--std-log",
@@ -382,7 +382,7 @@ def manage_params(args: list) -> dict:
         # do not use config files if --no-config flag is set
         if prio_parsed.no_config:
             # if as well config is set, exit, because of conflict
-            print("htcanalyse: error: conflict between"
+            print("htcanalyze: error: conflict between"
                   " --no-config and --config")
             sys.exit(2)
         # else add config again
@@ -390,9 +390,9 @@ def manage_params(args: list) -> dict:
 
     # parse config file if not --no-config is set, might change nothing
     if not prio_parsed.no_config:
-        config_paths = ['/etc/htcanalyser.conf',
-                        '~/.config/htcanalyser/htcanalyser.conf',
-                        sys.prefix + '/config/htcanalyser.conf']
+        config_paths = ['/etc/htcanalyze.conf',
+                        '~/.config/htcanalyze/htcanalyze.conf',
+                        sys.prefix + '/config/htcanalyze.conf']
         cmd_parser = setup_commandline_parser(config_paths)
         commands_parsed = cmd_parser.parse_args(args)
         cmd_dict = vars(commands_parsed).copy()
@@ -446,11 +446,11 @@ def manage_params(args: list) -> dict:
     cmd_dict["filter_keywords"] = new_filter_list
 
     # parse the mode correctly
-    if commands_parsed.analyser_mode and commands_parsed.summarizer_mode:
-        mode = "analysed-summary"
-    elif commands_parsed.analyser_mode:
-        mode = "analyse"
-    elif commands_parsed.summarizer_mode:
+    if commands_parsed.analyze_mode and commands_parsed.summarize_mode:
+        mode = "analyzed-summary"
+    elif commands_parsed.analyze_mode:
+        mode = "analyze"
+    elif commands_parsed.summarize_mode:
         mode = "summarize"
     elif commands_parsed.mode is not None:
         if commands_parsed.mode in ALLOWED_MODES.keys():
@@ -467,16 +467,16 @@ def manage_params(args: list) -> dict:
                 len(cmd_dict["filter_keywords"]) == 0:
             raise_value_error("--extend not allowed without --filter")
         if len(cmd_dict["show_list"]) > 0:
-            if mode == "analysed-summary" or mode == "summarize":
+            if mode == "analyzed-summary" or mode == "summarize":
                 raise_value_error("--show only allowed"
-                                  " with default and analyser mode")
+                                  " with default and analyze mode")
     except ValueError as err:
-        print("htcanalyse: error: " + str(err))
+        print("htcanalyze: error: " + str(err))
         sys.exit(2)
 
     # delete unnecessary information
-    del cmd_dict["summarizer_mode"]
-    del cmd_dict["analyser_mode"]
+    del cmd_dict["summarize_mode"]
+    del cmd_dict["analyze_mode"]
     del cmd_dict["version"]
     del cmd_dict["no_config"]
 
@@ -531,7 +531,7 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
     return table
 
 
-def print_results(htcanalyser: HTCAnalyser,
+def print_results(htcanalyze: HTCAnalyze,
                   log_files: list_of_logs,
                   mode: str,
                   ignore_list=list,
@@ -550,22 +550,22 @@ def print_results(htcanalyser: HTCAnalyser,
     :return:
     """
     if len(filter_keywords) > 0:
-        results = htcanalyser.\
+        results = htcanalyze.\
             filter_for(log_files,
                        keywords=filter_keywords,
                        extend=filter_extended,
                        mode=mode)
     elif mode.__eq__("default"):
-        results = htcanalyser.default(log_files)  # force default with -d
-    elif mode.__eq__("analysed-summary"):
-        results = htcanalyser.analysed_summary(log_files)  # analysed summary ?
+        results = htcanalyze.default(log_files)  # force default with -d
+    elif mode.__eq__("analyzed-summary"):
+        results = htcanalyze.analyzed_summary(log_files)  # analyzed summary ?
     elif mode.__eq__("summarize"):
-        results = htcanalyser.summarize(log_files)  # summarize information
-    elif mode.__eq__("analyse"):
+        results = htcanalyze.summarize(log_files)  # summarize information
+    elif mode.__eq__("analyze"):
         show_legend = not GlobalServant.redirecting_stdout  # redirected ?
-        results = htcanalyser.analyse(log_files, show_legend)  # analyse
+        results = htcanalyze.analyze(log_files, show_legend)  # analyze
     else:
-        results = htcanalyser.default(log_files)
+        results = htcanalyze.default(log_files)
         # anyways try to print default output
 
     # This can happen, when for example the filter mode is not forwarded
@@ -675,10 +675,10 @@ def run(commandline_args):
         setup_logging_tool(param_dict["generate_log_file"],
                            param_dict["verbose"])
 
-        logging.debug("-------Start of htcanalyser scipt-------")
+        logging.debug("-------Start of htcanalyze script-------")
 
-        htcanalyser = \
-            HTCAnalyser(std_log=param_dict["std_log"],
+        htcanalyze = \
+            HTCAnalyze(std_log=param_dict["std_log"],
                         std_out=param_dict["std_out"],
                         std_err=param_dict["std_err"],
                         show_list=param_dict["show_list"],
@@ -708,13 +708,13 @@ def run(commandline_args):
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(1)
 
-        print_results(htcanalyser, log_files=valid_files, **param_dict)
+        print_results(htcanalyze, log_files=valid_files, **param_dict)
 
         end = date_time.now()  # end date for runtime
 
         logging.debug(f"Runtime: {end - start}")  # runtime of this script
 
-        logging.debug("-------End of htcanalyser script-------")
+        logging.debug("-------End of htcanalyze script-------")
 
         sys.exit(0)
 

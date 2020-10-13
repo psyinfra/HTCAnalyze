@@ -1,8 +1,8 @@
-# HTCAnalyse
+# HTCAnalyze
 
-[![Build Status](https://travis-ci.org/psyinfra/HTCAnalyser.svg?branch=master)](https://travis-ci.org/psyinfra/HTCAnalyser)
-[![codecov](https://codecov.io/gh/psyinfra/HTCAnalyser/branch/master/graph/badge.svg)](https://codecov.io/gh/psyinfra/HTCAnalyser)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/d8fff0409968467d855a0efbf2ab8f7d)](https://www.codacy.com/gh/psyinfra/HTCAnalyser?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=psyinfra/HTCAnalyser&amp;utm_campaign=Badge_Grade)
+[![Build Status](https://travis-ci.org/psyinfra/HTCAnalyze.svg?branch=master)](https://travis-ci.org/psyinfra/HTCAnalyze)
+[![codecov](https://codecov.io/gh/psyinfra/HTCAnalyze/branch/master/graph/badge.svg)](https://codecov.io/gh/psyinfra/HTCAnalyze)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/d8fff0409968467d855a0efbf2ab8f7d)](https://www.codacy.com/gh/psyinfra/HTCAnalyze?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=psyinfra/HTCAnalyze&amp;utm_campaign=Badge_Grade)
 
 Search through [HTCondor](https://research.cs.wisc.edu/htcondor/) user log files
 to extract information, identify patterns, and build time-based graphs of
@@ -10,46 +10,46 @@ resource utilization.
 
 ## Installation
 
-**NOTE:** HTCAnalyse depends on the `htcondor` Python module, which currently
+**NOTE:** HTCAnalyze depends on the `htcondor` Python module, which currently
 only runs on Linux.
 
 This software can be installed directly from GitHub.
 ```
-pip install git+https://github.com/psyinfra/HTCAnalyser.git
+pip install git+https://github.com/psyinfra/HTCAnalyze.git
 ```
 
-As a general recommendation, we encourage installing HTCAnalyse in a virtual
+As a general recommendation, we encourage installing HTCAnalyze in a virtual
 environment. If you are not already familiar with
 [Python virtual environments](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/),
 we highly recommend that you read up on them.
 
 ## Configuration File
 
-A configuration file (`htcanalyser.conf`) can be used to control the default
+A configuration file (`htcanalyze.conf`) can be used to control the default
 behavior. This is especially useful for system administrators who wish to tune
 the warning and error thresholds to their site requirements.
 
 It can also be passed directly as a flag.
 ```
-htcanalyse -c htcanalyser.conf [files/directories]
+htcanalyze -c htcanalyze.conf [files/directories]
 ```
 
-See [CONFIG](https://github.com/psyinfra/HTCAnalyser/blob/master/config/README.md)
+See [CONFIG](https://github.com/psyinfra/HTCAnalyze/blob/master/config/README.md)
 for more information.
 
 ## Modes
 
-HTCAnalyse has four modes of operation:
+HTCAnalyze has four modes of operation:
 
 - `default`: a terse output describing the essentials.
 
-- `analyse`: provides more  detailed output than `default`, including a RAM
+- `analyze`: provides more  detailed output than `default`, including a RAM
   histogram, HTCondor errors, and more.
 
 - `summarize`: summarize a collection of log files, including average resource
   usage and execution time per-host.
 
-- `analysed-summary`: combined output of both the summarizer and analyzer
+- `analyzed-summary`: combined output of both the summarize and analyze
   modes.
 
 Example output:
@@ -74,39 +74,39 @@ Example output:
     +------------+-------+-----------+-----------+
     ```
 
-- summarizer mode:
+- summarize mode:
 
-    ![Example](https://github.com/psyinfra/HTCAnalyser/blob/master/examples/example_summary_mode.png)
+    ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_summary_mode.png)
 
-- analyser mode:
+- analyze mode:
 
-    ![Example](https://github.com/psyinfra/HTCAnalyser/blob/master/examples/example_analyser_mode.png)
+    ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_analyze_mode.png)
 
-- analysed-summary mode:
+- analyzed-summary mode:
 
-    ![Example](https://github.com/psyinfra/HTCAnalyser/blob/master/examples/example_analysed_summary_mode.png)
+    ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_analyzed_summary_mode.png)
 
 ## Examples
 
 - Print help text, listing functionality:
   ```
-  htcanalyse -h (show a detailed description to all functionalities)
+  htcanalyze -h (show a detailed description to all functionalities)
   ```
-- Analyse a single file:
+- Analyze a single file:
   ```
-  htcanalyse logs/job_5991_0.log
+  htcanalyze logs/job_5991_0.log
   ```
-- Analyse all log files in a directory.
+- Analyze all log files in a directory.
   ```
-  htcanalyse logs/
+  htcanalyze logs/
   ```
 - Summarize all files for a job cluster:
   ```
-  htcanalyse -s logs/job_5991_*
+  htcanalyze -s logs/job_5991_*
   ```
 - Print a pretty table:
   ```
-  htcanalyse logs/395_2.log --table-format=pretty
+  htcanalyze logs/395_2.log --table-format=pretty
   ```
 
 ## Testing
@@ -124,4 +124,4 @@ To run the tests:
 pytest tests
 ```
 
-More details can be found in [TESTS](https://github.com/psyinfra/HTCAnalyser/blob/master/tests/README.md).
+More details can be found in [TESTS](https://github.com/psyinfra/HTCAnalyze/blob/master/tests/README.md).

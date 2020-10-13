@@ -2,7 +2,7 @@
 import sys
 import pytest
 import io
-from htcanalyser import main as ht
+from htcanalyze import main as ht
 
 
 # To make a copy of stdin and stdout
@@ -98,7 +98,7 @@ def test_manage_params():
     args = "--reverse-dns-lookup --no-config --generate-log -v".split()
     res_dict = ht.manage_params(args)
     assert res_dict["reverse_dns_lookup"] is True
-    assert res_dict["generate_log_file"] == "htcanalyser.log"
+    assert res_dict["generate_log_file"] == "htcanalyze.log"
     assert res_dict["verbose"] is True
 
     args = "--what_is_this".split()
@@ -126,24 +126,24 @@ def test_manage_params():
     res_dict = ht.manage_params(args)
     assert res_dict["mode"] == "default"
 
-    # all ways to start analyser mode
+    # all ways to start analyze mode
     args = "-a".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyse"
-    args = "--mode analyse".split()
+    assert res_dict["mode"] == "analyze"
+    args = "--mode analyze".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyse"
+    assert res_dict["mode"] == "analyze"
     args = "--mode a".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyse"
-    args = "-m analyse".split()
+    assert res_dict["mode"] == "analyze"
+    args = "-m analyze".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyse"
+    assert res_dict["mode"] == "analyze"
     args = "-m a".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyse"
+    assert res_dict["mode"] == "analyze"
 
-    # all ways to start summarizer mdoe
+    # all ways to start summarize mode
     args = "-s".split()
     res_dict = ht.manage_params(args)
     assert res_dict["mode"] == "summarize"
@@ -160,22 +160,22 @@ def test_manage_params():
     res_dict = ht.manage_params(args)
     assert res_dict["mode"] == "summarize"
 
-    # all ways to start the analysed-summary mode
+    # all ways to start the analyzed-summary mode
     args = "-as".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analysed-summary"
-    args = "--mode analysed-summary".split()
+    assert res_dict["mode"] == "analyzed-summary"
+    args = "--mode analyzed-summary".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analysed-summary"
+    assert res_dict["mode"] == "analyzed-summary"
     res_dict["mode"] = None
     args = "--mode as".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analysed-summary"
-    args = "-m analysed-summary".split()
+    assert res_dict["mode"] == "analyzed-summary"
+    args = "-m analyzed-summary".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analysed-summary"
+    assert res_dict["mode"] == "analyzed-summary"
     args = "-m as".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analysed-summary"
+    assert res_dict["mode"] == "analyzed-summary"
 
 # Todo: other methods test

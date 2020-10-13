@@ -1,4 +1,4 @@
-"""module to summarize and analyse HTCondor log files."""
+"""module to summarize and analyze HTCondor log files."""
 
 import datetime
 import logging
@@ -23,19 +23,19 @@ date_time = datetime.datetime
 timedelta = datetime.timedelta
 
 
-class HTCAnalyser:
+class HTCAnalyze:
     """
-    This class is able to analyse HTCondor Joblogs.
+    This class is able to analyze HTCondor Joblogs.
 
     The modes:
         default,
-        analyse,
+        analyze,
         summarize,
-        analysed-summary,
+        analyzed-summary,
         filter_for
 
     """
-    
+
     def __init__(self,
                  std_log="",
                  std_err=".err",
@@ -45,7 +45,7 @@ class HTCAnalyser:
                  tolerated_usage=None,
                  bad_usage=None):
         """
-        Initialize HTCAnalyser.
+        Initialize HTCAnalyze.
 
         The None defaults are necessary,
         cause None should be handled correctly if given
@@ -535,25 +535,25 @@ class HTCAnalyser:
 
         if len(list_of_dicts) == 0:
             rprint("[yellow]Nothing found,"
-                   " please use \"man htcanalyse\" "
-                   "or \"htcanalyse -h\" for help[/yellow]", end="")
+                   " please use \"man htcanalyze\" "
+                   "or \"htcanalyze -h\" for help[/yellow]", end="")
 
         return list_of_dicts
 
-    def analyse(self,
+    def analyze(self,
                 log_files: list_of_logs,
                 show_legend=True) -> log_inf_list:
         """
-        Analyse the given log files one by one.
+        Analyze the given log files one by one.
 
         :param log_files: list of valid HTCondor log files
         :param show_legend:
         :return: list with information of each log file
         """
-        logging.info('Starting the analyser mode')
+        logging.info('Starting the analyze mode')
 
         if len(log_files) == 0:
-            return "No files to analyse"
+            return "No files to analyze"
 
         result_list = list()
 
@@ -643,14 +643,14 @@ class HTCAnalyser:
 
         :return:
         """
-        logging.info('Starting the summarizer mode')
+        logging.info('Starting the summarize mode')
 
         valid_files = len(log_files)
         # no given files
         if valid_files == 0:
             return "No files to summarize"
 
-        # allocated all diffrent datatypes, easier to handle
+        # allocated all different datatypes, easier to handle
         result_dict = dict()
 
         aborted_files = 0
@@ -751,7 +751,7 @@ class HTCAnalyser:
         if aborted_files > 0 or still_running > 0 \
                 or other_exception > 0 or error_reading_files:
             create_desc += "\n[light_grey]" \
-                           "Use the analysed-summary mode" \
+                           "Use the analyzed-summary mode" \
                            " for more details about the other jobs" \
                            "[/light_grey]"
 
@@ -808,9 +808,9 @@ class HTCAnalyser:
 
         return [result_dict]
 
-    def analysed_summary(self, log_files: list_of_logs) -> log_inf_list:
+    def analyzed_summary(self, log_files: list_of_logs) -> log_inf_list:
         """
-        Summarize log files and analyse the results.
+        Summarize log files and analyze the results.
 
         This is meant to give the ultimate output
         about every single job state in average etc.
@@ -828,12 +828,12 @@ class HTCAnalyser:
 
         :return: list of log information based on the job state
         """
-        logging.info('Starting the analysed summary mode')
+        logging.info('Starting the analyzed summary mode')
 
         valid_files = len(log_files)
         # no given files
         if valid_files == 0:
-            return "No files for the analysed summary"
+            return "No files for the analyzed summary"
 
         # fill this dict with information by the execution type of the jobs
         all_files = dict()
@@ -1116,7 +1116,7 @@ class HTCAnalyser:
 
         The filtering is NOT case sensitive.
 
-        The filtered files can be analysed summarise, etc afterwards,
+        The filtered files can be analyzed, summarize, etc afterwards,
         else this function will return the files
 
         :param log_files:
@@ -1197,16 +1197,16 @@ class HTCAnalyser:
             print(f"Total count: {len(found_logs)}")
             if mode.__eq__("default"):
                 return_dicts = self.default(found_logs)
-            elif mode.__eq__("analysed-summary"):
-                rprint("[magenta]Give an analysed summary"
+            elif mode.__eq__("analyzed-summary"):
+                rprint("[magenta]Give an analyzed summary"
                        " for these files[/magenta]")
-                return_dicts = self.analysed_summary(found_logs)
+                return_dicts = self.analyzed_summary(found_logs)
             elif mode.__eq__("summarize"):
                 rprint("[magenta]Summarize these files[/magenta]")
                 return_dicts = self.summarize(found_logs)
-            elif mode.__eq__("analyse"):
-                rprint("[magenta]Analyse these files[/magenta]")
-                return_dicts = self.analyse(found_logs)
+            elif mode.__eq__("analyze"):
+                rprint("[magenta]Analyze these files[/magenta]")
+                return_dicts = self.analyze(found_logs)
 
         return return_dicts
 
