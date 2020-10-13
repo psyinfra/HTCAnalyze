@@ -1,10 +1,10 @@
 .Dd September 17, 2020
-.Dt HTCOMPACT 1
+.Dt HTCANALYZE 1
 .Os \" Current operating system.
 .
 .Sh NAME
-.Nm htcanalyse
-.Nd summarize and analyse HTCondor job log files
+.Nm htcanalyze
+.Nd summarize and analyze HTCondor job log files
 .
 .Sh SYNOPSIS
 .Nm
@@ -37,9 +37,9 @@ The
 script takes files and directories as input with given flags and prints out a
 readable result of valid HTCondor log files.
 There are 4 main modes to work with this facility.
-The default and analyser mode are mostly made for single log analytics.
-The summariser and analysed-summary mode,
-are made to summarise huge collections of log files,
+The default and analyze mode are mostly made for single log analytics.
+The summarize and analyzed-summary mode,
+are made to summarize huge collections of log files,
 to give a view on the average used resources and occurred errors.
 More details about the different modes below.
 .Pp
@@ -53,11 +53,11 @@ There is no need to use the flags,
 but sometimes you have to use them,
 to escape the previous option, for ex:
 .Bd -literal
-    htcanalyse --ignore all-resources --files log1 log2
+    htcanalyze --ignore all-resources --files log1 log2
 
 to prevent this, always hand the files first, like:
 
-    htcanalyse log1 log2 --ignore all-resources
+    htcanalyze log1 log2 --ignore all-resources
 .Ed
 .
 .It Ar OPTIONS
@@ -71,8 +71,8 @@ command\[hy]line options and exits.
 Specify the mode, to interpret HTCondor log files,
 .Bd -literal
 Valid arguments:
- ['a' or 'analyse', 's' or 'summarize',
- 'as' or 'analysed-summary', 'd' or 'default']
+ ['a' or 'analyze', 's' or 'summarize',
+ 'as' or 'analyzed-summary', 'd' or 'default']
 .Ed
 .Bd -literal
 the standard mode of the script is 'default'
@@ -82,8 +82,8 @@ default mode:
     about how the output can look like
     and what information is gathered.
 
-analyse mode:
-    For more detailed output, use the analyser mode.
+analyze mode:
+    For more detailed output, use the analyze mode.
     Features:
     - provides ram histogram
     - shows HTCondor errors
@@ -91,15 +91,15 @@ analyse mode:
     - have a look in running processes
 
 summarize mode:
-    summarise a collection of log files based on its used resources
+    summarize a collection of log files based on its used resources
     Features:
     - average usages of all collected log files
     - average usage and durations on each host node
     NOTE: this will ignore running, aborted and other processes,
           that do not contain details about the resource usages
 
-analysed-summary mode:
-    This mode is a combination of the summariser and analyser mode.
+analyzed-summary mode:
+    This mode is a combination of the summarize and analyze mode.
     Features:
     - Seperate the summation based on the termination types
     - Also handles running processes
@@ -112,15 +112,15 @@ Short for
 When used with
 .Fl a ,
 it's the same as
-.Fl Fl mode Ar analysed-summary
+.Fl Fl mode Ar analyzed-summary
 .
 .It Fl a
 Short for
-.Fl Fl mode Ar analyse .
+.Fl Fl mode Ar analyze .
 When used with
 .Fl s ,
 it's the same as
-.Fl Fl mode Ar analysed-summary
+.Fl Fl mode Ar analyzed-summary
 .
 .It Fl Fl filter Ar keywords Op OPTIONS
 Its options are as follows:
@@ -159,7 +159,7 @@ that is not normal, use --extend:
 .Bd -literal
 Examples:
 --filter exception gpu -s
---filter error warnings --mode analyse
+--filter error warnings --mode analyze
 .Ed
 .
 .It Fl Fl std-log Ar standard-log
@@ -236,9 +236,9 @@ but printing it to stdout
 .It Fl Fl generate-log-file
 Related to the verbose mode,
 this will generate the same output but not onto the terminal.
-This will create a log rotation file: htcanalyser.log or append output to it.
+This will create a log rotation file: htcanalyze.log or append output to it.
 The maximum size is limited by 1 MB,
-which means the output starts to rollover on a backup file: htcanalyser.log.1
+which means the output starts to rollover on a backup file: htcanalyze.log.1
 .
 .It Fl Fl tolerated-usage Ar threshold
 Threshold to warn the user,
@@ -259,19 +259,19 @@ If an arg is specified in more than one place, then
 commandline values override config file values which override defaults.
 
 See the config specification:
-.Lk https://github.com/psyinfra/htcompact/blob/master/config/README.md
+.Lk https://github.com/psyinfra/HTCAnalyze/blob/master/config/README.md
 
 The script is also checking for other config files in other places:
 .
-"project_dir/config/htcomapct.conf",
- "/etc/htcanalyser.conf" and "~/.config/htcanalyser/htcanalyser.conf"
+"project_dir/config/htcanalyze.conf",
+ "/etc/htcanalyze.conf" and "~/.config/htcanalyze/htcanalyze.conf"
 .Ed
 .Bd -literal
 with different priorities from 1 (high) to 5 (low):
 Priority[1] -c | --config config_file
-Priority[2] search for config_file in project_dir/config/htcanalyser.conf
-Priority[3] search for config_file in ~/.config/htcanalyser/htcanalyser.conf
-Priority[4] search for config_file in /etc/htcanalyser.conf
+Priority[2] search for config_file in project_dir/config/htcanalyze.conf
+Priority[3] search for config_file in ~/.config/htcanalyze/htcanalyze.conf
+Priority[4] search for config_file in /etc/htcanalyze.conf
 Priority[5] run with default settings
 .Ed
 .
@@ -284,7 +284,7 @@ Priority[5] run with default settings
 .
 .Sh FILES
 .Bl -tag -width Ds
-.It Pa config/htcanalyser.conf
+.It Pa config/htcanalyze.conf
 A default setup for this script.
 .El
 .
@@ -300,21 +300,21 @@ Keyboard interruption: 4
 .
 .Sh EXAMPLES
 .Bd -literal
-htcanalyse -a 398_440.log
-htcanalyse -s log_directory --ignore execution-details --no-config
-htcanalyse -as log_directory
-htcanalyse -e 005
-htcanalyse --filter "" --extend -s --ignore all-resources log_directory
-htcanalyse htcanalyser.conf 394_440 -a --show-output
-htcanalyse --filter aborted -as ~/logs
+htcanalyze -a 398_440.log
+htcanalyze -s log_directory --ignore execution-details --no-config
+htcanalyze -as log_directory
+htcanalyze -e 005
+htcanalyze --filter "" --extend -s --ignore all-resources log_directory
+htcanalyze htcanalyze.conf 394_440 -a --show-output
+htcanalyze --filter aborted -as ~/logs
 OR
-grep -R -l aborted ~/logs | htcanalyse -as
+grep -R -l aborted ~/logs | htcanalyze -as
 .Ed
 .
 .Sh SEE ALSO
 .Bd -literal
 The repository is available at
-.Lk https://github.com/psyinfra/htcompact
+.Lk https://github.com/psyinfra/HTCAnalyze
 Bug reports, patches, and (constructive) input are always welcome.
 .Ed
 .

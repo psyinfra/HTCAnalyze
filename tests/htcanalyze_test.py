@@ -2,7 +2,7 @@
 import datetime
 import pytest
 import numpy as np
-from htcanalyser.htcanalyser import HTCAnalyser, gen_time_dict, sort_dict_by_col
+from htcanalyze.htcanalyze import HTCAnalyze, gen_time_dict, sort_dict_by_col
 
 
 def test_gen_time_dict():
@@ -146,11 +146,11 @@ def test_sort_dict_by_column():
 
 @pytest.fixture(scope="module")
 def htcan():
-    htcan = HTCAnalyser()
+    htcan = HTCAnalyze()
     return htcan
 
 
-def test_HTCAnalyser_init(htcan):
+def test_HTCAnalyze_init(htcan):
     assert htcan.std_log == ""
     assert htcan.std_err == ".err"
     assert htcan.std_out == ".out"
@@ -181,7 +181,7 @@ def test_manage_thresholds(htcan):
 
 
 def test_log_to_dict(htcan):
-    """Tests the log_to_dict function of HTCAnalyser class.
+    """Tests the log_to_dict function of HTCAnalyze class.
 
     Only the following files are tested:
 
