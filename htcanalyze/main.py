@@ -38,7 +38,7 @@ ALLOWED_MODES = {"a": "analyze",
                  "as": "analyzed-summary",
                  "d": "default"}
 
-ALLOWED_SHOW_VALUES = ["std-err", "std-out"]
+ALLOWED_SHOW_VALUES = ["ext-err", "ext-out"]
 ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "used-resources", "requested-resources",
                          "allocated-resources", "all-resources",
@@ -641,13 +641,13 @@ def print_results(htcanalyze: HTCAnalyze,
                 rprint(table)
 
         # Show more section
-        if "stdout" in mystery and mystery["stdout"] != "":
-            rprint("\n[bold cyan]Standard output (std-out):[/bold cyan]")
-            rprint(mystery["stdout"])
+        if "ext-out" in mystery and mystery["ext-out"] != "":
+            rprint("\n[bold cyan]Output file extension (ext-out):[/bold cyan]")
+            rprint(mystery["ext-out"])
 
-        if "stderr" in mystery and mystery["stderr"] != "":
-            rprint("\n[bold cyan]Standard errors (std-err):[/bold cyan]")
-            rprint(mystery["stderr"])
+        if "ext-err" in mystery and mystery["ext-err"] != "":
+            rprint("\n[bold cyan]Error file extension (ext-err):[/bold cyan]")
+            rprint(mystery["ext-err"])
 
         print()
 
@@ -678,14 +678,15 @@ def run(commandline_args):
 
         logging.debug("-------Start of htcanalyze script-------")
 
-        htcanalyze = \
-            HTCAnalyze(ext_log=param_dict["ext_log"],
-                        ext_out=param_dict["ext_out"],
-                        ext_err=param_dict["ext_err"],
-                        show_list=param_dict["show_list"],
-                        reverse_dns_lookup=param_dict["reverse_dns_lookup"],
-                        tolerated_usage=param_dict["tolerated_usage"],
-                        bad_usage=param_dict["bad_usage"])
+        htcanalyze = HTCAnalyze(
+            ext_log=param_dict["ext_log"],
+            ext_out=param_dict["ext_out"],
+            ext_err=param_dict["ext_err"],
+            show_list=param_dict["show_list"],
+            reverse_dns_lookup=param_dict["reverse_dns_lookup"],
+            tolerated_usage=param_dict["tolerated_usage"],
+            bad_usage=param_dict["bad_usage"]
+        )
 
         if param_dict["verbose"]:
             logging.info('Verbose mode turned on')
