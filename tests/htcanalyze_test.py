@@ -151,9 +151,9 @@ def htcan():
 
 
 def test_HTCAnalyze_init(htcan):
-    assert htcan.std_log == ""
-    assert htcan.std_err == ".err"
-    assert htcan.std_out == ".out"
+    assert htcan.ext_log == ""
+    assert htcan.ext_err == ".err"
+    assert htcan.ext_out == ".out"
     assert htcan.show_list == []
     assert htcan.rdns_cache == {}
     assert htcan.reverse_dns_lookup is False
