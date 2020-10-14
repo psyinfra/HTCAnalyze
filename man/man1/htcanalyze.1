@@ -16,9 +16,9 @@
 .Op Fl Fl mode Ar mode
 .Op Fl Fl version
 .Op Fl Fl verbose
-.Op Fl Fl std-log Ar suffix
-.Op Fl Fl std-out Ar suffix
-.Op Fl Fl std-err Ar suffix
+.Op Fl Fl ext-log Ar suffix
+.Op Fl Fl ext-out Ar suffix
+.Op Fl Fl ext-err Ar suffix
 .Op Fl Fl ignore Ar keywords
 .Op Fl Fl show-more Ar keywords
 .Op Fl c Ar config
@@ -162,26 +162,23 @@ Examples:
 --filter error warnings --mode analyze
 .Ed
 .
-.It Fl Fl std-log Ar standard-log
-The standard log files usually look something like
-.Qq job_452_237.log ,
-if for whatever reason the format is not
-.Qq .log ,
-then you can change it with this argument.
+.It Fl Fl ext-log Ar suffix
+The suffix to filter for HTCondor log files.
+The default attempts to parse all files that don't end in the
+.It Fl Fl ext-err
+or
+.It Fl Fl ext-out
+suffixes.
 .
-.It Fl Fl std-err Ar standard-err
-The standard error files usually look something like
-.Qq job_452_237.err ,
-if for whatever reason the format is not
-.Qq .err ,
-then you can change it with this argument.
+.It Fl Fl ext-err Ar suffix
+The suffix to filter for HTCondor error files.
+Defaults to
+.Qq .err .
 .
-.It Fl Fl std-out Ar standard-out
-The standard output files usually look something like
-.Qq job_452_237.out ,
-if for whatever reason the format is not
-.Qq .out ,
-then you can change it with this argument.
+.It Fl Fl ext-out Ar suffix
+The suffix to filter for HTCondor out files.
+Defaults to
+.Qq .out .
 .
 .It Fl Fl show-more Ar keywords
 show information inside the (if generated) stdout and stderr files,

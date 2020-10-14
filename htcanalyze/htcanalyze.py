@@ -36,19 +36,19 @@ class HTCAnalyze:
     """
 
     def __init__(self,
-                 std_log="",
-                 std_err=".err",
-                 std_out=".out",
+                 ext_log="",
+                 ext_err=".err",
+                 ext_out=".out",
                  show_list=None,
                  reverse_dns_lookup=None,
                  tolerated_usage=None,
                  bad_usage=None):
-        self.std_log = std_log
-        self.std_err = std_err
-        self.std_out = std_out
+        self.ext_log = ext_log
+        self.ext_err = ext_err
+        self.ext_out = ext_out
         self.show_list = [] if show_list is None else show_list
 
-        self.store_dns_lookups = dict()
+        self.rdns_cache = dict()
         if reverse_dns_lookup is None:
             self.reverse_dns_lookup = False
         else:
@@ -129,13 +129,13 @@ class HTCAnalyze:
         except NameError as err:
             logging.exception(err)
             rprint(f"[red]The smart_output_error method requires a "
-                   f"{self.std_err} file as parameter[/red]")
+                   f"{self.ext_err} file as parameter[/red]")
         except FileNotFoundError:
             relevant = file.split(os.path.sep)[-2:]
-            match = re.match(r".*?([0-9]{3,}_[0-9]+)" + self.std_err,
+            match = re.match(r".*?([0-9]{3,}_[0-9]+)" + self.ext_err,
                              relevant[1])
             rprint(
-                f"[yellow]There is no related {self.std_err} file: "
+                f"[yellow]There is no related {self.ext_err} file: "
                 f"{relevant[1]} in the directory:\n[/yellow]"
                 f"[cyan]'{os.path.abspath(relevant[0])}'\n"
                 f"with the prefix: {match[1]}[/cyan]"
@@ -163,13 +163,13 @@ class HTCAnalyze:
         except NameError as err:
             logging.exception(err)
             rprint(f"[red]The smart_output_output method requires a "
-                   f"{self.std_out} file as parameter[/red]")
+                   f"{self.ext_out} file as parameter[/red]")
         except FileNotFoundError:
             relevant = file.split(os.path.sep)[-2:]
-            match = re.match(r".*?([0-9]{3,}_[0-9]+)" + self.std_out,
+            match = re.match(r".*?([0-9]{3,}_[0-9]+)" + self.ext_out,
                              relevant[1])
             rprint(
-                f"[yellow]There is no related {self.std_out} "
+                f"[yellow]There is no related {self.ext_out} "
                 f"file: {relevant[1]} in the directory:\n"
                 f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
                 f"with the prefix: {match[1]}[/cyan]"
@@ -190,12 +190,12 @@ class HTCAnalyze:
         get_job_spec_id("43221_23.log", ".log") -> "43221_23"
 
         :param file:
-        :param std_log:
+        :param ext_log:
         :return: file prefix
         """
-        if self.std_log.__ne__("") \
-                and file[-len(self.std_log):].__eq__(self.std_log):
-            job_spec_id = file[:-len(self.std_log)]
+        if self.ext_log.__ne__("") \
+                and file[-len(self.ext_log):].__eq__(self.ext_log):
+            job_spec_id = file[:-len(self.ext_log)]
         else:
             job_spec_id = os.path.splitext(file)[0]
         return job_spec_id
@@ -236,6 +236,7 @@ class HTCAnalyze:
             # waiting for 'sec' seconds for the next event.
             for event in jel.events(sec):
                 events.append(event)
+
         except OSError as err:
             logging.exception(err)
             invalid_file = True
@@ -438,31 +439,28 @@ class HTCAnalyze:
                 ram_history_dict,
                 error_dict)
 
-    def gethostbyaddr(self, ip):
+    def gethostbyaddrcached(self, ip):
         """
-        Get dns entry py Ipv4 address.
+        Get the hostname by address, with an in-memory cache to prevent
+        excessive queries to DNS servers.
 
-        this function is supposed to filter a given
-        ip for it's representative domain name like google.com
-
-        :return: resolved domain name, else give back the ip
+        :return: resolved domain name, else give back the IP
         """
         try:
-            if ip in self.store_dns_lookups.keys():
-                return self.store_dns_lookups[ip]
-            # else lookup
-            reversed_dns = socket.gethostbyaddr(ip)
-            logging.debug(f"Lookup successful: "
-                          f"{ip} resolved as {reversed_dns[0]}")
-            # store
-            self.store_dns_lookups[ip] = reversed_dns[0]
-            # return
-            return reversed_dns[0]
-        except socket.gaierror:
-            logging.debug('Not able to resolve the IP: ' + ip)
-            # also store
-            self.store_dns_lookups[ip] = ip
-            return ip
+            # try our cache first
+            return self.rdns_cache[ip]
+        except KeyError:
+            # do the lookup
+            try:
+                rdns = socket.gethostbyaddr(ip)
+                logging.debug(f"rDNS lookup successful: {ip} resolved as {rdns[0]}")
+                self.rdns_cache[ip] = rdns[0]
+                return rdns[0]
+            except socket.gaierror:
+                logging.debug(f"Unable to perform rDNS lookup for {ip}")
+                # cache negative responses too
+                self.rdns_cache[ip] = ip
+                return ip
 
     def default(self, log_files: list_of_logs) -> log_inf_list:
         """
@@ -508,10 +506,10 @@ class HTCAnalyze:
                 job_spec_id = self.get_job_spec_id(file)
                 if 'std-err' in self.show_list:
                     result_dict['stderr'] = self.htcondor_stderr(
-                        job_spec_id + self.std_err)
+                        job_spec_id + self.ext_err)
                 if 'std-out' in self.show_list:
                     result_dict['stdout'] = self.htcondor_stdout(
-                        job_spec_id + self.std_out)
+                        job_spec_id + self.ext_out)
 
             list_of_dicts.append(result_dict)
 
@@ -601,10 +599,10 @@ class HTCAnalyze:
                     job_spec_id = self.get_job_spec_id(file)
                     if 'std-err' in self.show_list:
                         result_dict['stderr'] = self.htcondor_stderr(
-                            job_spec_id + self.std_err)
+                            job_spec_id + self.ext_err)
                     if 'std-out' in self.show_list:
                         result_dict['stdout'] = self.htcondor_stdout(
-                            job_spec_id + self.std_out)
+                            job_spec_id + self.ext_out)
 
                 result_list.append(result_dict)
 
