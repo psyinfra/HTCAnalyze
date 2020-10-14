@@ -94,11 +94,11 @@ class LogValidator:
                               ", because ext-log is: " + self.ext_log)
                 continue
 
-            # backslash handling
-            if directory.endswith('/'):
+            # separator handling
+            if directory.endswith(os.path.sep):
                 file_path = directory + file
             else:
-                file_path = directory + '/' + file
+                file_path = directory + os.path.sep + file
 
             if os.path.isfile(file_path):
                 if self.validate_file(file_path):
@@ -137,7 +137,7 @@ class LogValidator:
             for arg in file_list:
 
                 path = os.getcwd()  # mainly search in cwd
-                logs_path = path + "/" + arg  # absolute path
+                logs_path = path + os.path.sep + arg  # absolute path
 
                 working_dir_path = ""
                 working_file_path = ""
