@@ -287,7 +287,8 @@ class HTCAnalyze:
                 if match_to_host:
                     execution_host = match_to_host[1]
                     if self.reverse_dns_lookup:  # resolve
-                        execution_host = self.gethostbyaddr(execution_host)
+                        execution_host = \
+                            self.gethostbyaddrcached(execution_host)
 
                     job_events.append(('Executing on', execution_host))
                 # ERROR
@@ -453,7 +454,8 @@ class HTCAnalyze:
             # do the lookup
             try:
                 rdns = socket.gethostbyaddr(ip)
-                logging.debug(f"rDNS lookup successful: {ip} resolved as {rdns[0]}")
+                logging.debug(f"rDNS lookup successful: "
+                              f"{ip} resolved as {rdns[0]}")
                 self.rdns_cache[ip] = rdns[0]
                 return rdns[0]
             except socket.gaierror:
@@ -504,11 +506,11 @@ class HTCAnalyze:
 
             if len(self.show_list) > 0:
                 job_spec_id = self.get_job_spec_id(file)
-                if 'std-err' in self.show_list:
-                    result_dict['stderr'] = self.htcondor_stderr(
+                if 'ext-err' in self.show_list:
+                    result_dict['ext-err'] = self.htcondor_stderr(
                         job_spec_id + self.ext_err)
-                if 'std-out' in self.show_list:
-                    result_dict['stdout'] = self.htcondor_stdout(
+                if 'ext-out' in self.show_list:
+                    result_dict['ext-out'] = self.htcondor_stdout(
                         job_spec_id + self.ext_out)
 
             list_of_dicts.append(result_dict)
@@ -597,11 +599,11 @@ class HTCAnalyze:
 
                 if self.show_list:
                     job_spec_id = self.get_job_spec_id(file)
-                    if 'std-err' in self.show_list:
-                        result_dict['stderr'] = self.htcondor_stderr(
+                    if 'ext-err' in self.show_list:
+                        result_dict['ext-err'] = self.htcondor_stderr(
                             job_spec_id + self.ext_err)
-                    if 'std-out' in self.show_list:
-                        result_dict['stdout'] = self.htcondor_stdout(
+                    if 'ext-out' in self.show_list:
+                        result_dict['ext-out'] = self.htcondor_stdout(
                             job_spec_id + self.ext_out)
 
                 result_list.append(result_dict)
