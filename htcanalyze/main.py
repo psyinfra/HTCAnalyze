@@ -1,6 +1,7 @@
 """
-
 Handle config setup and commandline arguments.
+
+Create visible output by using htcanalyze.
 
 Exit Codes:
     Normal Termination: 0
@@ -8,7 +9,6 @@ Exit Codes:
     Wrong Options or Arguments: 2
     TypeError: 3
     Keyboard interruption: 4
-
 """
 
 import datetime
@@ -238,7 +238,8 @@ def setup_commandline_parser(default_config_files=[])\
                         default=None,
                         help="generates output about the process,"
                              " which is mostly useful for developers, "
-                             "if no file is specified, default: htcanalyze.log")
+                             "if no file is specified,"
+                             " default: htcanalyze.log")
 
     all_vals = []
     for item in ALLOWED_MODES.items():
