@@ -458,7 +458,7 @@ class HTCAnalyze:
                               f"{ip} resolved as {rdns[0]}")
                 self.rdns_cache[ip] = rdns[0]
                 return rdns[0]
-            except socket.gaierror:
+            except socket.error:
                 logging.debug(f"Unable to perform rDNS lookup for {ip}")
                 # cache negative responses too
                 self.rdns_cache[ip] = ip
