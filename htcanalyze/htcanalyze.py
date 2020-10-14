@@ -8,8 +8,7 @@ import socket
 import sys
 
 from plotille import Figure
-import htcondor
-from htcondor import JobEventType as jet
+from htcondor import JobEventLog, JobEventType as jet
 import numpy as np
 
 from rich import print as rprint
@@ -44,27 +43,10 @@ class HTCAnalyze:
                  reverse_dns_lookup=None,
                  tolerated_usage=None,
                  bad_usage=None):
-        """
-        Initialize HTCAnalyze.
-
-        The None defaults are necessary,
-        cause None should be handled correctly if given
-
-        :param std_log:
-        :param std_err:
-        :param std_out:
-        :param show_list:
-        :param reverse_dns_lookup:
-        :param tolerated_usage:
-        :param bad_usage:
-        """
         self.std_log = std_log
         self.std_err = std_err
         self.std_out = std_out
-        if show_list is None:
-            self.show_list = []
-        else:
-            self.show_list = show_list
+        self.show_list = [] if show_list is None else show_list
 
         self.store_dns_lookups = dict()
         if reverse_dns_lookup is None:
@@ -94,36 +76,33 @@ class HTCAnalyze:
         :param resources: resource dictionary
         :return: resources with colors on usage column
         """
-        resources.update(Usage=list(
-            resources["Usage"]))  # change to list, to avoid numpy type errors
-        for i in range(len(resources['Resources'])):
+        # change to list, to avoid numpy type errors
+        resources.update(Usage=list(resources["Usage"]))
+        for i, _ in enumerate(resources['Resources']):
             # thresholds used vs. requested
             if float(resources['Requested'][i]) != 0:
 
                 deviation = float(resources['Usage'][i]) / float(
                     resources['Requested'][i])
 
-                # color red if more than bad_usages % away
-                # from the requested value
+                # color red
                 if deviation >= 1 + self.bad_usage \
                         or deviation <= 1 - self.bad_usage:
                     resources['Usage'][i] = f"[red]" \
-                        f"{str(resources['Usage'][i])}[/red]"
-
-                # color yellow if more than low_usage_threhold % away
-                # from requested value
+                        f"{resources['Usage'][i]}[/red]"
+                # color yellow
                 elif deviation >= 1 + self.tolerated_usage \
                         or deviation <= 1 - self.tolerated_usage:
                     resources['Usage'][i] = f"[yellow]" \
-                        f"{str(resources['Usage'][i])}[/yellow]"
+                        f"{resources['Usage'][i]}[/yellow]"
                 # if nan, mark yellow
                 elif str(resources['Usage'][i]) == "nan":
                     resources['Usage'][i] = f"[yellow2]" \
-                        f"{str(resources['Usage'][i])}[/yellow2]"
-                # else it's okay, color green,
+                        f"{resources['Usage'][i]}[/yellow2]"
+                # else it's okay, color green
                 else:
                     resources['Usage'][i] = f"[green]" \
-                        f"{str(resources['Usage'][i])}[/green]"
+                        f"{resources['Usage'][i]}[/green]"
 
         return resources
 
@@ -149,17 +128,18 @@ class HTCAnalyze:
 
         except NameError as err:
             logging.exception(err)
-            rprint("[red]The smart_output_error method requires a " +
-                   self.std_err + " file as parameter[/red]")
+            rprint(f"[red]The smart_output_error method requires a "
+                   f"{self.std_err} file as parameter[/red]")
         except FileNotFoundError:
-            relevant = file.split("/")[-2:]
-            match = re.match(r".*?([0-9]{3,}_[0-9]+)" +
-                             self.std_err, relevant[1])
+            relevant = file.split(os.path.sep)[-2:]
+            match = re.match(r".*?([0-9]{3,}_[0-9]+)" + self.std_err,
+                             relevant[1])
             rprint(
-                f"[yellow]There is no related {self.std_err} file:"
-                f" {relevant[1]} in the directory:\n[/yellow]"
+                f"[yellow]There is no related {self.std_err} file: "
+                f"{relevant[1]} in the directory:\n[/yellow]"
                 f"[cyan]'{os.path.abspath(relevant[0])}'\n"
-                f" with the prefix: {match[1]}[/cyan]")
+                f"with the prefix: {match[1]}[/cyan]"
+            )
         except TypeError as err:
             logging.exception(err)
         finally:
@@ -182,16 +162,18 @@ class HTCAnalyze:
                 output_string += "".join(output_content.readlines())
         except NameError as err:
             logging.exception(err)
-            rprint("[red]The smart_output_output method requires a " +
-                   self.std_out + " file as parameter[/red]")
+            rprint(f"[red]The smart_output_output method requires a "
+                   f"{self.std_out} file as parameter[/red]")
         except FileNotFoundError:
-            relevant = file.split("/")[-2:]
-            match = re.match(r".*?([0-9]{3,}_[0-9]+)" +
-                             self.std_out, relevant[1])
-            rprint(f"[yellow]There is no related {self.std_out}"
-                   f" file: {relevant[1]} in the directory:\n"
-                   f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
-                   f" with the prefix: {match[1]}[/cyan]")
+            relevant = file.split(os.path.sep)[-2:]
+            match = re.match(r".*?([0-9]{3,}_[0-9]+)" + self.std_out,
+                             relevant[1])
+            rprint(
+                f"[yellow]There is no related {self.std_out} "
+                f"file: {relevant[1]} in the directory:\n"
+                f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
+                f"with the prefix: {match[1]}[/cyan]"
+            )
         except TypeError as err:
             logging.exception(err)
         finally:
@@ -246,144 +228,16 @@ class HTCAnalyze:
         has_terminated = False
         invalid_file = False
 
+        jel = JobEventLog(file)
+        events = list()
+
         try:
-            jel = htcondor.JobEventLog(file)
             # Read all currently-available events
             # waiting for 'sec' seconds for the next event.
             for event in jel.events(sec):
-                event_type_number = event.get('EventTypeNumber')
-                # convert time to datetime object
-                date = date_time.strptime(event.get('EventTime'),
-                                          "%Y-%m-%dT%H:%M:%S")
-                # update submit date, submission host
-                if event.type == jet.SUBMIT:
-                    time_dict["Submission date"] = date
-
-                    match_from_host = re.match(r"<(.+):[0-9]+\?(.*)>",
-                                               event.get('SubmitHost'))
-                    if match_from_host:
-                        submitted_host = match_from_host[1]
-                        job_events.append(('Submitted from', submitted_host))
-                    # ERROR
-                    else:
-                        invalid_file = True
-                        reason = "Can't read user address"
-                        occurred_errors.append(
-                            [event_type_number, "Now", "invalid user address",
-                             reason])
-                        job_events.append(('Submitted from', "invalid user"))
-                        raise_value_error("Wrong submission host: " + file)
-
-                # update execution date, execution node
-                if event.type == jet.EXECUTE:
-                    time_dict["Execution date"] = date
-
-                    match_to_host = re.match(r"<(.+):[0-9]+\?(.*)>",
-                                             event.get('ExecuteHost'))
-                    if match_to_host:
-                        execution_host = match_to_host[1]
-                        if self.reverse_dns_lookup:  # resolve
-                            execution_host = self.gethostbyaddr(execution_host)
-
-                        job_events.append(('Executing on', execution_host))
-                    # ERROR
-                    else:
-                        invalid_file = True
-                        reason = "Can't read host address"
-                        occurred_errors.append(
-                            [event_type_number, "Now", "invalid host address",
-                             reason])
-                        job_events.append(('Executing on', "invalid host"))
-                        raise_value_error("Wrong execution host: " + file)
-
-                # update ram history dict
-                if event.type == jet.IMAGE_SIZE:
-                    size_update = event.get('Size')
-                    memory_usage = event.get('MemoryUsage')
-                    resident_set_size = event.get('ResidentSetSize')
-                    ram_history.append((date, size_update, memory_usage,
-                                        resident_set_size))
-
-                # update resource dict and termination date
-                if event.type == jet.JOB_TERMINATED:
-                    has_terminated = True
-                    time_dict["Termination date"] = date
-
-                    # get all resources, replace by np.nan if value is None
-                    cpu_usage = event.get('CpusUsage') if event.get(
-                        'CpusUsage') is not None else np.nan
-                    cpu_requested = event.get('RequestCpus') if event.get(
-                        'RequestCpus') is not None else np.nan
-                    cpu_allocated = event.get('Cpus') if event.get(
-                        'Cpus') is not None else np.nan
-                    disk_usage = event.get('DiskUsage') if event.get(
-                        'DiskUsage') is not None else np.nan
-                    disk_requested = event.get('RequestDisk') if event.get(
-                        'RequestDisk') is not None else np.nan
-                    disk_allocated = event.get("Disk") if event.get(
-                        'Disk') is not None else np.nan
-                    memory_usage = event.get('MemoryUsage') if event.get(
-                        'MemoryUSage') is not None else np.nan
-                    memory_requested = event.get('RequestMemory') if event.get(
-                        'RequestMemory') is not None else np.nan
-                    memory_allocated = event.get('Memory') if event.get(
-                        'Memory') is not None else np.nan
-
-                    # put the data in the dict
-                    res_dict = {
-                        "Resources": ["Cpu", "Disk", "Memory"],
-                        "Usage": np.array(
-                            [cpu_usage, disk_usage, memory_usage],
-                            dtype=float),
-                        "Requested": np.array(
-                            [cpu_requested, disk_requested, memory_requested],
-                            dtype=float),
-                        "Allocated": np.array(
-                            [cpu_allocated, disk_allocated, memory_allocated],
-                            dtype=float)
-                    }
-                    normal_termination = event.get('TerminatedNormally')
-                    # differentiate between normal and abnormal termination
-                    if normal_termination:
-                        job_events.insert(0, ("Termination State",
-                                              "[green]Normal[/green]"))
-                        return_value = event.get('ReturnValue')
-                        job_events.append(("Return Value", return_value))
-                    else:
-                        job_events.insert(0, ("Termination State",
-                                              "[red]Abnormal[/red]"))
-                        signal = event.get('TerminatedBySignal')
-                        job_events.append(("Terminated by Signal", signal))
-
-                # update error dict and termination date
-                if event.type == jet.JOB_ABORTED:
-                    has_terminated = True
-                    time_dict["Termination date"] = date
-
-                    reason = event.get('Reason')
-                    occurred_errors.append(
-                        [event_type_number, date.strftime("%m/%d %H:%M:%S"),
-                         "Aborted", reason])
-                    job_events.insert(0, ("Process was", "[red]Aborted[/red]"))
-
-                # update error dict
-                if event.type == jet.JOB_HELD:
-                    reason = event.get('HoldReason')
-                    occurred_errors.append(
-                        [event_type_number, date.strftime("%m/%d %H:%M:%S"),
-                         "JOB_HELD", reason])
-
-                # update error dict
-                if event.type == jet.SHADOW_EXCEPTION:
-                    reason = event.get('Message')
-                    occurred_errors.append((event_type_number,
-                                            date.strftime("%m/%d %H:%M:%S"),
-                                            "SHADOW_EXCEPTION", reason))
-            else:
-                # End of the file
-                pass
-
+                events.append(event)
         except OSError as err:
+            logging.exception(err)
             invalid_file = True
             if err.args[0] == "ULOG_RD_ERROR":
                 rprint(f"[red]{err}: {file}[/red]")
@@ -393,12 +247,138 @@ class HTCAnalyze:
                     ["None", "Now", "ULOG_RD_ERROR", reason])
             else:
                 rprint(f"[red]Not able to open the file: {file}[/red]")
-        except ValueError as err:
-            logging.exception(err)
-            rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        except TypeError as err:
-            logging.exception(err)
-            rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+
+        for event in events:
+            event_type_number = event.get('EventTypeNumber')
+            # convert time to datetime object
+            date = date_time.strptime(event.get('EventTime'),
+                                      "%Y-%m-%dT%H:%M:%S")
+            # update submit date, submission host
+            if event.type == jet.SUBMIT:
+                time_dict["Submission date"] = date
+
+                match_from_host = re.match(r"<(.+):[0-9]+\?(.*)>",
+                                           event.get('SubmitHost'))
+                if match_from_host:
+                    submitted_host = match_from_host[1]
+                    job_events.append(('Submitted from', submitted_host))
+                # ERROR
+                else:
+                    invalid_file = True
+                    reason = "Can't read user address"
+                    occurred_errors.append(
+                        [event_type_number, "Now", "invalid user address",
+                         reason])
+                    job_events.append(('Submitted from', "invalid user"))
+
+                    try:
+                        raise_value_error(f"Wrong submission host: {file}")
+                    except ValueError as err:
+                        logging.exception(err)
+                        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+
+            # update execution date, execution node
+            if event.type == jet.EXECUTE:
+                time_dict["Execution date"] = date
+
+                match_to_host = re.match(r"<(.+):[0-9]+\?(.*)>",
+                                         event.get('ExecuteHost'))
+                if match_to_host:
+                    execution_host = match_to_host[1]
+                    if self.reverse_dns_lookup:  # resolve
+                        execution_host = self.gethostbyaddr(execution_host)
+
+                    job_events.append(('Executing on', execution_host))
+                # ERROR
+                else:
+                    invalid_file = True
+                    reason = "Can't read host address"
+                    occurred_errors.append(
+                        [event_type_number, "Now", "invalid host address",
+                         reason])
+                    job_events.append(('Executing on', "invalid host"))
+                    try:
+                        raise_value_error("Wrong execution host: " + file)
+                    except ValueError as err:
+                        logging.exception(err)
+                        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+
+            # update ram history dict
+            if event.type == jet.IMAGE_SIZE:
+                size_update = event.get('Size')
+                memory_usage = event.get('MemoryUsage')
+                resident_set_size = event.get('ResidentSetSize')
+                ram_history.append((date, size_update, memory_usage,
+                                    resident_set_size))
+
+            # update resource dict and termination date
+            if event.type == jet.JOB_TERMINATED:
+                has_terminated = True
+                time_dict["Termination date"] = date
+
+                # get all resources, replace by np.nan if value is None
+                cpu_usage = event.get('CpusUsage', np.nan)
+                cpu_requested = event.get('RequestCpus', np.nan)
+                cpu_allocated = event.get('Cpus', np.nan)
+                disk_usage = event.get('DiskUsage', np.nan)
+                disk_requested = event.get('RequestDisk', np.nan)
+                disk_allocated = event.get("Disk", np.nan)
+                memory_usage = event.get('MemoryUsage', np.nan)
+                memory_requested = event.get('RequestMemory', np.nan)
+                memory_allocated = event.get('Memory', np.nan)
+
+                # put the data in the dict
+                res_dict = {
+                    "Resources": ["Cpu", "Disk", "Memory"],
+                    "Usage": np.array(
+                        [cpu_usage, disk_usage, memory_usage],
+                        dtype=np.float64),
+                    "Requested": np.array(
+                        [cpu_requested, disk_requested, memory_requested],
+                        dtype=np.float64),
+                    "Allocated": np.array(
+                        [cpu_allocated, disk_allocated, memory_allocated],
+                        dtype=np.float64)
+                }
+                normal_termination = event.get('TerminatedNormally')
+                # differentiate between normal and abnormal termination
+                if normal_termination:
+                    job_events.insert(0, ("Termination State",
+                                          "[green]Normal[/green]"))
+                    return_value = event.get('ReturnValue')
+                    job_events.append(("Return Value", return_value))
+                else:
+                    job_events.insert(0, ("Termination State",
+                                          "[red]Abnormal[/red]"))
+                    signal = event.get('TerminatedBySignal')
+                    job_events.append(("Terminated by Signal", signal))
+
+            # update error dict and termination date
+            if event.type == jet.JOB_ABORTED:
+                has_terminated = True
+                time_dict["Termination date"] = date
+
+                reason = event.get('Reason')
+                occurred_errors.append(
+                    [event_type_number, date.strftime("%m/%d %H:%M:%S"),
+                     "Aborted", reason])
+                job_events.insert(0, ("Process was", "[red]Aborted[/red]"))
+
+            # update error dict
+            if event.type == jet.JOB_HELD:
+                reason = event.get('HoldReason')
+                occurred_errors.append(
+                    [event_type_number, date.strftime("%m/%d %H:%M:%S"),
+                     "JOB_HELD", reason])
+
+            # update error dict
+            if event.type == jet.SHADOW_EXCEPTION:
+                reason = event.get('Message')
+                occurred_errors.append((event_type_number,
+                                        date.strftime("%m/%d %H:%M:%S"),
+                                        "SHADOW_EXCEPTION", reason))
+
+        # End of the file
 
         # generate a better time dict
         time_values = list(time_dict.values())
@@ -407,9 +387,9 @@ class HTCAnalyze:
         # Job still running and file valid
         if not invalid_file and not has_terminated:
             if "Total runtime" in better_time_dict["Dates and times"]:
-                rprint(
-                    "[red]This is not supposed to happen,"
-                    " check your code[/red]")
+                rprint("[red]This is not supposed to happen,"
+                       " check your code[/red]")
+                state = "Strange"
             elif "Execution runtime" in better_time_dict["Dates and times"]:
                 state = "Executing"
             elif "Waiting time" in better_time_dict["Dates and times"]:
@@ -468,12 +448,12 @@ class HTCAnalyze:
         :return: resolved domain name, else give back the ip
         """
         try:
-            if ip in list(self.store_dns_lookups.keys()):
+            if ip in self.store_dns_lookups.keys():
                 return self.store_dns_lookups[ip]
             # else lookup
             reversed_dns = socket.gethostbyaddr(ip)
-            logging.debug(
-                'Lookup successful ' + ip + ' resolved as: ' + reversed_dns[0])
+            logging.debug(f"Lookup successful: "
+                          f"{ip} resolved as {reversed_dns[0]}")
             # store
             self.store_dns_lookups[ip] = reversed_dns[0]
             # return
@@ -496,11 +476,14 @@ class HTCAnalyze:
         """
         logging.info('Starting the default mode')
 
+        if not log_files:
+            raise_value_error("No files given")
+
         list_of_dicts = list()
         # current_path = os.getcwd()
         # go through all given logs
-        for file in track(log_files, transient=True,
-                          description="Processing..."):
+        tracker = track(log_files, transient=True, description="Processing...")
+        for file in tracker:
 
             result_dict = dict()
             htcondor_log = self.log_to_dict(file)
@@ -509,9 +492,8 @@ class HTCAnalyze:
             res_dict = htcondor_log[1]
             times = htcondor_log[2]
 
-            result_dict["description"] = f"" \
-                f"[green]The job procedure of : " \
-                f"{file}[/green]"
+            msg = f"[green]The job procedure of : {file}[/green]"
+            result_dict["description"] = msg
 
             result_dict["execution-details"] = job_dict
 
@@ -552,8 +534,8 @@ class HTCAnalyze:
         """
         logging.info('Starting the analyze mode')
 
-        if len(log_files) == 0:
-            return "No files to analyze"
+        if not log_files:
+            raise_value_error("No files to analyze")
 
         result_list = list()
 
@@ -573,53 +555,49 @@ class HTCAnalyze:
 
                 job_dict, res_dict, time_dict, \
                     ram_history, occurred_errors = self.log_to_dict(file)
-                if len(job_dict) != 0:
+                if job_dict:
                     result_dict["execution-details"] = job_dict
 
-                if len(time_dict) > 0:
+                if time_dict:
                     result_dict["times"] = time_dict
 
-                if len(res_dict) > 0:
+                if res_dict:
                     result_dict["all-resources"] = \
                         self.manage_thresholds(res_dict)
 
                 # show HTCondor errors
-                if len(occurred_errors) > 0:
+                if occurred_errors:
                     result_dict["errors"] = occurred_errors
 
                 # managing the ram history
-                if len(ram_history) > 0:
+                if ram_history:
                     ram = np.array(ram_history.get('Image size updates'))
                     dates = np.array(ram_history.get('Dates'))
 
-                    if len(ram) > 1:
+                if ram_history and len(ram) > 1:
+                    fig = Figure()
+                    fig.width = 55
+                    fig.height = 15
+                    fig.set_x_limits(min_=min(dates))
+                    min_ram = int(min(ram))  # raises error if not casted
+                    fig.set_y_limits(min_=min_ram)
+                    fig.y_label = "Usage"
+                    fig.x_label = "Time"
 
-                        fig = Figure()
-                        fig.width = 55
-                        fig.height = 15
-                        fig.set_x_limits(min_=min(dates))
-                        min_ram = int(min(ram))  # raises error if not casted
-                        fig.set_y_limits(min_=min_ram)
-                        fig.y_label = "Usage"
-                        fig.x_label = "Time"
+                    # this will use the self written function _
+                    # num_formatter, to convert the y-label to int values
+                    fig.register_label_formatter(float, _int_formatter)
+                    fig.plot(dates, ram, lc='green', label="Continuous Graph")
+                    fig.scatter(dates, ram, lc='red', label="Single Values")
 
-                        # this will use the self written function _
-                        # num_formatter, to convert the y-label to int values
-                        fig.register_label_formatter(float, _int_formatter)
-                        fig.plot(dates, ram, lc='green',
-                                 label="Continuous Graph")
-                        fig.scatter(dates, ram, lc='red',
-                                    label="Single Values")
+                    result_dict["ram-history"] = fig.show(legend=show_legend)
+                elif ram_history:
+                    msg = f"Single memory update found:\n" \
+                        f"Memory usage on the {dates[0]}" \
+                        f" was updatet to {ram[0]} MB"
+                    result_dict["ram-history"] = msg
 
-                        result_dict["ram-history"] \
-                            = fig.show(legend=show_legend)
-                    else:
-                        result_dict["ram-history"] = f"" \
-                            f"Single memory update found:\n" \
-                            f"Memory usage on the {dates[0]}" \
-                            f" was updatet to {ram[0]} MB"
-
-                if len(self.show_list) > 0:
+                if self.show_list:
                     job_spec_id = self.get_job_spec_id(file)
                     if 'std-err' in self.show_list:
                         result_dict['stderr'] = self.htcondor_stderr(
@@ -645,10 +623,9 @@ class HTCAnalyze:
         """
         logging.info('Starting the summarize mode')
 
-        valid_files = len(log_files)
         # no given files
-        if valid_files == 0:
-            return "No files to summarize"
+        if not log_files:
+            raise_value_error("No files to summarize")
 
         # allocated all different datatypes, easier to handle
         result_dict = dict()
@@ -711,7 +688,7 @@ class HTCAnalyze:
                 sys.exit(3)
 
         # calc difference of successful executed jobs
-        n = valid_files - aborted_files - still_running \
+        n = len(log_files) - aborted_files - still_running \
             - other_exception - error_reading_files
 
         average_runtime = normal_runtime / n if n != 0 else normal_runtime
@@ -792,10 +769,11 @@ class HTCAnalyze:
             runtime_per_node = list()
             for val in host_nodes.values():
                 executed_jobs.append(val[0])
-                average_job_duration = val[1] / val[0]
+                average_job_duration = val[1] / val[0]  # timedelta object
                 runtime_per_node.append(
                     timedelta(average_job_duration.days,
-                              average_job_duration.seconds))
+                              average_job_duration.seconds)
+                )
 
             cpu_dict = {
                 "Host Nodes": list(host_nodes.keys()),
@@ -830,10 +808,9 @@ class HTCAnalyze:
         """
         logging.info('Starting the analyzed summary mode')
 
-        valid_files = len(log_files)
         # no given files
-        if valid_files == 0:
-            return "No files for the analyzed summary"
+        if log_files:
+            raise_value_error("No files for the analyzed-summary")
 
         # fill this dict with information by the execution type of the jobs
         all_files = dict()
@@ -1136,7 +1113,7 @@ class HTCAnalyze:
             logging.debug(
                 f"Filter mode only accepts a string"
                 f" or list with keywords, not {keywords}")
-            raise_type_error("Expecting a list or a string")
+            raise TypeError("Expecting a list or a string")
 
         # if extend is set, keywords like err will
         # also look for keywords like warn exception, aborted, etc.
