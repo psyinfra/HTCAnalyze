@@ -66,7 +66,7 @@ class HTCAnalyze:
         else:
             self.show_list = show_list
 
-        self.store_dns_lookups = dict()
+        self.rdns_cache = dict()
         if reverse_dns_lookup is None:
             self.reverse_dns_lookup = False
         else:
@@ -283,7 +283,7 @@ class HTCAnalyze:
                     if match_to_host:
                         execution_host = match_to_host[1]
                         if self.reverse_dns_lookup:  # resolve
-                            execution_host = self.gethostbyaddr(execution_host)
+                            execution_host = self.gethostbyaddrcached(execution_host)
 
                         job_events.append(('Executing on', execution_host))
                     # ERROR
@@ -458,31 +458,28 @@ class HTCAnalyze:
                 ram_history_dict,
                 error_dict)
 
-    def gethostbyaddr(self, ip):
+    def gethostbyaddrcached(self, ip):
         """
-        Get dns entry py Ipv4 address.
+        Get the hostname by address, with an in-memory cache to prevent
+        excessive queries to DNS servers.
 
-        this function is supposed to filter a given
-        ip for it's representative domain name like google.com
-
-        :return: resolved domain name, else give back the ip
+        :return: resolved domain name, else give back the IP
         """
         try:
-            if ip in list(self.store_dns_lookups.keys()):
-                return self.store_dns_lookups[ip]
-            # else lookup
-            reversed_dns = socket.gethostbyaddr(ip)
-            logging.debug(
-                'Lookup successful ' + ip + ' resolved as: ' + reversed_dns[0])
-            # store
-            self.store_dns_lookups[ip] = reversed_dns[0]
-            # return
-            return reversed_dns[0]
-        except socket.gaierror:
-            logging.debug('Not able to resolve the IP: ' + ip)
-            # also store
-            self.store_dns_lookups[ip] = ip
-            return ip
+            # try our cache first
+            return self.rdns_cache[ip]
+        except KeyError:
+            # do the lookup
+            try:
+                rdns = socket.gethostbyaddr(ip)
+                logging.debug(f"rDNS lookup successful: {ip} resolved as {rdns[0]}")
+                self.rdns_cache[ip] = rdns[0]
+                return rdns[0]
+            except socket.gaierror:
+                logging.debug(f"Unable to perform rDNS lookup for {ip}")
+                # cache negative responses too
+                self.rdns_cache[ip] = ip
+                return ip
 
     def default(self, log_files: list_of_logs) -> log_inf_list:
         """

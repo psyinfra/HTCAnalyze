@@ -155,7 +155,7 @@ def test_HTCAnalyze_init(htcan):
     assert htcan.std_err == ".err"
     assert htcan.std_out == ".out"
     assert htcan.show_list == []
-    assert htcan.store_dns_lookups == {}
+    assert htcan.rdns_cache == {}
     assert htcan.reverse_dns_lookup is False
     assert htcan.tolerated_usage == 0.1
     assert htcan.bad_usage == 0.25
@@ -280,7 +280,7 @@ def test_log_to_dict(htcan):
 
 
 def test_reverse_dns_lookup(htcan):
-    htcan.gethostbyaddr("172.217.0.0")
-    assert htcan.store_dns_lookups["172.217.0.0"] == "ord38s04-in-f0.1e100.net"
-    htcan.gethostbyaddr("NoIP")
-    assert htcan.store_dns_lookups["NoIP"] == "NoIP"
+    htcan.gethostbyaddrcached("172.217.0.0")
+    assert htcan.rdns_cache["172.217.0.0"] == "ord38s04-in-f0.1e100.net"
+    htcan.gethostbyaddrcached("NoIP")
+    assert htcan.rdns_cache["NoIP"] == "NoIP"
