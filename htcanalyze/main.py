@@ -259,13 +259,13 @@ def setup_commandline_parser(default_config_files=[])\
                         action="store_true")
 
     parser.add_argument("--ext-log",
-                        help="Specify the log file suffix",
+                        help="Suffix of HTCondor job logs (default: none)",
                         type=str)
     parser.add_argument("--ext-out",
-                        help="Specify the output file suffix",
+                        help="Suffix of job out logs (default: .out)",
                         type=str)
     parser.add_argument("--ext-err",
-                        help="Specify the error file suffix",
+                        help="Suffix of job error logs (default: .err)",
                         type=str)
 
     ignore_metavar = "{" + ALLOWED_IGNORE_VALUES[0] + " ... " \

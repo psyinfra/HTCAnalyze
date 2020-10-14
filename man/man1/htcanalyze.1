@@ -163,25 +163,22 @@ Examples:
 .Ed
 .
 .It Fl Fl ext-log Ar suffix
-The standard log files usually look something like
-.Qq job_452_237.log ,
-if for whatever reason the format is not
-.Qq .log ,
-then you can change it with this argument.
+The suffix to filter for HTCondor log files.
+The default attempts to parse all files that don't end in the
+.It Fl Fl ext-err
+or
+.It Fl Fl ext-out
+suffixes.
 .
 .It Fl Fl ext-err Ar suffix
-The standard error files usually look something like
-.Qq job_452_237.err ,
-if for whatever reason the format is not
-.Qq .err ,
-then you can change it with this argument.
+The suffix to filter for HTCondor error files.
+Defaults to
+.Qq .err .
 .
 .It Fl Fl ext-out Ar suffix
-The standard output files usually look something like
-.Qq job_452_237.out ,
-if for whatever reason the format is not
-.Qq .out ,
-then you can change it with this argument.
+The suffix to filter for HTCondor out files.
+Defaults to
+.Qq .out .
 .
 .It Fl Fl show-more Ar keywords
 show information inside the (if generated) stdout and stderr files,
