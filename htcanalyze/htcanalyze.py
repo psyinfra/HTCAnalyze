@@ -807,7 +807,7 @@ class HTCAnalyze:
         logging.info('Starting the analyzed summary mode')
 
         # no given files
-        if log_files:
+        if not log_files:
             raise_value_error("No files for the analyzed-summary")
 
         # fill this dict with information by the execution type of the jobs
