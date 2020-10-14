@@ -66,11 +66,11 @@ def test_manage_params():
     assert pytest_wrapped_e.value.code == 0
 
     # normal parameters
-    args = "--std-log=.logging --std-out=.output --std-err=.error".split()
+    args = "--ext-log=.logging --ext-out=.output --ext-err=.error".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["std_log"] == ".logging"
-    assert res_dict["std_out"] == ".output"
-    assert res_dict["std_err"] == ".error"
+    assert res_dict["ext_log"] == ".logging"
+    assert res_dict["ext_out"] == ".output"
+    assert res_dict["ext_err"] == ".error"
 
     args = "--show std-err std-out --ignore execution-details " \
            "times errors host-nodes used-resources " \

@@ -18,14 +18,14 @@ class LogValidator:
     """
 
     def __init__(self,
-                 std_log="",
-                 std_err=".err",
-                 std_out=".out",
+                 ext_log="",
+                 ext_err=".err",
+                 ext_out=".out",
                  recursive=False):
         """Initialize."""
-        self.std_log = std_log
-        self.std_err = std_err
-        self.std_out = std_out
+        self.ext_log = ext_log
+        self.ext_err = ext_err
+        self.ext_out = ext_out
         self.recursive = recursive
 
     def validate_file(self, file) -> bool:
@@ -35,14 +35,14 @@ class LogValidator:
         :param file: HTCondor log file
         :return: True when valid else False
         """
-        # if not ending with stdout
-        if self.std_log.__ne__("") and not file.endswith(self.std_log):
+        # if not ending with extout
+        if self.ext_log.__ne__("") and not file.endswith(self.ext_log):
             return False
 
-        # does also not end with sterr and stdout suffix
-        if self.std_err.__ne__("") and file.endswith(self.std_err):
+        # does also not end with exterr and extout suffix
+        if self.ext_err.__ne__("") and file.endswith(self.ext_err):
             return False
-        if self.std_out.__ne__("") and file.endswith(self.std_out):
+        if self.ext_out.__ne__("") and file.endswith(self.ext_out):
             return False
 
         if os.path.getsize(file) == 0:  # file is empty
@@ -88,10 +88,10 @@ class LogValidator:
             if file.startswith(".") or file.startswith("__"):
                 continue
 
-            # if std_log is set, ignore other log files
-            if self.std_log.__ne__("") and not file.endswith(self.std_log):
+            # if ext_log is set, ignore other log files
+            if self.ext_log.__ne__("") and not file.endswith(self.ext_log):
                 logging.debug("Ignoring this file, " + file +
-                              ", because std-log is: " + self.std_log)
+                              ", because ext-log is: " + self.ext_log)
                 continue
 
             # backslash handling
@@ -152,11 +152,11 @@ class LogValidator:
                 elif os.path.isfile(logs_path):
                     working_file_path = logs_path
                 # check if only the id was given
-                # and resolve it with the std_log specification
-                elif os.path.isfile(arg + self.std_log):
-                    working_file_path = arg + self.std_log
-                elif os.path.isfile(logs_path + self.std_log):
-                    working_file_path = logs_path + self.std_log
+                # and resolve it with the ext_log specification
+                elif os.path.isfile(arg + self.ext_log):
+                    working_file_path = arg + self.ext_log
+                elif os.path.isfile(logs_path + self.ext_log):
+                    working_file_path = logs_path + self.ext_log
 
                 # if path is a directory
                 if working_dir_path.__ne__(""):

@@ -95,7 +95,7 @@ def test_wrong_opts_or_args():
 
     # Argument starts with -,
     # this will not raise an error, but is considered sceptical
-    args = "--std-log -log".split()
+    args = "--ext-log -log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -134,15 +134,15 @@ def test_ignore_values():
 
 
 def test_independent_opts():
-    args = "--std-log=.log --std-out=.output " \
-           "--std-err=.error --reverse-dns-lookup".split()
+    args = "--ext-log=.log --ext-out=.output " \
+           "--ext-err=.error --reverse-dns-lookup".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 1  # no valid file is given
 
-    args = "--std-log log --std-out output " \
-           "--std-err error " \
+    args = "--ext-log log --ext-out output " \
+           "--ext-err error " \
            "--reverse-dns-lookup tests/test_logs/valid_logs".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)

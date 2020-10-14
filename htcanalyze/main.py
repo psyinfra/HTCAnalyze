@@ -258,13 +258,13 @@ def setup_commandline_parser(default_config_files=[])\
                              " combine with -s for analyzed-summary mode",
                         action="store_true")
 
-    parser.add_argument("--std-log",
+    parser.add_argument("--ext-log",
                         help="Specify the log file suffix",
                         type=str)
-    parser.add_argument("--std-out",
+    parser.add_argument("--ext-out",
                         help="Specify the output file suffix",
                         type=str)
-    parser.add_argument("--std-err",
+    parser.add_argument("--ext-err",
                         help="Specify the error file suffix",
                         type=str)
 
@@ -345,9 +345,9 @@ def manage_params(args: list) -> dict:
      {'verbose': False,
       'generate_log_file': None,
       'mode': None,
-      'std_log': '',
-      'std_out': '.out',
-      'std_err': '.err',
+      'ext_log': '',
+      'ext_out': '.out',
+      'ext_err': '.err',
       'ignore_list': [],
       'show_list': [],
       'no_config': False,
@@ -480,12 +480,12 @@ def manage_params(args: list) -> dict:
     del cmd_dict["version"]
     del cmd_dict["no_config"]
 
-    if cmd_dict['std_log'] is None:
-        cmd_dict['std_log'] = ""
-    if cmd_dict['std_err'] is None:
-        cmd_dict['std_err'] = ".err"
-    if cmd_dict['std_out'] is None:
-        cmd_dict['std_out'] = ".out"
+    if cmd_dict['ext_log'] is None:
+        cmd_dict['ext_log'] = ""
+    if cmd_dict['ext_err'] is None:
+        cmd_dict['ext_err'] = ".err"
+    if cmd_dict['ext_out'] is None:
+        cmd_dict['ext_out'] = ".out"
 
     return cmd_dict
 
@@ -678,9 +678,9 @@ def run(commandline_args):
         logging.debug("-------Start of htcanalyze script-------")
 
         htcanalyze = \
-            HTCAnalyze(std_log=param_dict["std_log"],
-                        std_out=param_dict["std_out"],
-                        std_err=param_dict["std_err"],
+            HTCAnalyze(ext_log=param_dict["ext_log"],
+                        ext_out=param_dict["ext_out"],
+                        ext_err=param_dict["ext_err"],
                         show_list=param_dict["show_list"],
                         reverse_dns_lookup=param_dict["reverse_dns_lookup"],
                         tolerated_usage=param_dict["tolerated_usage"],
@@ -694,9 +694,9 @@ def run(commandline_args):
         if GlobalServant.redirecting_stdout:
             logging.debug("Output is getting redirected")
 
-        validator = LogValidator(std_log=param_dict["std_log"],
-                                 std_out=param_dict["std_out"],
-                                 std_err=param_dict["std_err"],
+        validator = LogValidator(ext_log=param_dict["ext_log"],
+                                 ext_out=param_dict["ext_out"],
+                                 ext_err=param_dict["ext_err"],
                                  recursive=param_dict["recursive"])
 
         valid_files = validator.common_validation(param_dict["files"])
