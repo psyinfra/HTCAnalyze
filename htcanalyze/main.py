@@ -594,14 +594,14 @@ def print_results(htcanalyze: HTCAnalyze,
         if "execution-details" in mystery:
             if "execution-details" in ignore_list:
                 del mystery["execution-details"]
-            else:
+            elif mystery["execution-details"]:
                 table = wrap_dict_to_table(mystery["execution-details"])
                 rprint(table)
 
         if "times" in mystery:
             if "times" in ignore_list:
                 del mystery["times"]
-            else:
+            elif mystery["times"]:
                 table = wrap_dict_to_table(mystery["times"])
                 rprint(table)
 
