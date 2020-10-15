@@ -498,7 +498,7 @@ class HTCAnalyze:
             result_dict["execution-details"] = job_dict
 
             result_dict["times"] = times
-            if not len(res_dict) == 0:  # make sure res_df is not None
+            if res_dict:  # make sure res_df is not None
 
                 res_dict = self.manage_thresholds(res_dict)
 
@@ -872,9 +872,8 @@ class HTCAnalyze:
                             else:
                                 all_files[term_type][6] = occurred_errors
 
-                    if not len(all_files[term_type][4]) == 0:
-                        # add usages
-                        print(res_dict)
+                    # resources not empty
+                    if all_files[term_type][4] and res_dict:
                         all_files[term_type][4]["Usage"] += \
                             np.nan_to_num(res_dict["Usage"])
                         # add requested
@@ -884,6 +883,10 @@ class HTCAnalyze:
                         # allocated
                         all_files[term_type][4]["Allocated"] += \
                             np.nan_to_num(res_dict["Allocated"])
+                    elif all_files[term_type][4]:
+                        rprint(f"[yellow]{term_type}: "
+                               f"has no resources[/yellow]")
+
 
                     # add cpu
                     if to_host is not None:
