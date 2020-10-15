@@ -374,8 +374,7 @@ class HTCAnalyze:
         # End of the file
 
         # generate a better time dict
-        time_values = list(time_dict.values())
-        better_time_dict = gen_time_dict(*time_values)
+        better_time_dict = gen_time_dict(*time_dict.values())
 
         # Job still running and file valid
         if not invalid_file and not has_terminated:

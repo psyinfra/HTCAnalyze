@@ -509,9 +509,8 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
                   show_header=True,
                   header_style="bold magenta",
                   box=box.ASCII)
-    headers = list(table_dict.keys())
     n_vals = 0
-    for val in headers:
+    for val in table_dict.keys():
         table.add_column(val)
         if n_vals == 0:
             n_vals = len(table_dict[val])
