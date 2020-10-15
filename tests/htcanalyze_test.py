@@ -156,7 +156,7 @@ def test_HTCAnalyze_init(htcan):
     assert htcan.ext_out == ".out"
     assert htcan.show_list == []
     assert htcan.rdns_cache == {}
-    assert htcan.reverse_dns_lookup is False
+    assert htcan.rdns_lookup is False
     assert htcan.tolerated_usage == 0.1
     assert htcan.bad_usage == 0.25
 
@@ -279,7 +279,7 @@ def test_log_to_dict(htcan):
                    'via condor_rm (by user tkadelka)']}
 
 
-def test_reverse_dns_lookup(htcan):
+def test_rdns_lookup(htcan):
     htcan.gethostbyaddrcached("172.217.0.0")
     assert htcan.rdns_cache["172.217.0.0"] == "ord38s04-in-f0.1e100.net"
     htcan.gethostbyaddrcached("NoIP")

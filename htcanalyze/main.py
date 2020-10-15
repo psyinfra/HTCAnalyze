@@ -306,7 +306,7 @@ def setup_commandline_parser(default_config_files=[])\
                         help="extend the filter keyword list "
                              "by specific error keywords")
 
-    parser.add_argument("--reverse-dns-lookup",
+    parser.add_argument("--rdns-lookup",
                         action="store_true",
                         default=None,
                         help="Resolve the ip-address of an execution nodes"
@@ -354,7 +354,7 @@ def manage_params(args: list) -> dict:
       'no_config': False,
       'filter_keywords': [],
       'extend': False,
-      'reverse_dns_lookup': False
+      'rdns_lookup': False
       'files': []
       ....
       }
@@ -568,7 +568,7 @@ def print_results(htcanalyze: HTCAnalyze,
         results = htcanalyze.default(log_files)
         # anyways try to print default output
 
-    # This can happen, when for example the filter mode is not forwarded
+    # Allow this to happen
     if results is None:
         sys.exit(0)
 
@@ -682,7 +682,7 @@ def run(commandline_args):
             ext_out=param_dict["ext_out"],
             ext_err=param_dict["ext_err"],
             show_list=param_dict["show_list"],
-            reverse_dns_lookup=param_dict["reverse_dns_lookup"],
+            rdns_lookup=param_dict["rdns_lookup"],
             tolerated_usage=param_dict["tolerated_usage"],
             bad_usage=param_dict["bad_usage"]
         )

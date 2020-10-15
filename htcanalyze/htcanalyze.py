@@ -40,7 +40,7 @@ class HTCAnalyze:
                  ext_err=".err",
                  ext_out=".out",
                  show_list=None,
-                 reverse_dns_lookup=None,
+                 rdns_lookup=None,
                  tolerated_usage=None,
                  bad_usage=None):
         self.ext_log = ext_log
@@ -49,20 +49,11 @@ class HTCAnalyze:
         self.show_list = [] if show_list is None else show_list
 
         self.rdns_cache = dict()
-        if reverse_dns_lookup is None:
-            self.reverse_dns_lookup = False
-        else:
-            self.reverse_dns_lookup = reverse_dns_lookup
+        self.rdns_lookup = False if rdns_lookup is None else rdns_lookup
 
-        if tolerated_usage is None:
-            self.tolerated_usage = 0.1
-        else:
-            self.tolerated_usage = tolerated_usage
-
-        if bad_usage is None:
-            self.bad_usage = 0.25
-        else:
-            self.bad_usage = bad_usage
+        self.tolerated_usage = 0.1 if \
+            tolerated_usage is None else tolerated_usage
+        self.bad_usage = 0.25 if bad_usage is None else bad_usage
 
     def manage_thresholds(self, resources: dict) -> dict:
         """
@@ -286,7 +277,7 @@ class HTCAnalyze:
                                          event.get('ExecuteHost'))
                 if match_to_host:
                     execution_host = match_to_host[1]
-                    if self.reverse_dns_lookup:  # resolve
+                    if self.rdns_lookup:  # resolve
                         execution_host = \
                             self.gethostbyaddrcached(execution_host)
 
