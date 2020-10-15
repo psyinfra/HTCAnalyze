@@ -799,7 +799,7 @@ class HTCAnalyze:
         - Abnormal termination
         - Waiting for execution
         - Currently running
-        - Aorted
+        - Aborted
         - Aborted before submission
         - Aborted before execution
         - error while reading
@@ -874,9 +874,9 @@ class HTCAnalyze:
 
                     if not len(all_files[term_type][4]) == 0:
                         # add usages
-
-                        all_files[term_type][4]["Usage"] += np.nan_to_num(
-                            res_dict["Usage"])
+                        print(res_dict)
+                        all_files[term_type][4]["Usage"] += \
+                            np.nan_to_num(res_dict["Usage"])
                         # add requested
                         all_files[term_type][4][
                             "Requested"] += \
