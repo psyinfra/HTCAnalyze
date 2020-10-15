@@ -90,8 +90,8 @@ class LogValidator:
 
             # if ext_log is set, ignore other log files
             if self.ext_log.__ne__("") and not file.endswith(self.ext_log):
-                logging.debug("Ignoring this file, " + file +
-                              ", because ext-log is: " + self.ext_log)
+                logging.debug(f"Ignoring this file, {file}, "
+                              f"because ext-log is: {self.ext_log}")
                 continue
 
             # separator handling

@@ -389,7 +389,7 @@ def manage_params(args: list) -> dict:
     if not prio_parsed.no_config:
         config_paths = ['/etc/htcanalyze.conf',
                         '~/.config/htcanalyze/htcanalyze.conf',
-                        sys.prefix + '/config/htcanalyze.conf']
+                        f'{sys.prefix}/config/htcanalyze.conf']
         cmd_parser = setup_commandline_parser(config_paths)
         commands_parsed = cmd_parser.parse_args(args)
         cmd_dict = vars(commands_parsed).copy()
@@ -467,7 +467,7 @@ def manage_params(args: list) -> dict:
             raise_value_error("--show only allowed"
                               " with default and analyze mode")
     except ValueError as err:
-        print("htcanalyze: error: " + str(err))
+        rprint(f"[red]htcanalyze: error: {err}")
         sys.exit(2)
 
     # delete unnecessary information
@@ -578,8 +578,7 @@ def print_results(htcanalyze: HTCAnalyze,
 
         for i in mystery:
             if mystery[i] is None:
-                logging.debug("This musst be fixed,"
-                              " mystery['" + i + "'] is None.")
+                logging.debug(f"This musst be fixed, mystery['{i}'] is None.")
                 rprint("[red]NoneType object found,"
                        " this should not happen[/red]")
 

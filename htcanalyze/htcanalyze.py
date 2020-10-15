@@ -291,7 +291,7 @@ class HTCAnalyze:
                          reason])
                     job_events.append(('Executing on', "invalid host"))
                     try:
-                        raise_value_error("Wrong execution host: " + file)
+                        raise_value_error(f"Wrong execution host: {file}")
                     except ValueError as err:
                         logging.exception(err)
                         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
