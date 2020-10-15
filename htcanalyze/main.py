@@ -402,7 +402,7 @@ def manage_params(args: list) -> dict:
         for log_paths in commands_parsed.path:
             files_list.extend(log_paths)
         # add files, if none are given by terminal
-        if len(files_list) == 0:
+        if not files_list:
             for log_paths in cmd_dict["more_files"]:
                 # make sure that empty strings are not getting inserted
                 if len(log_paths) == 1 and log_paths[0] != "":
@@ -464,13 +464,12 @@ def manage_params(args: list) -> dict:
     cmd_dict["mode"] = mode
     # error handling
     try:
-        if cmd_dict["filter_extended"] and\
-                len(cmd_dict["filter_keywords"]) == 0:
+        if cmd_dict["filter_extended"] and not cmd_dict["filter_keywords"]:
             raise_value_error("--extend not allowed without --filter")
-        if len(cmd_dict["show_list"]) > 0:
-            if mode == "analyzed-summary" or mode == "summarize":
-                raise_value_error("--show only allowed"
-                                  " with default and analyze mode")
+        if cmd_dict["show_list"] and (
+                mode == "analyzed-summary" or mode == "summarize"):
+            raise_value_error("--show only allowed"
+                              " with default and analyze mode")
     except ValueError as err:
         print("htcanalyze: error: " + str(err))
         sys.exit(2)
@@ -507,8 +506,8 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
     :param title: title of table
     :return: table
     """
-    if len(table_dict) == 0:
-        return
+    if not table_dict:
+        return None
 
     table = Table(title=title,
                   show_header=True,
@@ -550,7 +549,7 @@ def print_results(htcanalyze: HTCAnalyze,
     :param kwargs:
     :return:
     """
-    if len(filter_keywords) > 0:
+    if filter_keywords:
         results = htcanalyze.\
             filter_for(log_files,
                        keywords=filter_keywords,
@@ -706,7 +705,7 @@ def run(commandline_args):
         rprint(f"[green]{len(valid_files)}"
                f" valid log file(s)[/green]\n")
 
-        if len(valid_files) == 0:
+        if not valid_files:
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(1)
 
