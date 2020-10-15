@@ -95,9 +95,9 @@ def test_manage_params():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 2
 
-    args = "--reverse-dns-lookup --no-config --generate-log -v".split()
+    args = "--rdns-lookup --no-config --generate-log -v".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["reverse_dns_lookup"] is True
+    assert res_dict["rdns_lookup"] is True
     assert res_dict["generate_log_file"] == "htcanalyze.log"
     assert res_dict["verbose"] is True
 
