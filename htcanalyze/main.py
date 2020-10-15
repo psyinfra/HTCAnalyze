@@ -329,10 +329,6 @@ def setup_commandline_parser(default_config_files=[])\
     parser.add_argument("--no-config",
                         action="store_true",
                         help="Do not search for config")
-    parser.add_argument("--save-config",
-                        is_write_out_config_file_arg=True,
-                        help="Stores the current configuration"
-                             " into a config file")
 
     return parser
 
