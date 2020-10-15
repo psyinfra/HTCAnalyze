@@ -106,7 +106,7 @@ def test_show_values():
     # default
     args = "tests/test_logs/valid_logs/normal_log.log " \
            "tests/test_logs/valid_logs/gpu_usage.log " \
-           "--show std-err std-out".split()
+           "--show ext-err ext-out".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -115,7 +115,7 @@ def test_show_values():
     # analyze
     args = "tests/test_logs/valid_logs/normal_log.log " \
            "tests/test_logs/valid_logs/gpu_usage.log " \
-           "--show std-err std-out -a".split()
+           "--show ext-err ext-out -a".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -135,7 +135,7 @@ def test_ignore_values():
 
 def test_independent_opts():
     args = "--ext-log=.log --ext-out=.output " \
-           "--ext-err=.error --reverse-dns-lookup".split()
+           "--ext-err=.error --rdns-lookup".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -143,7 +143,7 @@ def test_independent_opts():
 
     args = "--ext-log log --ext-out output " \
            "--ext-err error " \
-           "--reverse-dns-lookup tests/test_logs/valid_logs".split()
+           "--rdns-lookup tests/test_logs/valid_logs".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit

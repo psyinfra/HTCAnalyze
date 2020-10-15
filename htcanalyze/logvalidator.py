@@ -90,15 +90,15 @@ class LogValidator:
 
             # if ext_log is set, ignore other log files
             if self.ext_log.__ne__("") and not file.endswith(self.ext_log):
-                logging.debug("Ignoring this file, " + file +
-                              ", because ext-log is: " + self.ext_log)
+                logging.debug(f"Ignoring this file, {file}, "
+                              f"because ext-log is: {self.ext_log}")
                 continue
 
-            # backslash handling
-            if directory.endswith('/'):
+            # separator handling
+            if directory.endswith(os.path.sep):
                 file_path = directory + file
             else:
-                file_path = directory + '/' + file
+                file_path = directory + os.path.sep + file
 
             if os.path.isfile(file_path):
                 if self.validate_file(file_path):
@@ -110,10 +110,8 @@ class LogValidator:
                 valid_dir_files.extend(
                     self.validate_dir(file_path, progress_details))
             else:
-                logging.debug(
-                    f"Found subfolder: "
-                    f"{file_path}"
-                    f", it will be ignored")
+                logging.debug(f"Found subfolder: {file_path}, "
+                              f"it will be ignored")
 
         return valid_dir_files
 
@@ -137,7 +135,7 @@ class LogValidator:
             for arg in file_list:
 
                 path = os.getcwd()  # mainly search in cwd
-                logs_path = path + "/" + arg  # absolute path
+                logs_path = path + os.path.sep + arg  # absolute path
 
                 working_dir_path = ""
                 working_file_path = ""

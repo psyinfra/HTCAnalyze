@@ -1,6 +1,7 @@
 """
-
 Handle config setup and commandline arguments.
+
+Create visible output by using htcanalyze.
 
 Exit Codes:
     Normal Termination: 0
@@ -8,7 +9,6 @@ Exit Codes:
     Wrong Options or Arguments: 2
     TypeError: 3
     Keyboard interruption: 4
-
 """
 
 import datetime
@@ -38,7 +38,7 @@ ALLOWED_MODES = {"a": "analyze",
                  "as": "analyzed-summary",
                  "d": "default"}
 
-ALLOWED_SHOW_VALUES = ["std-err", "std-out"]
+ALLOWED_SHOW_VALUES = ["ext-err", "ext-out"]
 ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "used-resources", "requested-resources",
                          "allocated-resources", "all-resources",
@@ -238,7 +238,8 @@ def setup_commandline_parser(default_config_files=[])\
                         default=None,
                         help="generates output about the process,"
                              " which is mostly useful for developers, "
-                             "if no file is specified, default: htcanalyze.log")
+                             "if no file is specified,"
+                             " default: htcanalyze.log")
 
     all_vals = []
     for item in ALLOWED_MODES.items():
@@ -305,7 +306,7 @@ def setup_commandline_parser(default_config_files=[])\
                         help="extend the filter keyword list "
                              "by specific error keywords")
 
-    parser.add_argument("--reverse-dns-lookup",
+    parser.add_argument("--rdns-lookup",
                         action="store_true",
                         default=None,
                         help="Resolve the ip-address of an execution nodes"
@@ -328,10 +329,6 @@ def setup_commandline_parser(default_config_files=[])\
     parser.add_argument("--no-config",
                         action="store_true",
                         help="Do not search for config")
-    parser.add_argument("--save-config",
-                        is_write_out_config_file_arg=True,
-                        help="Stores the current configuration"
-                             " into a config file")
 
     return parser
 
@@ -353,7 +350,7 @@ def manage_params(args: list) -> dict:
       'no_config': False,
       'filter_keywords': [],
       'extend': False,
-      'reverse_dns_lookup': False
+      'rdns_lookup': False
       'files': []
       ....
       }
@@ -382,8 +379,8 @@ def manage_params(args: list) -> dict:
         # do not use config files if --no-config flag is set
         if prio_parsed.no_config:
             # if as well config is set, exit, because of conflict
-            print("htcanalyze: error: conflict between"
-                  " --no-config and --config")
+            print("htcanalyze: error: conflict between "
+                  "--no-config and --config")
             sys.exit(2)
         # else add config again
         args.extend(["--config", prio_parsed.config[0]])
@@ -392,7 +389,7 @@ def manage_params(args: list) -> dict:
     if not prio_parsed.no_config:
         config_paths = ['/etc/htcanalyze.conf',
                         '~/.config/htcanalyze/htcanalyze.conf',
-                        sys.prefix + '/config/htcanalyze.conf']
+                        f'{sys.prefix}/config/htcanalyze.conf']
         cmd_parser = setup_commandline_parser(config_paths)
         commands_parsed = cmd_parser.parse_args(args)
         cmd_dict = vars(commands_parsed).copy()
@@ -401,7 +398,7 @@ def manage_params(args: list) -> dict:
         for log_paths in commands_parsed.path:
             files_list.extend(log_paths)
         # add files, if none are given by terminal
-        if len(files_list) == 0:
+        if not files_list:
             for log_paths in cmd_dict["more_files"]:
                 # make sure that empty strings are not getting inserted
                 if len(log_paths) == 1 and log_paths[0] != "":
@@ -463,15 +460,14 @@ def manage_params(args: list) -> dict:
     cmd_dict["mode"] = mode
     # error handling
     try:
-        if cmd_dict["filter_extended"] and\
-                len(cmd_dict["filter_keywords"]) == 0:
+        if cmd_dict["filter_extended"] and not cmd_dict["filter_keywords"]:
             raise_value_error("--extend not allowed without --filter")
-        if len(cmd_dict["show_list"]) > 0:
-            if mode == "analyzed-summary" or mode == "summarize":
-                raise_value_error("--show only allowed"
-                                  " with default and analyze mode")
+        if cmd_dict["show_list"] and (
+                mode == "analyzed-summary" or mode == "summarize"):
+            raise_value_error("--show only allowed "
+                              "with default and analyze mode")
     except ValueError as err:
-        print("htcanalyze: error: " + str(err))
+        rprint(f"[red]htcanalyze: error: {err}")
         sys.exit(2)
 
     # delete unnecessary information
@@ -506,16 +502,15 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
     :param title: title of table
     :return: table
     """
-    if len(table_dict) == 0:
-        return
+    if not table_dict:
+        return None
 
     table = Table(title=title,
                   show_header=True,
                   header_style="bold magenta",
                   box=box.ASCII)
-    headers = list(table_dict.keys())
     n_vals = 0
-    for val in headers:
+    for val in table_dict.keys():
         table.add_column(val)
         if n_vals == 0:
             n_vals = len(table_dict[val])
@@ -549,7 +544,7 @@ def print_results(htcanalyze: HTCAnalyze,
     :param kwargs:
     :return:
     """
-    if len(filter_keywords) > 0:
+    if filter_keywords:
         results = htcanalyze.\
             filter_for(log_files,
                        keywords=filter_keywords,
@@ -568,7 +563,7 @@ def print_results(htcanalyze: HTCAnalyze,
         results = htcanalyze.default(log_files)
         # anyways try to print default output
 
-    # This can happen, when for example the filter mode is not forwarded
+    # Allow this to happen
     if results is None:
         sys.exit(0)
 
@@ -582,10 +577,9 @@ def print_results(htcanalyze: HTCAnalyze,
 
         for i in mystery:
             if mystery[i] is None:
-                logging.debug("This musst be fixed,"
-                              " mystery['" + i + "'] is None.")
-                rprint("[red]NoneType object found,"
-                       " this should not happen[/red]")
+                logging.debug(f"This musst be fixed, mystery['{i}'] is None.")
+                rprint("[red]NoneType object found, "
+                       "this should not happen[/red]")
 
         if "description" in mystery:
             rprint(mystery["description"])
@@ -593,14 +587,14 @@ def print_results(htcanalyze: HTCAnalyze,
         if "execution-details" in mystery:
             if "execution-details" in ignore_list:
                 del mystery["execution-details"]
-            else:
+            elif mystery["execution-details"]:
                 table = wrap_dict_to_table(mystery["execution-details"])
                 rprint(table)
 
         if "times" in mystery:
             if "times" in ignore_list:
                 del mystery["times"]
-            else:
+            elif mystery["times"]:
                 table = wrap_dict_to_table(mystery["times"])
                 rprint(table)
 
@@ -640,13 +634,13 @@ def print_results(htcanalyze: HTCAnalyze,
                 rprint(table)
 
         # Show more section
-        if "stdout" in mystery and mystery["stdout"] != "":
-            rprint("\n[bold cyan]Standard output (std-out):[/bold cyan]")
-            rprint(mystery["stdout"])
+        if "ext-out" in mystery and mystery["ext-out"] != "":
+            rprint("\n[bold cyan]Output file extension (ext-out):[/bold cyan]")
+            rprint(mystery["ext-out"])
 
-        if "stderr" in mystery and mystery["stderr"] != "":
-            rprint("\n[bold cyan]Standard errors (std-err):[/bold cyan]")
-            rprint(mystery["stderr"])
+        if "ext-err" in mystery and mystery["ext-err"] != "":
+            rprint("\n[bold cyan]Error file extension (ext-err):[/bold cyan]")
+            rprint(mystery["ext-err"])
 
         print()
 
@@ -677,14 +671,15 @@ def run(commandline_args):
 
         logging.debug("-------Start of htcanalyze script-------")
 
-        htcanalyze = \
-            HTCAnalyze(ext_log=param_dict["ext_log"],
-                        ext_out=param_dict["ext_out"],
-                        ext_err=param_dict["ext_err"],
-                        show_list=param_dict["show_list"],
-                        reverse_dns_lookup=param_dict["reverse_dns_lookup"],
-                        tolerated_usage=param_dict["tolerated_usage"],
-                        bad_usage=param_dict["bad_usage"])
+        htcanalyze = HTCAnalyze(
+            ext_log=param_dict["ext_log"],
+            ext_out=param_dict["ext_out"],
+            ext_err=param_dict["ext_err"],
+            show_list=param_dict["show_list"],
+            rdns_lookup=param_dict["rdns_lookup"],
+            tolerated_usage=param_dict["tolerated_usage"],
+            bad_usage=param_dict["bad_usage"]
+        )
 
         if param_dict["verbose"]:
             logging.info('Verbose mode turned on')
@@ -704,7 +699,7 @@ def run(commandline_args):
         rprint(f"[green]{len(valid_files)}"
                f" valid log file(s)[/green]\n")
 
-        if len(valid_files) == 0:
+        if not valid_files:
             rprint("[red]No valid HTCondor log files found[/red]")
             sys.exit(1)
 

@@ -72,11 +72,11 @@ def test_manage_params():
     assert res_dict["ext_out"] == ".output"
     assert res_dict["ext_err"] == ".error"
 
-    args = "--show std-err std-out --ignore execution-details " \
+    args = "--show ext-err ext-out --ignore execution-details " \
            "times errors host-nodes used-resources " \
            "requested-resources allocated-resources all-resources".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["show_list"] == "std-err std-out".split()
+    assert res_dict["show_list"] == "ext-err ext-out".split()
     assert res_dict["ignore_list"] == "execution-details times errors " \
                                       "host-nodes used-resources " \
                                       "requested-resources " \
@@ -95,9 +95,9 @@ def test_manage_params():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 2
 
-    args = "--reverse-dns-lookup --no-config --generate-log -v".split()
+    args = "--rdns-lookup --no-config --generate-log -v".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["reverse_dns_lookup"] is True
+    assert res_dict["rdns_lookup"] is True
     assert res_dict["generate_log_file"] == "htcanalyze.log"
     assert res_dict["verbose"] is True
 
