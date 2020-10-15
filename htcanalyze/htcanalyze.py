@@ -408,7 +408,7 @@ class HTCAnalyze:
         error_dict = dict()
         ram_history_dict = dict()
         # convert job_events to a nice and simple dictionary
-        if len(job_events) > 0:
+        if job_events:
             desc, val = zip(*job_events)
             job_events_dict = {
                 "Execution details": list(desc),
@@ -416,7 +416,7 @@ class HTCAnalyze:
             }
 
         # convert errors into a dictionary
-        if len(occurred_errors) > 0:
+        if occurred_errors:
             event_numbers, time_list, errors, reasons = zip(*occurred_errors)
             error_dict = {
                 "Event Number": list(event_numbers),
@@ -425,7 +425,7 @@ class HTCAnalyze:
                 "Reason": list(reasons)
             }
         # convert ram_history to a dictionary
-        if len(ram_history) > 0:
+        if ram_history:
             time_list, img_size, mem_usage, res_set_size = zip(*ram_history)
             ram_history_dict = {
                 "Dates": list(time_list),
@@ -504,7 +504,7 @@ class HTCAnalyze:
 
                 result_dict["all-resources"] = res_dict
 
-            if len(self.show_list) > 0:
+            if self.show_list:
                 job_spec_id = self.get_job_spec_id(file)
                 if 'ext-err' in self.show_list:
                     result_dict['ext-err'] = self.htcondor_stderr(
@@ -515,7 +515,7 @@ class HTCAnalyze:
 
             list_of_dicts.append(result_dict)
 
-        if len(list_of_dicts) == 0:
+        if not list_of_dicts:
             rprint("[yellow]Nothing found,"
                    " please use \"man htcanalyze\" "
                    "or \"htcanalyze -h\" for help[/yellow]", end="")
@@ -656,7 +656,7 @@ class HTCAnalyze:
                 elif job_dict['Execution details'][0].__eq__("Error"):
                     error_reading_files += 1
                     continue
-                elif len(job_dict) == 0:
+                elif not job_dict:
                     logging.error(
                         "if this even get's printed out, more work is needed")
                     rprint(f"[orange3]Process of {file} is strange, \n"
@@ -763,7 +763,7 @@ class HTCAnalyze:
 
             result_dict["all-resources"] = average_dict
 
-        if len(host_nodes) > 0:
+        if host_nodes:
 
             executed_jobs = list()
             runtime_per_node = list()
@@ -823,7 +823,7 @@ class HTCAnalyze:
             (job_dict, res_dict, time_dict,
              ram_history, occurred_errors) = self.log_to_dict(file)
 
-            if len(occurred_errors) > 0:
+            if occurred_errors:
                 create_file_list = list()
                 for i in range(len(occurred_errors["Event Number"])):
                     create_file_list.append(file)
@@ -863,7 +863,7 @@ class HTCAnalyze:
                     all_files[term_type][3] += total_time
 
                     # add errors
-                    if len(occurred_errors) > 0:
+                    if occurred_errors:
                         for key in occurred_errors.keys():
                             # extend if already existent
                             if key in all_files[term_type][6].keys():
@@ -886,7 +886,6 @@ class HTCAnalyze:
                     elif all_files[term_type][4]:
                         rprint(f"[yellow]{term_type}: "
                                f"has no resources[/yellow]")
-
 
                     # add cpu
                     if to_host is not None:
@@ -957,7 +956,7 @@ class HTCAnalyze:
                                      ' submission'] = [1, total_time]
 
                     # convert nan values to 0
-                    if len(res_dict) > 0:
+                    if res_dict:
                         res_dict["Usage"] = np.nan_to_num(res_dict["Usage"])
                         res_dict["Requested"] = np.nan_to_num(
                             res_dict["Requested"])
@@ -1025,7 +1024,7 @@ class HTCAnalyze:
 
             result_dict["times"] = time_dict
 
-            if not len(term_info[4]) == 0:
+            if term_info[4]:
                 total_resources_dict = term_info[4]
                 avg_dict = {
                     'Resources': ['Average Cpu', ' Average Disk (KB)',
@@ -1066,7 +1065,7 @@ class HTCAnalyze:
             result_dict["host-nodes"] = \
                 sort_dict_by_col(host_nodes_dict, "Executed Jobs")
 
-            if len(term_info[6]) > 0:
+            if term_info[6]:
                 temp_err = term_info[6]
                 del temp_err["Reason"]  # remove reason
                 result_dict["errors"] = temp_err
