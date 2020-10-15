@@ -379,8 +379,8 @@ def manage_params(args: list) -> dict:
         # do not use config files if --no-config flag is set
         if prio_parsed.no_config:
             # if as well config is set, exit, because of conflict
-            print("htcanalyze: error: conflict between"
-                  " --no-config and --config")
+            print("htcanalyze: error: conflict between "
+                  "--no-config and --config")
             sys.exit(2)
         # else add config again
         args.extend(["--config", prio_parsed.config[0]])
@@ -464,8 +464,8 @@ def manage_params(args: list) -> dict:
             raise_value_error("--extend not allowed without --filter")
         if cmd_dict["show_list"] and (
                 mode == "analyzed-summary" or mode == "summarize"):
-            raise_value_error("--show only allowed"
-                              " with default and analyze mode")
+            raise_value_error("--show only allowed "
+                              "with default and analyze mode")
     except ValueError as err:
         rprint(f"[red]htcanalyze: error: {err}")
         sys.exit(2)
@@ -579,8 +579,8 @@ def print_results(htcanalyze: HTCAnalyze,
         for i in mystery:
             if mystery[i] is None:
                 logging.debug(f"This musst be fixed, mystery['{i}'] is None.")
-                rprint("[red]NoneType object found,"
-                       " this should not happen[/red]")
+                rprint("[red]NoneType object found, "
+                       "this should not happen[/red]")
 
         if "description" in mystery:
             rprint(mystery["description"])

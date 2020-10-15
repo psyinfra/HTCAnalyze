@@ -507,8 +507,8 @@ class HTCAnalyze:
             list_of_dicts.append(result_dict)
 
         if not list_of_dicts:
-            rprint("[yellow]Nothing found,"
-                   " please use \"man htcanalyze\" "
+            rprint("[yellow]Nothing found, "
+                   "please use \"man htcanalyze\" "
                    "or \"htcanalyze -h\" for help[/yellow]", end="")
 
         return list_of_dicts
@@ -541,8 +541,8 @@ class HTCAnalyze:
                 result_dict = dict()
 
                 logging.debug(f"Analysing the HTCondor log file: {file}")
-                result_dict["description"] = f"[green]" \
-                    f"Job analysis of: {file}[/green]"
+                msg = f"[green]Job analysis of: {file}[/green]"
+                result_dict["description"] = msg
 
                 job_dict, res_dict, time_dict, \
                     ram_history, occurred_errors = self.log_to_dict(file)
@@ -584,8 +584,8 @@ class HTCAnalyze:
                     result_dict["ram-history"] = fig.show(legend=show_legend)
                 elif ram_history:
                     msg = f"Single memory update found:\n" \
-                        f"Memory usage on the {dates[0]}" \
-                        f" was updatet to {ram[0]} MB"
+                        f"Memory usage on the {dates[0]} " \
+                        f"was updatet to {ram[0]} MB"
                     result_dict["ram-history"] = msg
 
                 if self.show_list:
@@ -650,7 +650,7 @@ class HTCAnalyze:
                 elif not job_dict:
                     logging.error(
                         "if this even get's printed out, more work is needed")
-                    rprint(f"[orange3]Process of {file} is strange, \n"
+                    rprint(f"[orange3]Process of {file} is strange,\n"
                            f"don't know how to handle this yet[/orange3]")
                     other_exception += 1
                     continue
@@ -706,8 +706,8 @@ class HTCAnalyze:
         result_dict["execution-details"] = \
             sort_dict_by_col(exec_dict, "Occurrence")
 
-        result_dict["description"] = "The following data only implies" \
-                                     " on sucessful executed jobs"
+        result_dict["description"] = "The following data only implies " \
+                                     "on sucessful executed jobs"
 
         # do not even try futher if the only files
         # given have been aborted, are still running etc.
@@ -719,8 +719,8 @@ class HTCAnalyze:
         if aborted_files > 0 or still_running > 0 \
                 or other_exception > 0 or error_reading_files:
             create_desc += "\n[light_grey]" \
-                           "Use the analyzed-summary mode" \
-                           " for more details about the other jobs" \
+                           "Use the analyzed-summary mode " \
+                           "for more details about the other jobs" \
                            "[/light_grey]"
 
         result_dict["summation-description"] = create_desc
@@ -1104,8 +1104,8 @@ class HTCAnalyze:
             keyword_list = keywords
         else:
             logging.debug(
-                f"Filter mode only accepts a string"
-                f" or list with keywords, not {keywords}")
+                f"Filter mode only accepts a string "
+                f"or list with keywords, not {keywords}")
             raise TypeError("Expecting a list or a string")
 
         # if extend is set, keywords like err will
@@ -1122,8 +1122,8 @@ class HTCAnalyze:
 
             keyword_list.extend(err_list)  # extend search
 
-            rprint("[green]Keyword List was extended,"
-                   " now search for these keywords:[/green]",
+            rprint("[green]Keyword List was extended, "
+                   "now search for these keywords:[/green]",
                    keyword_list)
         else:
             rprint("[green]Search for these keywords:[/green]", keyword_list)

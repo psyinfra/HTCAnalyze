@@ -110,10 +110,8 @@ class LogValidator:
                 valid_dir_files.extend(
                     self.validate_dir(file_path, progress_details))
             else:
-                logging.debug(
-                    f"Found subfolder: "
-                    f"{file_path}"
-                    f", it will be ignored")
+                logging.debug(f"Found subfolder: {file_path}, "
+                              f"it will be ignored")
 
         return valid_dir_files
 
