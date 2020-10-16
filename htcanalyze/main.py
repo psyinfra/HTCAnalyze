@@ -42,7 +42,7 @@ ALLOWED_SHOW_VALUES = ["ext-err", "ext-out"]
 ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "used-resources", "requested-resources",
                          "allocated-resources", "all-resources",
-                         "errors"]
+                         "errors", "ram-history"]
 
 
 # class to store and change global variables
