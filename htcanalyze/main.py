@@ -35,14 +35,13 @@ timedelta = datetime.timedelta
 # global variables
 ALLOWED_MODES = {"a": "analyze",
                  "s": "summarize",
-                 "as": "analyzed-summary",
-                 "d": "default"}
+                 "as": "analyzed-summary"}
 
-ALLOWED_SHOW_VALUES = ["ext-err", "ext-out"]
+ALLOWED_SHOW_VALUES = ["htc-err", "htc-out"]
 ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "used-resources", "requested-resources",
                          "allocated-resources", "all-resources",
-                         "errors"]
+                         "errors", "ram-history"]
 
 
 # class to store and change global variables
@@ -464,8 +463,7 @@ def manage_params(args: list) -> dict:
             raise_value_error("--extend not allowed without --filter")
         if cmd_dict["show_list"] and (
                 mode == "analyzed-summary" or mode == "summarize"):
-            raise_value_error("--show only allowed "
-                              "with default and analyze mode")
+            raise_value_error("--show only allowed with analyze mode")
     except ValueError as err:
         rprint(f"[red]htcanalyze: error: {err}[/red]")
         sys.exit(2)
@@ -544,24 +542,25 @@ def print_results(htcanalyze: HTCAnalyze,
     :param kwargs:
     :return:
     """
+
     if filter_keywords:
         results = htcanalyze.\
             filter_for(log_files,
                        keywords=filter_keywords,
                        extend=filter_extended,
                        mode=mode)
-    elif mode.__eq__("default"):
-        results = htcanalyze.default(log_files)  # force default with -d
     elif mode.__eq__("analyzed-summary"):
-        results = htcanalyze.analyzed_summary(log_files)  # analyzed summary ?
+        results = htcanalyze.analyzed_summary(log_files)  # analyzed summary
     elif mode.__eq__("summarize"):
         results = htcanalyze.summarize(log_files)  # summarize information
     elif mode.__eq__("analyze"):
-        show_legend = not GlobalServant.redirecting_stdout  # redirected ?
-        results = htcanalyze.analyze(log_files, show_legend)  # analyze
+        results = htcanalyze.analyze(log_files)  # analyze
     else:
-        results = htcanalyze.default(log_files)
-        # anyways try to print default output
+        # default entry points
+        if len(log_files) == 1:
+            results = htcanalyze.analyze(log_files)  # analyze single file
+        else:
+            results = htcanalyze.analyzed_summary(log_files)  # else
 
     # Allow this to happen
     if results is None:
@@ -634,13 +633,13 @@ def print_results(htcanalyze: HTCAnalyze,
                 rprint(table)
 
         # Show more section
-        if "ext-out" in mystery and mystery["ext-out"] != "":
-            rprint("\n[bold cyan]Output file extension (ext-out):[/bold cyan]")
-            rprint(mystery["ext-out"])
+        if "htc-out" in mystery and mystery["htc-out"] != "":
+            rprint("\n[bold cyan]Related HTC standard output:[/bold cyan]")
+            rprint(mystery["htc-out"])
 
-        if "ext-err" in mystery and mystery["ext-err"] != "":
-            rprint("\n[bold cyan]Error file extension (ext-err):[/bold cyan]")
-            rprint(mystery["ext-err"])
+        if "htc-err" in mystery and mystery["htc-err"] != "":
+            rprint("\n[bold cyan]Related HTCondor standard error:[/bold cyan]")
+            rprint(mystery["htc-err"])
 
         print()
 
@@ -671,6 +670,7 @@ def run(commandline_args):
 
         logging.debug("-------Start of htcanalyze script-------")
 
+        show_legend = not GlobalServant.redirecting_stdout  # redirected ?
         htcanalyze = HTCAnalyze(
             ext_log=param_dict["ext_log"],
             ext_out=param_dict["ext_out"],
@@ -678,7 +678,8 @@ def run(commandline_args):
             show_list=param_dict["show_list"],
             rdns_lookup=param_dict["rdns_lookup"],
             tolerated_usage=param_dict["tolerated_usage"],
-            bad_usage=param_dict["bad_usage"]
+            bad_usage=param_dict["bad_usage"],
+            show_legend=show_legend
         )
 
         if param_dict["verbose"]:
