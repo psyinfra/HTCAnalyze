@@ -125,7 +125,7 @@ def test_show_values():
 def test_ignore_values():
     args = "--ignore execution-details times host-nodes " \
            "used-resources requested-resources allocated-resources " \
-           "all-resources errors -as " \
+           "all-resources errors ram-history -as " \
            "tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
