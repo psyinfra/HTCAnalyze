@@ -75,17 +75,13 @@ Example output:
   ```
   htcanalyze logs/job_5991_0.log
   ```
-- Analyze all log files in a directory.
+- Analyze all log files in a directory (summarized by their states).
   ```
   htcanalyze logs/
   ```
-- Summarize all files for a job cluster:
+- Summarize all files for a job cluster (exclude log files, without listed resources):
   ```
   htcanalyze -s logs/job_5991_*
-  ```
-- Print a pretty table:
-  ```
-  htcanalyze logs/395_2.log --table-format=pretty
   ```
 
 ## Testing
