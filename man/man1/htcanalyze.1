@@ -37,7 +37,7 @@ The
 script takes files and directories as input with given flags and prints out a
 readable result of valid HTCondor log files.
 There are 4 main modes to work with this facility.
-The default and analyze mode are mostly made for single log analytics.
+The analyze mode is mostly made for single log analytics.
 The summarize and analyzed-summary mode,
 are made to summarize huge collections of log files,
 to give a view on the average used resources and occurred errors.
@@ -72,15 +72,11 @@ Specify the mode, to interpret HTCondor log files,
 .Bd -literal
 Valid arguments:
  ['a' or 'analyze', 's' or 'summarize',
- 'as' or 'analyzed-summary', 'd' or 'default']
+ 'as' or 'analyzed-summary']
 .Ed
 .Bd -literal
-the standard mode of the script is 'default'
-
-default mode:
-    This mode just provides a really basic overview,
-    about how the output can look like
-    and what information is gathered.
+The standard mode of the script is 'analyzed-summary'
+for multiple log files and 'analyze' for a single log file.
 
 analyze mode:
     For more detailed output, use the analyze mode.
@@ -186,7 +182,7 @@ related to the current log file.
 .Bd -literal
 Valid arguments are:
 
-[std-err, std-out]
+[htc-err, htc-out]
 
 errors and warnings regarding a stderr file (.err)
 output to get every line of the stdout file (.out)
@@ -203,7 +199,7 @@ Valid arguments are:
 
 [execution-details, times, errors, host-nodes,
  used-resources, requested-resources,
- allocated-resources, all-resources]
+ allocated-resources, all-resources, ram-history]
 
 if you want to ignore multiple information,
 separate them by space like:
@@ -302,7 +298,7 @@ htcanalyze -s log_directory --ignore execution-details --no-config
 htcanalyze -as log_directory
 htcanalyze -e 005
 htcanalyze --filter "" --extend -s --ignore all-resources log_directory
-htcanalyze htcanalyze.conf 394_440 -a --show-output
+htcanalyze htcanalyze.conf 394_440 -a --show ext-out
 htcanalyze --filter aborted -as ~/logs
 OR
 grep -R -l aborted ~/logs | htcanalyze -as

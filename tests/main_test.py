@@ -72,16 +72,16 @@ def test_manage_params():
     assert res_dict["ext_out"] == ".output"
     assert res_dict["ext_err"] == ".error"
 
-    args = "--show ext-err ext-out --ignore execution-details " \
-           "times errors host-nodes used-resources " \
-           "requested-resources allocated-resources all-resources".split()
+    args = "-a --show htc-err htc-out --ignore execution-details " \
+           "times errors host-nodes used-resources requested-resources " \
+           "allocated-resources all-resources ram-history".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["show_list"] == "ext-err ext-out".split()
+    assert res_dict["show_list"] == "htc-err htc-out".split()
     assert res_dict["ignore_list"] == "execution-details times errors " \
                                       "host-nodes used-resources " \
                                       "requested-resources " \
                                       "allocated-resources " \
-                                      "all-resources".split()
+                                      "all-resources ram-history".split()
 
     args = "--show something".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -112,19 +112,6 @@ def test_manage_params():
         ht.manage_params(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 2
-
-    args = "--mode default".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "default"
-    args = "--mode d".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "default"
-    args = "-m default".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "default"
-    args = "-m d".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "default"
 
     # all ways to start analyze mode
     args = "-a".split()
