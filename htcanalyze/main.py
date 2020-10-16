@@ -37,7 +37,7 @@ ALLOWED_MODES = {"a": "analyze",
                  "s": "summarize",
                  "as": "analyzed-summary"}
 
-ALLOWED_SHOW_VALUES = ["ext-err", "ext-out"]
+ALLOWED_SHOW_VALUES = ["htc-err", "htc-out"]
 ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "used-resources", "requested-resources",
                          "allocated-resources", "all-resources",
@@ -632,13 +632,13 @@ def print_results(htcanalyze: HTCAnalyze,
                 rprint(table)
 
         # Show more section
-        if "ext-out" in mystery and mystery["ext-out"] != "":
-            rprint("\n[bold cyan]Output file extension (ext-out):[/bold cyan]")
-            rprint(mystery["ext-out"])
+        if "htc-out" in mystery and mystery["htc-out"] != "":
+            rprint("\n[bold cyan]Related HTC standard output:[/bold cyan]")
+            rprint(mystery["htc-out"])
 
-        if "ext-err" in mystery and mystery["ext-err"] != "":
-            rprint("\n[bold cyan]Error file extension (ext-err):[/bold cyan]")
-            rprint(mystery["ext-err"])
+        if "htc-err" in mystery and mystery["htc-err"] != "":
+            rprint("\n[bold cyan]Related HTCondor standard error:[/bold cyan]")
+            rprint(mystery["htc-err"])
 
         print()
 

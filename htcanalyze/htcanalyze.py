@@ -530,11 +530,11 @@ class HTCAnalyze:
 
                 if self.show_list:
                     job_spec_id = self.get_job_spec_id(file)
-                    if 'ext-err' in self.show_list:
-                        result_dict['ext-err'] = self.htcondor_stderr(
+                    if 'htc-err' in self.show_list:
+                        result_dict['htc-err'] = self.htcondor_stderr(
                             job_spec_id + self.ext_err)
-                    if 'ext-out' in self.show_list:
-                        result_dict['ext-out'] = self.htcondor_stdout(
+                    if 'htc-out' in self.show_list:
+                        result_dict['htc-out'] = self.htcondor_stdout(
                             job_spec_id + self.ext_out)
 
                 result_list.append(result_dict)

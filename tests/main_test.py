@@ -72,11 +72,11 @@ def test_manage_params():
     assert res_dict["ext_out"] == ".output"
     assert res_dict["ext_err"] == ".error"
 
-    args = "--show ext-err ext-out --ignore execution-details " \
-           "times errors host-nodes used-resources " \
-           "requested-resources allocated-resources all-resources".split()
+    args = "-a --show htc-err htc-out --ignore execution-details " \
+           "times errors host-nodes used-resources requested-resources " \
+           "allocated-resources all-resources ram-history".split()
     res_dict = ht.manage_params(args)
-    assert res_dict["show_list"] == "ext-err ext-out".split()
+    assert res_dict["show_list"] == "htc-err htc-out".split()
     assert res_dict["ignore_list"] == "execution-details times errors " \
                                       "host-nodes used-resources " \
                                       "requested-resources " \

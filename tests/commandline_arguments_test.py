@@ -107,7 +107,7 @@ def test_show_values():
     # analyze
     args = "tests/test_logs/valid_logs/normal_log.log " \
            "tests/test_logs/valid_logs/gpu_usage.log " \
-           "--show ext-err ext-out -a".split()
+           "--show htc-err htc-out -a".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
