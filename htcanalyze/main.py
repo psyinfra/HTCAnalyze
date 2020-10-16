@@ -550,14 +550,17 @@ def print_results(htcanalyze: HTCAnalyze,
                        extend=filter_extended,
                        mode=mode)
     elif mode.__eq__("analyzed-summary"):
-        results = htcanalyze.analyzed_summary(log_files)  # analyzed summary ?
+        results = htcanalyze.analyzed_summary(log_files)  # analyzed summary
     elif mode.__eq__("summarize"):
         results = htcanalyze.summarize(log_files)  # summarize information
     elif mode.__eq__("analyze"):
         results = htcanalyze.analyze(log_files)  # analyze
     else:
-        # default entry point
-        results = htcanalyze.analyzed_summary(log_files)
+        # default entry points
+        if len(log_files) == 1:
+            results = htcanalyze.analyze(log_files)  # analyze single file
+        else:
+            results = htcanalyze.analyzed_summary(log_files)  # else
 
     # Allow this to happen
     if results is None:
