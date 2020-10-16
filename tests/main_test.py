@@ -81,7 +81,7 @@ def test_manage_params():
                                       "host-nodes used-resources " \
                                       "requested-resources " \
                                       "allocated-resources " \
-                                      "all-resources".split()
+                                      "all-resources ram-history".split()
 
     args = "--show something".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -112,19 +112,6 @@ def test_manage_params():
         ht.manage_params(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 2
-
-    args = "--mode default".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "default"
-    args = "--mode d".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "default"
-    args = "-m default".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "default"
-    args = "-m d".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "default"
 
     # all ways to start analyze mode
     args = "-a".split()

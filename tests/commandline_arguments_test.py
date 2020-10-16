@@ -86,8 +86,8 @@ def test_wrong_opts_or_args():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 2
 
-    # wrong show-more value
-    args = "--show-more None ".split()
+    # wrong show value
+    args = "--show None ".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -103,14 +103,6 @@ def test_wrong_opts_or_args():
 
 
 def test_show_values():
-    # default
-    args = "tests/test_logs/valid_logs/normal_log.log " \
-           "tests/test_logs/valid_logs/gpu_usage.log " \
-           "--show ext-err ext-out".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0  # no valid file is given
 
     # analyze
     args = "tests/test_logs/valid_logs/normal_log.log " \
@@ -151,21 +143,6 @@ def test_independent_opts():
 
     args = "--recursive --bad-usage 0.3 --tolerated-usage 0.1" \
            " tests/test_logs".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-
-def test_default_mode():
-    args = "tests/test_logs/valid_logs/aborted_before_submission.log".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    args = "--mode default tests/test_" \
-           "logs/valid_logs".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -243,13 +220,6 @@ def test_filter_mode():
     assert pytest_wrapped_e.value.code == 0
 
     args = "--filter err -s tests/test_logs/valid_logs/gpu_usage.log".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    args = "--filter err --mode default" \
-           " tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit

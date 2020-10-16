@@ -35,8 +35,7 @@ timedelta = datetime.timedelta
 # global variables
 ALLOWED_MODES = {"a": "analyze",
                  "s": "summarize",
-                 "as": "analyzed-summary",
-                 "d": "default"}
+                 "as": "analyzed-summary"}
 
 ALLOWED_SHOW_VALUES = ["ext-err", "ext-out"]
 ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
@@ -464,8 +463,7 @@ def manage_params(args: list) -> dict:
             raise_value_error("--extend not allowed without --filter")
         if cmd_dict["show_list"] and (
                 mode == "analyzed-summary" or mode == "summarize"):
-            raise_value_error("--show only allowed "
-                              "with default and analyze mode")
+            raise_value_error("--show only allowed with analyze mode")
     except ValueError as err:
         rprint(f"[red]htcanalyze: error: {err}")
         sys.exit(2)
@@ -544,24 +542,24 @@ def print_results(htcanalyze: HTCAnalyze,
     :param kwargs:
     :return:
     """
+
+    show_legend = not GlobalServant.redirecting_stdout  # redirected ?
     if filter_keywords:
         results = htcanalyze.\
             filter_for(log_files,
                        keywords=filter_keywords,
                        extend=filter_extended,
-                       mode=mode)
-    elif mode.__eq__("default"):
-        results = htcanalyze.default(log_files)  # force default with -d
+                       mode=mode,
+                       show_legend=show_legend)
     elif mode.__eq__("analyzed-summary"):
         results = htcanalyze.analyzed_summary(log_files)  # analyzed summary ?
     elif mode.__eq__("summarize"):
         results = htcanalyze.summarize(log_files)  # summarize information
     elif mode.__eq__("analyze"):
-        show_legend = not GlobalServant.redirecting_stdout  # redirected ?
         results = htcanalyze.analyze(log_files, show_legend)  # analyze
     else:
-        results = htcanalyze.default(log_files)
-        # anyways try to print default output
+        # default entry point
+        results = htcanalyze.analyzed_summary(log_files)
 
     # Allow this to happen
     if results is None:

@@ -27,7 +27,6 @@ class HTCAnalyze:
     This class is able to analyze HTCondor Joblogs.
 
     The modes:
-        default,
         analyze,
         summarize,
         analyzed-summary,
@@ -453,64 +452,6 @@ class HTCAnalyze:
                 # cache negative responses too
                 self.rdns_cache[ip] = ip
                 return ip
-
-    def default(self, log_files: list_of_logs) -> log_inf_list:
-        """
-        Create the default output for a given list of log files.
-
-        This mode is just an easy view,
-        on what the script is actually doing.
-
-        :param log_files:
-        :return: list of dicts
-        """
-        logging.info('Starting the default mode')
-
-        if not log_files:
-            raise_value_error("No files given")
-
-        list_of_dicts = list()
-        # current_path = os.getcwd()
-        # go through all given logs
-        tracker = track(log_files, transient=True, description="Processing...")
-        for file in tracker:
-
-            result_dict = dict()
-            htcondor_log = self.log_to_dict(file)
-
-            job_dict = htcondor_log[0]
-            res_dict = htcondor_log[1]
-            times = htcondor_log[2]
-
-            msg = f"[green]The job procedure of : {file}[/green]"
-            result_dict["description"] = msg
-
-            result_dict["execution-details"] = job_dict
-
-            result_dict["times"] = times
-            if res_dict:  # make sure res_df is not None
-
-                res_dict = self.manage_thresholds(res_dict)
-
-                result_dict["all-resources"] = res_dict
-
-            if self.show_list:
-                job_spec_id = self.get_job_spec_id(file)
-                if 'ext-err' in self.show_list:
-                    result_dict['ext-err'] = self.htcondor_stderr(
-                        job_spec_id + self.ext_err)
-                if 'ext-out' in self.show_list:
-                    result_dict['ext-out'] = self.htcondor_stdout(
-                        job_spec_id + self.ext_out)
-
-            list_of_dicts.append(result_dict)
-
-        if not list_of_dicts:
-            rprint("[yellow]Nothing found, "
-                   "please use \"man htcanalyze\" "
-                   "or \"htcanalyze -h\" for help[/yellow]", end="")
-
-        return list_of_dicts
 
     def analyze(self,
                 log_files: list_of_logs,
@@ -1076,7 +1017,8 @@ class HTCAnalyze:
                    log_files: list_of_logs,
                    keywords: list,
                    extend=False,
-                   mode=None) -> log_inf_list:
+                   mode=None,
+                   show_legend=True) -> log_inf_list:
         """
         Filter for given keywords.
 
@@ -1164,9 +1106,7 @@ class HTCAnalyze:
 
         elif mode is not None:
             print(f"Total count: {len(found_logs)}")
-            if mode.__eq__("default"):
-                return_dicts = self.default(found_logs)
-            elif mode.__eq__("analyzed-summary"):
+            if mode.__eq__("analyzed-summary"):
                 rprint("[magenta]Give an analyzed summary"
                        " for these files[/magenta]")
                 return_dicts = self.analyzed_summary(found_logs)
@@ -1175,7 +1115,7 @@ class HTCAnalyze:
                 return_dicts = self.summarize(found_logs)
             elif mode.__eq__("analyze"):
                 rprint("[magenta]Analyze these files[/magenta]")
-                return_dicts = self.analyze(found_logs)
+                return_dicts = self.analyze(found_logs,show_legend=show_legend)
 
         return return_dicts
 

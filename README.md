@@ -41,9 +41,7 @@ for more information.
 
 HTCAnalyze has four modes of operation:
 
-- `default`: a terse output describing the essentials.
-
-- `analyze`: provides more  detailed output than `default`, including a RAM
+- `analyze`: provides detailed output, including a RAM
   histogram, HTCondor errors, and more.
 
 - `summarize`: summarize a collection of log files, including average resource
@@ -54,25 +52,9 @@ HTCAnalyze has four modes of operation:
 
 Example output:
 
-- default mode:
+- analyzed-summary mode:
 
-    ```
-    The job procedure of : ../logs/job_5991_0.log
-    +-------------------+--------------------+
-    | Executing on Host |      cpu: 3        |
-    |       Port        |       96186        |
-    |      Runtime      |      0:00:04       |
-    | Termination State | Normal termination |
-    |   Return Value    |         0          |
-    +-------------------+--------------------+
-    +------------+-------+-----------+-----------+
-    | Rescources | Usage | Requested | Allocated |
-    +------------+-------+-----------+-----------+
-    |    Cpu     |   0   |     1     |     1     |
-    |    Disk    | 5000  |   5000    |  3770642  |
-    |   Memory   |   0   |   6000    |   6016    |
-    +------------+-------+-----------+-----------+
-    ```
+    ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_analyzed_summary_mode.png)
 
 - summarize mode:
 
@@ -82,9 +64,6 @@ Example output:
 
     ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_analyze_mode.png)
 
-- analyzed-summary mode:
-
-    ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_analyzed_summary_mode.png)
 
 ## Examples
 
