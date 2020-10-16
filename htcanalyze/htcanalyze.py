@@ -41,10 +41,12 @@ class HTCAnalyze:
                  show_list=None,
                  rdns_lookup=None,
                  tolerated_usage=None,
-                 bad_usage=None):
+                 bad_usage=None,
+                 show_legend=True):
         self.ext_log = ext_log
         self.ext_err = ext_err
         self.ext_out = ext_out
+
         self.show_list = [] if show_list is None else show_list
 
         self.rdns_cache = dict()
@@ -53,6 +55,8 @@ class HTCAnalyze:
         self.tolerated_usage = 0.1 if \
             tolerated_usage is None else tolerated_usage
         self.bad_usage = 0.25 if bad_usage is None else bad_usage
+
+        self.show_legend = show_legend  # relevant for histogram
 
     def manage_thresholds(self, resources: dict) -> dict:
         """
@@ -453,14 +457,11 @@ class HTCAnalyze:
                 self.rdns_cache[ip] = ip
                 return ip
 
-    def analyze(self,
-                log_files: list_of_logs,
-                show_legend=True) -> log_inf_list:
+    def analyze(self, log_files: list_of_logs) -> log_inf_list:
         """
         Analyze the given log files one by one.
 
         :param log_files: list of valid HTCondor log files
-        :param show_legend:
         :return: list with information of each log file
         """
         logging.info('Starting the analyze mode')
@@ -521,7 +522,8 @@ class HTCAnalyze:
                     fig.plot(dates, ram, lc='green', label="Continuous Graph")
                     fig.scatter(dates, ram, lc='red', label="Single Values")
 
-                    result_dict["ram-history"] = fig.show(legend=show_legend)
+                    result_dict["ram-history"] = fig.show(
+                        legend=self.show_legend)
                 elif ram_history:
                     msg = f"Single memory update found:\n" \
                         f"Memory usage on the {dates[0]} " \
@@ -1017,8 +1019,8 @@ class HTCAnalyze:
                    log_files: list_of_logs,
                    keywords: list,
                    extend=False,
-                   mode=None,
-                   show_legend=True) -> log_inf_list:
+                   mode=None
+                   ) -> log_inf_list:
         """
         Filter for given keywords.
 
@@ -1115,7 +1117,7 @@ class HTCAnalyze:
                 return_dicts = self.summarize(found_logs)
             elif mode.__eq__("analyze"):
                 rprint("[magenta]Analyze these files[/magenta]")
-                return_dicts = self.analyze(found_logs,show_legend=show_legend)
+                return_dicts = self.analyze(found_logs)
 
         return return_dicts
 

@@ -543,20 +543,18 @@ def print_results(htcanalyze: HTCAnalyze,
     :return:
     """
 
-    show_legend = not GlobalServant.redirecting_stdout  # redirected ?
     if filter_keywords:
         results = htcanalyze.\
             filter_for(log_files,
                        keywords=filter_keywords,
                        extend=filter_extended,
-                       mode=mode,
-                       show_legend=show_legend)
+                       mode=mode)
     elif mode.__eq__("analyzed-summary"):
         results = htcanalyze.analyzed_summary(log_files)  # analyzed summary ?
     elif mode.__eq__("summarize"):
         results = htcanalyze.summarize(log_files)  # summarize information
     elif mode.__eq__("analyze"):
-        results = htcanalyze.analyze(log_files, show_legend)  # analyze
+        results = htcanalyze.analyze(log_files)  # analyze
     else:
         # default entry point
         results = htcanalyze.analyzed_summary(log_files)
@@ -669,6 +667,7 @@ def run(commandline_args):
 
         logging.debug("-------Start of htcanalyze script-------")
 
+        show_legend = not GlobalServant.redirecting_stdout  # redirected ?
         htcanalyze = HTCAnalyze(
             ext_log=param_dict["ext_log"],
             ext_out=param_dict["ext_out"],
@@ -676,7 +675,8 @@ def run(commandline_args):
             show_list=param_dict["show_list"],
             rdns_lookup=param_dict["rdns_lookup"],
             tolerated_usage=param_dict["tolerated_usage"],
-            bad_usage=param_dict["bad_usage"]
+            bad_usage=param_dict["bad_usage"],
+            show_legend=show_legend
         )
 
         if param_dict["verbose"]:
