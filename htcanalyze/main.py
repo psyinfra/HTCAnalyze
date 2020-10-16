@@ -467,7 +467,7 @@ def manage_params(args: list) -> dict:
             raise_value_error("--show only allowed "
                               "with default and analyze mode")
     except ValueError as err:
-        rprint(f"[red]htcanalyze: error: {err}")
+        rprint(f"[red]htcanalyze: error: {err}[/red]")
         sys.exit(2)
 
     # delete unnecessary information
