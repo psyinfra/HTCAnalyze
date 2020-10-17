@@ -2,7 +2,7 @@
 Handle config setup and commandline arguments.
 
 Create visible output by using htcanalyze.
-
+TODO: Great short explanation, maybe also useful for other stuff in the project to just define some stuff at the beginning of a script
 Exit Codes:
     Normal Termination: 0
     No given files: 1
@@ -44,7 +44,7 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "errors", "ram-history"]
 
 
-# class to store and change global variables
+# class to store and change global variables TODO: suboptimal name, reminds me of geography class, it is a common term to describe big companies
 class GlobalPlayer(object):
     """handle global variables."""
 

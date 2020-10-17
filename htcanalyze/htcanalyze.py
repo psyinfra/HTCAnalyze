@@ -72,33 +72,34 @@ class HTCAnalyze:
         """
         # change to list, to avoid numpy type errors
         resources.update(Usage=list(resources["Usage"]))
+        # TODO: What does i do? Making resources['Requested'] a dict would be more descriptive
         for i, _ in enumerate(resources['Resources']):
             # thresholds used vs. requested
             if float(resources['Requested'][i]) != 0:
 
                 deviation = float(resources['Usage'][i]) / float(
                     resources['Requested'][i])
-
-                # color red
-                if deviation >= 1 + self.bad_usage \
-                        or deviation <= 1 - self.bad_usage:
-                    resources['Usage'][i] = f"[red]" \
-                        f"{resources['Usage'][i]}[/red]"
-                # color yellow
-                elif deviation >= 1 + self.tolerated_usage \
-                        or deviation <= 1 - self.tolerated_usage:
-                    resources['Usage'][i] = f"[yellow]" \
-                        f"{resources['Usage'][i]}[/yellow]"
-                # if nan, mark yellow
-                elif str(resources['Usage'][i]) == "nan":
-                    resources['Usage'][i] = f"[yellow2]" \
-                        f"{resources['Usage'][i]}[/yellow2]"
-                # else it's okay, color green
-                else:
-                    resources['Usage'][i] = f"[green]" \
-                        f"{resources['Usage'][i]}[/green]"
-
+                # TODO: to make it more readable, use a function
+                line_color = get_color(deviation, resources['Usage'][i])
+                resources['Usage'][i] = f"[{line_color}]" \
+                                        f"{resources['Usage'][i]}[/{line_color}]"
         return resources
+
+    def get_color(self, deviation, usage):
+        # color red
+        if deviation >= 1 + self.bad_usage \
+                or deviation <= 1 - self.bad_usage:
+            return "red"
+        # color yellow
+        elif deviation >= 1 + self.tolerated_usage \
+                or deviation <= 1 - self.tolerated_usage:
+            return "yellow"
+        # if nan, mark yellow
+        elif str(usage) == "nan":
+            return "yellow2"
+        # else it's okay, color green
+        else:
+            return "green"
 
     def htcondor_stderr(self, file: str) -> str:
         """
@@ -119,10 +120,10 @@ class HTCAnalyze:
                         output_string += f"[red]{line}[/red]\n"
                     elif "warn" in line.lower():
                         output_string += f"[yellow]{line}[/yellow]\n"
-
+        # TODO: basically identical except parts with htcondor_stderr, use functions to reduce code and make it more readable
         except NameError as err:
             logging.exception(err)
-            rprint(f"[red]The smart_output_error method requires a "
+            rprint(f"[red]The smart_output method requires a "
                    f"{self.ext_err} file as parameter[/red]")
         except FileNotFoundError:
             relevant = file.split(os.path.sep)[-2:]
@@ -155,23 +156,29 @@ class HTCAnalyze:
             with open(file, "r") as output_content:
                 output_string += "".join(output_content.readlines())
         except NameError as err:
-            logging.exception(err)
-            rprint(f"[red]The smart_output_output method requires a "
-                   f"{self.ext_out} file as parameter[/red]")
+            handle_name_error(err, self.ext_out)
         except FileNotFoundError:
-            relevant = file.split(os.path.sep)[-2:]
-            match = re.match(r".*?([0-9]{3,}_[0-9]+)" + self.ext_out,
-                             relevant[1])
-            rprint(
-                f"[yellow]There is no related {self.ext_out} "
-                f"file: {relevant[1]} in the directory:\n"
-                f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
-                f"with the prefix: {match[1]}[/cyan]"
-            )
+            handle_filenotfound_error(file, self.ext_out)
         except TypeError as err:
             logging.exception(err)
         finally:
             return output_string
+
+    def handle_name_error(self, err, stream):
+        logging.exception(err)
+        rprint(f"[red]The smart_output method requires a "
+               f"{stream} file as parameter[/red]")
+
+    def handle_filenotfound_error(self, file, stream):
+        relevant = file.split(os.path.sep)[-2:]
+        match = re.match(r".*?([0-9]{3,}_[0-9]+)" + stream,
+                         relevant[1])
+        rprint(
+            f"[yellow]There is no related {stream} "
+            f"file: {relevant[1]} in the directory:\n"
+            f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
+            f"with the prefix: {match[1]}[/cyan]"
+        )
 
     def get_job_spec_id(self, file: str) -> str:
         """
@@ -620,7 +627,7 @@ class HTCAnalyze:
                 rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
                 sys.exit(3)
 
-        # calc difference of successful executed jobs
+        # calc difference of successful executed jobs TODO: What is n?
         n = len(log_files) - aborted_files - still_running \
             - other_exception - error_reading_files
 
@@ -758,8 +765,8 @@ class HTCAnalyze:
 
             if occurred_errors:
                 create_file_list = list()
-                for i in range(len(occurred_errors["Event Number"])):
-                    create_file_list.append(file)
+                # TODO: make this a one-liner
+                create_file_list.extend([file for i in range(len(occurred_errors["Event Number"]))])
                 occurred_errors['File'] = create_file_list
 
             refactor_job_dict = dict(
@@ -1142,6 +1149,7 @@ def raise_type_error(message: str) -> TypeError:
     raise TypeError(message)
 
 
+# TODO: IMO too many comments for two lines of code.
 def _int_formatter(val, chars, delta, left=False):
     """
     Format float to int.
@@ -1152,11 +1160,6 @@ def _int_formatter(val, chars, delta, left=False):
     in order that plotille has nothing like a int converter,
     I have to set it up manually to show the y - label in number format
 
-    :param val:
-    :param chars:
-    :param delta:
-    :param left:
-    :return:
     """
     align = '<' if left else ''
     return '{:{}{}d}'.format(int(val), align, chars)
@@ -1173,7 +1176,7 @@ def gen_time_dict(submission_date: date_time = None,
     Depending on the given arguments,
     this function will try to calculate
     the time differences between the events.
-    If not all three values are given, it will return None
+    If not all three values are given, it will return None => then why don't you check first if any is None and immediately return None?
 
     :param submission_date: Job Sumbission date from the user
     :param execution_date: The date when the job actually started executing
