@@ -141,6 +141,38 @@ class HTCAnalyze:
         finally:
             return output_string
 
+    @classmethod
+    def handle_name_error(cls, err, file_ext):
+        """
+        Handle NameError.
+
+        :param err: An exception
+        :param file_ext: file extension
+        :return: None
+        """
+        logging.exception(err)
+        rprint(f"[red]The smart_output method requires a "
+               f"{file_ext} file as parameter[/red]")
+
+    @classmethod
+    def handle_filenotfound_error(cls, file, file_ext):
+        """
+        Handle FileNotFoundError.
+
+        :param file: file that was not found
+        :param file_ext: file extension
+        :return: None
+        """
+        relevant = file.split(os.path.sep)[-2:]
+        # match the file on ProcessID_ClusterID, if possible
+        match = re.match(r".*?([0-9]{3,}_[0-9]+)" + file_ext, relevant[1])
+        rprint(
+            f"[yellow]There is no related {file_ext} "
+            f"file: {relevant[1]} in the directory:\n"
+            f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
+            f"with the prefix: {match[1]}[/cyan]"
+        )
+
     def htcondor_stderr(self, file: str) -> str:
         """
         Read HTCondor stderr files.
@@ -167,36 +199,6 @@ class HTCAnalyze:
         :return: content
         """
         return self.read_file(file, self.ext_out)
-
-    def handle_name_error(self, err, file_ext):
-        """
-        Handle NameError.
-
-        :param err: An exception
-        :param file_ext: file extension
-        :return: None
-        """
-        logging.exception(err)
-        rprint(f"[red]The smart_output method requires a "
-               f"{file_ext} file as parameter[/red]")
-
-    def handle_filenotfound_error(self, file, file_ext):
-        """
-        Handle FileNotFoundError.
-
-        :param file: file that was not found
-        :param file_ext: file extension
-        :return: None
-        """
-        relevant = file.split(os.path.sep)[-2:]
-        match = re.match(r".*?([0-9]{3,}_[0-9]+)" + file_ext,
-                         relevant[1])
-        rprint(
-            f"[yellow]There is no related {file_ext} "
-            f"file: {relevant[1]} in the directory:\n"
-            f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
-            f"with the prefix: {match[1]}[/cyan]"
-        )
 
     def get_job_spec_id(self, file: str) -> str:
         """
