@@ -27,8 +27,8 @@ from rich import print as rprint, box
 from rich.progress import Table
 
 # typing identities
-log_inf_list = List[dict]
-list_of_logs = List[str]
+LogDescriptionList = List[dict]
+LogList = List[str]
 date_time = datetime.datetime
 timedelta = datetime.timedelta
 
@@ -44,7 +44,7 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "errors", "ram-history"]
 
 
-class CheckRedirection(object):
+class CheckRedirection:
     """handle global redirection variables."""
 
     def __init__(self):
@@ -150,23 +150,23 @@ class CustomFormatter(argparse.HelpFormatter):
         if not action.option_strings:
             metavar, = self._metavar_formatter(action, action.dest)(1)
             return metavar
+
+        parts = []
+        # if the Optional doesn't take a value, format is:
+        #    -s, --long
+        if action.nargs == 0:
+            parts.extend(action.option_strings)
+        # if the Optional takes a value, format is:
+        #    -s ARGS, --long ARGS
         else:
-            parts = []
-            # if the Optional doesn't take a value, format is:
-            #    -s, --long
-            if action.nargs == 0:
-                parts.extend(action.option_strings)
-            # if the Optional takes a value, format is:
-            #    -s ARGS, --long ARGS
-            else:
-                default = action.dest.upper()
-                args_string = self._format_args(action, default)
-                for option_string in action.option_strings:
-                    parts.append('%s %s' % (option_string, args_string))
-            if sum(len(s) for s in parts) < self._width - (len(parts) - 1) * 2:
-                return ', '.join(parts)
-            else:
-                return ',\n  '.join(parts)
+            default = action.dest.upper()
+            args_string = self._format_args(action, default)
+            for option_string in action.option_strings:
+                parts.append('%s %s' % (option_string, args_string))
+        if sum(len(s) for s in parts) < self._width - (len(parts) - 1) * 2:
+            return ', '.join(parts)
+        else:
+            return ',\n  '.join(parts)
 
 
 def setup_prioritized_parser():
@@ -517,7 +517,7 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
 
 
 def print_results(htcanalyze: HTCAnalyze,
-                  log_files: list_of_logs,
+                  log_files: LogList,
                   mode: str,
                   ignore_list=list,
                   filter_keywords=list,
