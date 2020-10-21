@@ -524,7 +524,7 @@ def print_results(htcanalyze: HTCAnalyze,
                   filter_extended=False,
                   **kwargs) -> str:
     """
-    Create the ouput specified by the mode.
+    Create the output specified by the mode.
 
     :param log_files:
     :param mode:
@@ -534,7 +534,6 @@ def print_results(htcanalyze: HTCAnalyze,
     :param kwargs:
     :return:
     """
-
     if filter_keywords:
         results = htcanalyze.\
             filter_for(log_files,

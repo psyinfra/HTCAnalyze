@@ -117,7 +117,7 @@ class HTCAnalyze:
         else:
             return "green"
 
-    def read_file(self, file:str, file_ext):
+    def read_file(self, file: str, file_ext):
         """
         Read HTCondor stdout files.
 
@@ -458,11 +458,13 @@ class HTCAnalyze:
                 ram_history_dict,
                 error_dict)
 
-    def gethostbyaddrcached(self, ip):
+    def gethostbyaddrcached(self, ip: str):
         """
-        Get the hostname by address, with an in-memory cache to prevent
-        excessive queries to DNS servers.
+        Get the hostname by address, with an in-memory cache.
 
+        This prevents excessive queries to DNS servers.
+
+        :param ip: ip represented by a string
         :return: resolved domain name, else give back the IP
         """
         try:
