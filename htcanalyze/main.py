@@ -2,7 +2,7 @@
 Handle config setup and commandline arguments.
 
 Create visible output by using htcanalyze.
-TODO: Great short explanation, maybe also useful for other stuff in the project to just define some stuff at the beginning of a script
+
 Exit Codes:
     Normal Termination: 0
     No given files: 1
@@ -44,9 +44,8 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "errors", "ram-history"]
 
 
-# class to store and change global variables TODO: suboptimal name, reminds me of geography class, it is a common term to describe big companies
-class GlobalPlayer(object):
-    """handle global variables."""
+class CheckRedirection(object):
+    """handle global redirection variables."""
 
     def __init__(self):
         """initialize."""
@@ -77,7 +76,7 @@ class GlobalPlayer(object):
 
 
 ###############################
-GlobalServant = GlobalPlayer()
+GlobalServant = CheckRedirection()
 ###############################
 
 
@@ -507,20 +506,13 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
                   show_header=True,
                   header_style="bold magenta",
                   box=box.ASCII)
-    n_vals = 0
+    n_vals = len(next(iter(table_dict.values())))  # get len of first value
     for val in table_dict.keys():
         table.add_column(val)
-        if n_vals == 0:
-            n_vals = len(table_dict[val])
-        # Todo: could be reduce to one call
     for i in range(n_vals):
-        new_list = list()
-        # get the values from each column, convert to str
-        for val in table_dict:
-            new_list.append(str(table_dict[val][i]))
+        new_list = [str(table_dict[val][i]) for val in table_dict]
         table.add_row(*new_list)
 
-    # rprint(table)
     return table
 
 

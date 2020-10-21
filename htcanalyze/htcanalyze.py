@@ -65,7 +65,13 @@ class HTCAnalyze:
         The important part is that the keywords exist
         "Usage", "Requested"
 
-        :param resources: resource dictionary
+        :param resources: a dict like:
+        {
+            "Resources": ["Cpu", "Disk", "Memory"]
+            "Usage": [0, 13, 144]
+            "Requested": [1, 1000, 6000]
+            "Allocated": [1, 3000, 134900]
+        }
         :return: resources with colors on usage column
         """
         # change to list, to avoid numpy type errors
@@ -111,46 +117,7 @@ class HTCAnalyze:
         else:
             return "green"
 
-    def htcondor_stderr(self, file: str) -> str:
-        """
-        Read HTCondor stderr files.
-
-        :param file: HTCondor stderr file
-        :return: filtered content
-        """
-        output_string = ""
-        try:
-            if os.path.getsize(file) == 0:
-                return ""
-
-            with open(file, "r") as error_content:
-                for line in error_content:
-                    line = line.strip("\n")
-                    if "err" in line.lower():
-                        output_string += f"[red]{line}[/red]\n"
-                    elif "warn" in line.lower():
-                        output_string += f"[yellow]{line}[/yellow]\n"
-        # TODO: basically identical except parts with htcondor_stderr, use functions to reduce code and make it more readable
-        except NameError as err:
-            logging.exception(err)
-            rprint(f"[red]The smart_output method requires a "
-                   f"{self.ext_err} file as parameter[/red]")
-        except FileNotFoundError:
-            relevant = file.split(os.path.sep)[-2:]
-            match = re.match(r".*?([0-9]{3,}_[0-9]+)" + self.ext_err,
-                             relevant[1])
-            rprint(
-                f"[yellow]There is no related {self.ext_err} file: "
-                f"{relevant[1]} in the directory:\n[/yellow]"
-                f"[cyan]'{os.path.abspath(relevant[0])}'\n"
-                f"with the prefix: {match[1]}[/cyan]"
-            )
-        except TypeError as err:
-            logging.exception(err)
-        finally:
-            return output_string
-
-    def htcondor_stdout(self, file: str) -> str:
+    def read_file(self, file:str, file_ext):
         """
         Read HTCondor stdout files.
 
@@ -161,30 +128,71 @@ class HTCAnalyze:
         try:
 
             if os.path.getsize(file) == 0:
-                return ""
+                return output_string
 
             with open(file, "r") as output_content:
-                output_string += "".join(output_content.readlines())
+                output_string = output_content.read()
         except NameError as err:
-            handle_name_error(err, self.ext_out)
+            self.handle_name_error(err, file_ext)
         except FileNotFoundError:
-            handle_filenotfound_error(file, self.ext_out)
+            self.handle_filenotfound_error(file, file_ext)
         except TypeError as err:
             logging.exception(err)
         finally:
             return output_string
 
-    def handle_name_error(self, err, stream):
+    def htcondor_stderr(self, file: str) -> str:
+        """
+        Read HTCondor stderr files.
+
+        :param file: HTCondor stderr file
+        :return: filtered content
+        """
+        output_string = ""
+
+        for line in self.read_file(file, self.ext_err):
+            line = line.strip("\n")
+            if "err" in line.lower():
+                output_string += f"[red]{line}[/red]\n"
+            elif "warn" in line.lower():
+                output_string += f"[yellow]{line}[/yellow]\n"
+
+        return output_string
+
+    def htcondor_stdout(self, file: str) -> str:
+        """
+        Read HTCondor stdout files.
+
+        :param: HTCondor stdout file
+        :return: content
+        """
+        return self.read_file(file, self.ext_out)
+
+    def handle_name_error(self, err, file_ext):
+        """
+        Handle NameError.
+
+        :param err: An exception
+        :param file_ext: file extension
+        :return: None
+        """
         logging.exception(err)
         rprint(f"[red]The smart_output method requires a "
-               f"{stream} file as parameter[/red]")
+               f"{file_ext} file as parameter[/red]")
 
-    def handle_filenotfound_error(self, file, stream):
+    def handle_filenotfound_error(self, file, file_ext):
+        """
+        Handle FileNotFoundError.
+
+        :param file: file that was not found
+        :param file_ext: file extension
+        :return: None
+        """
         relevant = file.split(os.path.sep)[-2:]
-        match = re.match(r".*?([0-9]{3,}_[0-9]+)" + stream,
+        match = re.match(r".*?([0-9]{3,}_[0-9]+)" + file_ext,
                          relevant[1])
         rprint(
-            f"[yellow]There is no related {stream} "
+            f"[yellow]There is no related {file_ext} "
             f"file: {relevant[1]} in the directory:\n"
             f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
             f"with the prefix: {match[1]}[/cyan]"
@@ -637,7 +645,8 @@ class HTCAnalyze:
                 rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
                 sys.exit(3)
 
-        # calc difference of successful executed jobs TODO: What is n?
+        # calc number of jobs with underlying resource usage after termination
+        # better said, number of jobs, which terminated normal or abnormal
         n = len(log_files) - aborted_files - still_running \
             - other_exception - error_reading_files
 
@@ -774,10 +783,8 @@ class HTCAnalyze:
              ram_history, occurred_errors) = self.log_to_dict(file)
 
             if occurred_errors:
-                create_file_list = list()
-                # TODO: make this a one-liner
-                create_file_list.extend([file for i in range(len(occurred_errors["Event Number"]))])
-                occurred_errors['File'] = create_file_list
+                n_event_err = len(occurred_errors["Event Number"])
+                occurred_errors['File'] = [file for i in range(n_event_err)]
 
             refactor_job_dict = dict(
                 zip(job_dict["Execution details"], job_dict["Values"]))
@@ -1159,17 +1166,12 @@ def raise_type_error(message: str) -> TypeError:
     raise TypeError(message)
 
 
-# TODO: IMO too many comments for two lines of code.
 def _int_formatter(val, chars, delta, left=False):
     """
     Format float to int.
 
     Usage of this is shown here:
     https://github.com/tammoippen/plotille/issues/11
-
-    in order that plotille has nothing like a int converter,
-    I have to set it up manually to show the y - label in number format
-
     """
     align = '<' if left else ''
     return '{:{}{}d}'.format(int(val), align, chars)
@@ -1186,7 +1188,7 @@ def gen_time_dict(submission_date: date_time = None,
     Depending on the given arguments,
     this function will try to calculate
     the time differences between the events.
-    If not all three values are given, it will return None => then why don't you check first if any is None and immediately return None?
+    If not all three values are given, it will return None
 
     :param submission_date: Job Sumbission date from the user
     :param execution_date: The date when the job actually started executing
@@ -1194,6 +1196,9 @@ def gen_time_dict(submission_date: date_time = None,
     :return: (waiting_time, runtime, total_time)
 
     """
+    if not any(locals().values()):  # all params are None
+        return None
+
     waiting_time = None
     runtime = None
     total_time = None
