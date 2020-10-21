@@ -64,28 +64,38 @@ class HTCAnalyze:
 
         The important part is that the keywords exist
         "Usage", "Requested"
-        marks everything with the colors
-        (green, yellow, red) - (good, warning, bad)
 
         :param resources: resource dictionary
         :return: resources with colors on usage column
         """
         # change to list, to avoid numpy type errors
         resources.update(Usage=list(resources["Usage"]))
-        # TODO: What does i do? Making resources['Requested'] a dict would be more descriptive
-        for i, _ in enumerate(resources['Resources']):
+        n_resources = len(resources['Resources'])
+
+        for i in range(n_resources):
             # thresholds used vs. requested
-            if float(resources['Requested'][i]) != 0:
+            if float(resources['Requested'][i]) != 0:  # avoid division by 0
 
                 deviation = float(resources['Usage'][i]) / float(
                     resources['Requested'][i])
-                # TODO: to make it more readable, use a function
-                line_color = get_color(deviation, resources['Usage'][i])
+
+                line_color = self.get_color(deviation, resources['Usage'][i])
                 resources['Usage'][i] = f"[{line_color}]" \
-                                        f"{resources['Usage'][i]}[/{line_color}]"
+                    f"{resources['Usage'][i]}[/{line_color}]"
+
         return resources
 
     def get_color(self, deviation, usage):
+        """
+        Get colors for the deviation of a usage.
+
+        Mark values with a value depending on the thresholds
+        (green, yellow, red) - (good, warning, bad)
+
+        :param deviation:
+        :param usage:
+        :return: color string
+        """
         # color red
         if deviation >= 1 + self.bad_usage \
                 or deviation <= 1 - self.bad_usage:
