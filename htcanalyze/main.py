@@ -45,7 +45,10 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
 
 
 class CheckRedirection:
-    """handle global redirection variables."""
+    """
+
+    Handle global redirection variables.
+    """
 
     def __init__(self):
         """initialize."""
