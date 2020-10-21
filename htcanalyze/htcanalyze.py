@@ -788,7 +788,7 @@ class HTCAnalyze:
 
             if occurred_errors:
                 n_event_err = len(occurred_errors["Event Number"])
-                occurred_errors['File'] = [file for i in range(n_event_err)]
+                occurred_errors['File'] = [file] * n_event_err
 
             refactor_job_dict = dict(
                 zip(job_dict["Execution details"], job_dict["Values"]))
