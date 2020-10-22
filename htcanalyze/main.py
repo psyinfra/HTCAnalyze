@@ -205,7 +205,8 @@ def setup_commandline_parser(default_config_files=[])\
     """
     parser = configargparse.\
         ArgumentParser(formatter_class=CustomFormatter,
-                       default_config_files=default_config_files)
+                       default_config_files=default_config_files,
+                       description="Analyze or summarize HTCondor-Joblogs")
 
     parser.add_argument("path",
                         nargs="*",
