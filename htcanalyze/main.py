@@ -48,6 +48,10 @@ class CheckRedirection:
     """
 
     Handle global redirection variables.
+
+    This is due to the fact, that sys.stdin and sys.stdout change at runtime,
+    before this happens we want to catch their states.
+
     """
 
     def __init__(self):
@@ -66,7 +70,7 @@ class CheckRedirection:
         """
         Check if reading from stdin or redirecting stdout.
 
-        It changes the global variables of GlobalServant,
+        It changes the global variables of RedirectionChecker,
         if stdin or stdout is set
 
         :return:
@@ -79,7 +83,7 @@ class CheckRedirection:
 
 
 ###############################
-GlobalServant = CheckRedirection()
+RedirectionChecker = CheckRedirection()
 ###############################
 
 
@@ -361,9 +365,9 @@ def manage_params(args: list) -> dict:
     :return: dict with params
     """
     # listen to stdin and add these files
-    if GlobalServant.reading_stdin:
+    if RedirectionChecker.reading_stdin:
         logging.debug("Listening to arguments from stdin")
-        for line in GlobalServant.stdin_input:
+        for line in RedirectionChecker.stdin_input:
             args.extend(line.rstrip('\n').split(" "))
 
     prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
@@ -647,7 +651,7 @@ def run(commandline_args):
     :return:
     """
     # before running make sure Global Parameters are set to default
-    GlobalServant.reset()
+    RedirectionChecker.reset()
 
     if not isinstance(commandline_args, list):
         commandline_args = commandline_args.split()
@@ -655,7 +659,7 @@ def run(commandline_args):
     try:
         start = date_time.now()  # start date for runtime
 
-        GlobalServant.check_for_redirection()
+        RedirectionChecker.check_for_redirection()
         # if exit parameters are given that will interrupt this script,
         # catch them here so the config won't be unnecessary loaded
         param_dict = manage_params(commandline_args)
@@ -665,7 +669,7 @@ def run(commandline_args):
 
         logging.debug("-------Start of htcanalyze script-------")
 
-        show_legend = not GlobalServant.redirecting_stdout  # redirected ?
+        show_legend = not RedirectionChecker.redirecting_stdout  # redirected ?
         htcanalyze = HTCAnalyze(
             ext_log=param_dict["ext_log"],
             ext_out=param_dict["ext_out"],
@@ -680,9 +684,9 @@ def run(commandline_args):
         if param_dict["verbose"]:
             logging.info('Verbose mode turned on')
 
-        if GlobalServant.reading_stdin:
+        if RedirectionChecker.reading_stdin:
             logging.debug("Reading from stdin")
-        if GlobalServant.redirecting_stdout:
+        if RedirectionChecker.redirecting_stdout:
             logging.debug("Output is getting redirected")
 
         validator = LogValidator(ext_log=param_dict["ext_log"],

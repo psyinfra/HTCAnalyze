@@ -41,27 +41,27 @@ def reset():
 
 def test_no_input_and_no_output():
     reset()
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is False
-    assert ht.GlobalServant.redirecting_stdout is False
+    ht.RedirectionChecker.check_for_redirection()
+    assert ht.RedirectionChecker.reading_stdin is False
+    assert ht.RedirectionChecker.redirecting_stdout is False
 
 
 def test_input_and_no_output():
     reset()
     normal_log_str = "tests/test_logs/valid_logs/normal_log.log"
     sys.stdin = io.StringIO(normal_log_str)
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is True
-    assert ht.GlobalServant.stdin_input == [normal_log_str]
-    assert ht.GlobalServant.redirecting_stdout is False
+    ht.RedirectionChecker.check_for_redirection()
+    assert ht.RedirectionChecker.reading_stdin is True
+    assert ht.RedirectionChecker.stdin_input == [normal_log_str]
+    assert ht.RedirectionChecker.redirecting_stdout is False
 
 
 def test_output_and_no_input():
     reset()
     sys.stdout = open('test_output.txt', 'w')
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is False
-    assert ht.GlobalServant.redirecting_stdout is True
+    ht.RedirectionChecker.check_for_redirection()
+    assert ht.RedirectionChecker.reading_stdin is False
+    assert ht.RedirectionChecker.redirecting_stdout is True
 
 
 def test_input_and_output():
@@ -69,7 +69,7 @@ def test_input_and_output():
     normal_log_str = "tests/test_logs/valid_logs/normal_log.log"
     sys.stdin = io.StringIO(normal_log_str)
     sys.stdout = open('test_output.txt', 'w')
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is True
-    assert ht.GlobalServant.stdin_input == [normal_log_str]
-    assert ht.GlobalServant.redirecting_stdout is True
+    ht.RedirectionChecker.check_for_redirection()
+    assert ht.RedirectionChecker.reading_stdin is True
+    assert ht.RedirectionChecker.stdin_input == [normal_log_str]
+    assert ht.RedirectionChecker.redirecting_stdout is True

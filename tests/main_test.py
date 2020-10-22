@@ -28,31 +28,31 @@ def test_check_for_redirection():
     # test all cases of different redirection combinations
     sys.stdin = PseudoTTY(sys.stdin, True)
     sys.stdout = PseudoTTY(sys.stdout, True)
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is False \
-           and ht.GlobalServant.redirecting_stdout is False
+    ht.RedirectionChecker.check_for_redirection()
+    assert ht.RedirectionChecker.reading_stdin is False \
+           and ht.RedirectionChecker.redirecting_stdout is False
 
     sys.stdin = io.StringIO('Some file')
     sys.stdout = PseudoTTY(sys.stdout, True)
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is True \
-           and ht.GlobalServant.redirecting_stdout is False
+    ht.RedirectionChecker.check_for_redirection()
+    assert ht.RedirectionChecker.reading_stdin is True \
+           and ht.RedirectionChecker.redirecting_stdout is False
 
     sys.stdin = PseudoTTY(sys.stdin, True)
     sys.stdout = PseudoTTY(sys.stdout, False)
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is False \
-           and ht.GlobalServant.redirecting_stdout is True
+    ht.RedirectionChecker.check_for_redirection()
+    assert ht.RedirectionChecker.reading_stdin is False \
+           and ht.RedirectionChecker.redirecting_stdout is True
 
     sys.stdin = io.StringIO('Some file')
     sys.stdout = PseudoTTY(sys.stdout, False)
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is True \
-           and ht.GlobalServant.redirecting_stdout is True
+    ht.RedirectionChecker.check_for_redirection()
+    assert ht.RedirectionChecker.reading_stdin is True \
+           and ht.RedirectionChecker.redirecting_stdout is True
 
 
 def test_manage_params():
-    ht.GlobalServant.reset()
+    ht.RedirectionChecker.reset()
 
     args = "--version".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
