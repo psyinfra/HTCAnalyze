@@ -565,80 +565,81 @@ def print_results(htcanalyze: HTCAnalyze,
     if results is None:
         sys.exit(0)
 
-    work_with = results
+    processed_data_list = results
     # convert result to list, if given as dict
     if isinstance(results, dict):
-        work_with = [results]
+        processed_data_list = [results]
 
     # check for ignore values
-    for mystery in work_with:
+    for data_dict in processed_data_list:
 
-        for i in mystery:
-            if mystery[i] is None:
-                logging.debug(f"This musst be fixed, mystery['{i}'] is None.")
+        for key in data_dict:
+            if data_dict[key] is None:
+                logging.debug(f"This musst be fixed, "
+                              f"data_dict['{key}'] is None.")
                 rprint("[red]NoneType object found, "
                        "this should not happen[/red]")
 
-        if "description" in mystery:
-            rprint(mystery["description"])
+        if "description" in data_dict:
+            rprint(data_dict["description"])
 
-        if "execution-details" in mystery:
+        if "execution-details" in data_dict:
             if "execution-details" in ignore_list:
-                del mystery["execution-details"]
-            elif mystery["execution-details"]:
-                table = wrap_dict_to_table(mystery["execution-details"])
+                del data_dict["execution-details"]
+            elif data_dict["execution-details"]:
+                table = wrap_dict_to_table(data_dict["execution-details"])
                 rprint(table)
 
-        if "times" in mystery:
+        if "times" in data_dict:
             if "times" in ignore_list:
-                del mystery["times"]
-            elif mystery["times"]:
-                table = wrap_dict_to_table(mystery["times"])
+                del data_dict["times"]
+            elif data_dict["times"]:
+                table = wrap_dict_to_table(data_dict["times"])
                 rprint(table)
 
-        if "all-resources" in mystery:
+        if "all-resources" in data_dict:
             if "all-resources" in ignore_list:
-                del mystery["all-resources"]
+                del data_dict["all-resources"]
             else:
                 if "used-resources" in ignore_list:
-                    del mystery["all-resources"]["Usage"]
+                    del data_dict["all-resources"]["Usage"]
                 if "requested-resources" in ignore_list:
-                    del mystery["all-resources"]["Requested"]
+                    del data_dict["all-resources"]["Requested"]
                 if "allocated-resources" in ignore_list:
-                    del mystery["all-resources"]["Allocated"]
+                    del data_dict["all-resources"]["Allocated"]
 
-                table = wrap_dict_to_table(mystery["all-resources"])
+                table = wrap_dict_to_table(data_dict["all-resources"])
                 rprint(table)
 
-        if "ram-history" in mystery:
+        if "ram-history" in data_dict:
             if "ram-history" in ignore_list:
-                del mystery["ram-history"]
-            elif mystery["ram-history"] is not None:
-                print(mystery["ram-history"])
+                del data_dict["ram-history"]
+            elif data_dict["ram-history"] is not None:
+                print(data_dict["ram-history"])
 
-        if "errors" in mystery:
+        if "errors" in data_dict:
             if "errors" in ignore_list:
-                del mystery["errors"]
-            elif mystery["errors"] is not None:
-                table = wrap_dict_to_table(mystery["errors"],
+                del data_dict["errors"]
+            elif data_dict["errors"] is not None:
+                table = wrap_dict_to_table(data_dict["errors"],
                                            "Occurred HTCondor errors")
                 rprint(table)
 
-        if "host-nodes" in mystery:
+        if "host-nodes" in data_dict:
             if "host-nodes" in ignore_list:
-                del mystery["host-nodes"]
-            elif mystery["host-nodes"] is not None:
-                table = wrap_dict_to_table(mystery["host-nodes"])
+                del data_dict["host-nodes"]
+            elif data_dict["host-nodes"] is not None:
+                table = wrap_dict_to_table(data_dict["host-nodes"])
                 rprint(table)
 
         # Show more section
-        if "htc-out" in mystery and mystery["htc-out"] != "":
+        if "htc-out" in data_dict and data_dict["htc-out"] != "":
             rprint("\n[bold cyan]Related HTC standard output:[/bold cyan]")
-            rprint(mystery["htc-out"])
+            rprint(data_dict["htc-out"])
 
-        if "htc-err" in mystery and mystery["htc-err"] != "":
+        if "htc-err" in data_dict and data_dict["htc-err"] != "":
             rprint("\n[bold cyan]Related HTCondor standard error:[/bold cyan]")
-            rprint(mystery["htc-err"])
+            rprint(data_dict["htc-err"])
 
         print()
 
