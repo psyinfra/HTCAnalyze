@@ -1,7 +1,5 @@
 
-import sys
 import pytest
-import io
 from htcanalyze import main as ht
 
 
