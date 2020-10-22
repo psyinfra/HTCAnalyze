@@ -42,49 +42,6 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "errors", "ram-history"]
 
 
-class CheckRedirection:
-    """
-
-    Handle global redirection variables.
-
-    This is due to the fact, that sys.stdin and sys.stdout change at runtime,
-    before this happens we want to catch their states.
-
-    """
-
-    def __init__(self):
-        """initialize."""
-        self.redirecting_stdout = None
-        self.reading_stdin = None
-        self.stdin_input = None
-
-    def reset(self):
-        """reset variables."""
-        self.redirecting_stdout = None
-        self.reading_stdin = None
-        self.stdin_input = None
-
-    def check_for_redirection(self):
-        """
-        Check if reading from stdin or redirecting stdout.
-
-        It changes the global variables of RedirectionChecker,
-        if stdin or stdout is set
-
-        :return:
-        """
-        self.redirecting_stdout = not sys.stdout.isatty()
-        self.reading_stdin = not sys.stdin.isatty()
-
-        if self.reading_stdin:
-            self.stdin_input = sys.stdin.readlines()
-
-
-###############################
-RedirectionChecker = CheckRedirection()
-###############################
-
-
 def setup_logging_tool(log_file=None, verbose_mode=False):
     """
         Set up the logging device.
@@ -362,11 +319,6 @@ def manage_params(args: list) -> dict:
     :param args: list of args
     :return: dict with params
     """
-    # listen to stdin and add these files
-    if RedirectionChecker.reading_stdin:
-        logging.debug("Listening to arguments from stdin")
-        for line in RedirectionChecker.stdin_input:
-            args.extend(line.rstrip('\n').split(" "))
 
     prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
     # first of all check for prioritised/exit params
@@ -640,6 +592,18 @@ def print_results(htcanalyze: HTCAnalyze,
         print()
 
 
+def check_for_redirection() -> (bool, bool, list):
+    """Check if reading from stdin or redirecting stdout."""
+    redirecting_stdout = not sys.stdout.isatty()
+    reading_stdin = not sys.stdin.isatty()
+    stdin_input = None
+
+    if reading_stdin:
+        stdin_input = sys.stdin.readlines()
+
+    return redirecting_stdout, reading_stdin, stdin_input
+
+
 def run(commandline_args):
     """
     Run this script.
@@ -647,18 +611,19 @@ def run(commandline_args):
     :param commandline_args: list of args
     :return:
     """
-    # before running make sure Global Parameters are set to default
-    RedirectionChecker.reset()
 
     if not isinstance(commandline_args, list):
         commandline_args = commandline_args.split()
 
     try:
-        start = date_time.now()  # start date for runtime
+        start = date_time.now()
 
-        RedirectionChecker.check_for_redirection()
-        # if exit parameters are given that will interrupt this script,
-        # catch them here so the config won't be unnecessary loaded
+        redirecting_stdout, reading_stdin, std_input = check_for_redirection()
+
+        if reading_stdin and std_input is not None:
+            for line in std_input:
+                commandline_args.extend(line.rstrip('\n').split(" "))
+
         param_dict = manage_params(commandline_args)
 
         setup_logging_tool(param_dict["generate_log_file"],
@@ -666,7 +631,8 @@ def run(commandline_args):
 
         logging.debug("-------Start of htcanalyze script-------")
 
-        show_legend = not RedirectionChecker.redirecting_stdout  # redirected ?
+        # do not show legend, if output is redirected
+        show_legend = not redirecting_stdout
         htcanalyze = HTCAnalyze(
             ext_log=param_dict["ext_log"],
             ext_out=param_dict["ext_out"],
@@ -681,9 +647,9 @@ def run(commandline_args):
         if param_dict["verbose"]:
             logging.info('Verbose mode turned on')
 
-        if RedirectionChecker.reading_stdin:
+        if reading_stdin:
             logging.debug("Reading from stdin")
-        if RedirectionChecker.redirecting_stdout:
+        if redirecting_stdout:
             logging.debug("Output is getting redirected")
 
         validator = LogValidator(ext_log=param_dict["ext_log"],
@@ -702,7 +668,7 @@ def run(commandline_args):
 
         print_results(htcanalyze, log_files=valid_files, **param_dict)
 
-        end = date_time.now()  # end date for runtime
+        end = date_time.now()
 
         logging.debug(f"Runtime: {end - start}")  # runtime of this script
 

@@ -1,5 +1,6 @@
 import sys
 import io
+import pytest
 from htcanalyze import main as ht
 
 
@@ -30,38 +31,45 @@ class PseudoTTY(object):
         return self.__isset
 
 
-copy_sys_stdin = sys.stdin
 copy_sys_stdout = sys.stdout
+copy_sys_stdin = sys.stdin
 
 
 def reset():
-    sys.stdin = PseudoTTY(copy_sys_stdin, True)
+    """
+    Reset sys.stdout and sys.stdin to default.
+
+    Does not work with pytest.fixture, as pytest manipulates stdout
+    """
     sys.stdout = PseudoTTY(copy_sys_stdout, True)
+    sys.stdin = PseudoTTY(copy_sys_stdin, True)
 
 
 def test_no_input_and_no_output():
     reset()
-    ht.RedirectionChecker.check_for_redirection()
-    assert ht.RedirectionChecker.reading_stdin is False
-    assert ht.RedirectionChecker.redirecting_stdout is False
+    redirecting_stdout, reading_stdin, std_in = ht.check_for_redirection()
+    assert redirecting_stdout is False
+    assert reading_stdin is False
+    assert std_in is None
 
 
 def test_input_and_no_output():
     reset()
     normal_log_str = "tests/test_logs/valid_logs/normal_log.log"
     sys.stdin = io.StringIO(normal_log_str)
-    ht.RedirectionChecker.check_for_redirection()
-    assert ht.RedirectionChecker.reading_stdin is True
-    assert ht.RedirectionChecker.stdin_input == [normal_log_str]
-    assert ht.RedirectionChecker.redirecting_stdout is False
+    redirecting_stdout, reading_stdin, std_in = ht.check_for_redirection()
+    assert redirecting_stdout is False
+    assert reading_stdin is True
+    assert std_in == [normal_log_str]
 
 
 def test_output_and_no_input():
     reset()
     sys.stdout = open('test_output.txt', 'w')
-    ht.RedirectionChecker.check_for_redirection()
-    assert ht.RedirectionChecker.reading_stdin is False
-    assert ht.RedirectionChecker.redirecting_stdout is True
+    redirecting_stdout, reading_stdin, std_in = ht.check_for_redirection()
+    assert redirecting_stdout is True
+    assert reading_stdin is False
+    assert std_in is None
 
 
 def test_input_and_output():
@@ -69,7 +77,7 @@ def test_input_and_output():
     normal_log_str = "tests/test_logs/valid_logs/normal_log.log"
     sys.stdin = io.StringIO(normal_log_str)
     sys.stdout = open('test_output.txt', 'w')
-    ht.RedirectionChecker.check_for_redirection()
-    assert ht.RedirectionChecker.reading_stdin is True
-    assert ht.RedirectionChecker.stdin_input == [normal_log_str]
-    assert ht.RedirectionChecker.redirecting_stdout is True
+    redirecting_stdout, reading_stdin, std_in = ht.check_for_redirection()
+    assert redirecting_stdout is True
+    assert reading_stdin is True
+    assert std_in == [normal_log_str]
