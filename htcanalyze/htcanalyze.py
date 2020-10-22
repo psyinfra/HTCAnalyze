@@ -73,9 +73,8 @@ class HTCAnalyze:
         """
         # change to list, to avoid numpy type errors
         resources.update(Usage=list(resources["Usage"]))
-        n_resources = len(resources['Resources'])
 
-        for i in range(n_resources):
+        for i in range(len(resources['Resources'])):
             # thresholds used vs. requested
             if float(resources['Requested'][i]) != 0:  # avoid division by 0
 
