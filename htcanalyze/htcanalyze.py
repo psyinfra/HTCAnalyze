@@ -103,6 +103,7 @@ class HTCAnalyze:
 
     @classmethod
     def get_color(cls, level: str) -> str:
+        """Return color for corresponding level."""
         colors = {'error': 'red', 'warning': 'yellow',
                   'light_warning': 'yellow2', 'normal': 'green'}
         return colors[level]
