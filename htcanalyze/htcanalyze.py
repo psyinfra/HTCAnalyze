@@ -639,18 +639,19 @@ class HTCAnalyze:
                 rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
                 sys.exit(3)
 
-        # calc number of jobs with underlying resource usage after termination
-        # better said, number of jobs, which terminated normal or abnormal
-        n = len(log_files) - aborted_files - still_running \
-            - other_exception - error_reading_files
+        # number of jobs with associated resources,
+        # only jobs with normal or abnormal termination state
+        n_associated_res = len(log_files) - aborted_files - still_running - \
+                           other_exception - error_reading_files
 
-        average_runtime = normal_runtime / n if n != 0 else normal_runtime
+        average_runtime = normal_runtime / n_associated_res \
+            if n_associated_res != 0 else normal_runtime
         average_runtime = timedelta(days=average_runtime.days,
                                     seconds=average_runtime.seconds)
 
         exec_dict = {
-            "Job types": ["normal executed jobs"],
-            "Occurrence": [n]
+            "Job types": ["Successfully terminated jobs"],
+            "Occurrence": [n_associated_res]
         }
         if aborted_files > 0:
             exec_dict["Job types"].append("Aborted jobs")
@@ -671,13 +672,13 @@ class HTCAnalyze:
         result_dict["description"] = "The following data only implies " \
                                      "on sucessful executed jobs"
 
-        # do not even try futher if the only files
+        # do not even try further if the only files
         # given have been aborted, are still running etc.
-        if n == 0:
+        if n_associated_res == 0:
             return [result_dict]
 
         create_desc = "The following data implies" \
-                      " only on sucessful executed jobs"
+                      " only on jobs with associated resources"
         if aborted_files > 0 or still_running > 0 \
                 or other_exception > 0 or error_reading_files:
             create_desc += "\n[light_grey]" \
@@ -701,14 +702,14 @@ class HTCAnalyze:
             "Values": time_value_list
         }
 
-        if n != 0:  # do nothing, if all valid jobs were aborted
+        if n_associated_res != 0:  # do nothing, if all valid jobs were aborted
 
             average_dict = {
                 "Resources": ['Average Cpu', 'Average Disk (KB)',
                               'Average Memory (MB)'],
-                "Usage": np.round(total_usages / n, 4),
-                "Requested": np.round(total_requested / n, 2),
-                "Allocated": np.round(total_allocated / n, 2)
+                "Usage": np.round(total_usages / n_associated_res, 4),
+                "Requested": np.round(total_requested / n_associated_res, 2),
+                "Allocated": np.round(total_allocated / n_associated_res, 2)
 
             }
 
@@ -979,7 +980,7 @@ class HTCAnalyze:
                 total_resources_dict = term_info[4]
                 avg_dict = {
                     'Resources': ['Average Cpu', ' Average Disk (KB)',
-                                  'Average Allocated'],
+                                  'Average Memory (MB)'],
                     'Usage': np.round(
                         np.array(total_resources_dict['Usage']) / term_info[0],
                         4).tolist(),
