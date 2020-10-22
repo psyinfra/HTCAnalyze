@@ -84,8 +84,8 @@ class HTCAnalyze:
 
                 if not 1 - self.bad_usage <= deviation <= 1 + self.bad_usage:
                     level = 'error'
-                elif not 1 - self.tolerated_usage <= \
-                         deviation <= 1 + self.tolerated_usage:
+                elif not (1 - self.tolerated_usage <= deviation <= 1 +
+                          self.tolerated_usage):
                     level = 'warning'
                 elif str(resources['Usage'][i]) == 'nan':
                     level = 'light_warning'
@@ -639,8 +639,8 @@ class HTCAnalyze:
 
         # number of jobs with associated resources,
         # only jobs with normal or abnormal termination state
-        n_associated_res = len(log_files) - aborted_files - still_running - \
-                           other_exception - error_reading_files
+        n_associated_res = (len(log_files) - aborted_files - still_running
+                            - other_exception - error_reading_files)
 
         average_runtime = normal_runtime / n_associated_res \
             if n_associated_res != 0 else normal_runtime
