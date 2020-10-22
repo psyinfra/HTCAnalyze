@@ -85,43 +85,33 @@ class HTCAnalyze:
                 deviation = float(resources['Usage'][i]) / float(
                     resources['Requested'][i])
 
-                line_color = self.get_color(deviation, resources['Usage'][i])
+                if not 1 - self.bad_usage <= deviation <= 1 + self.bad_usage:
+                    level = 'error'
+                elif not 1 - self.tolerated_usage <= \
+                         deviation <= 1 + self.tolerated_usage:
+                    level = 'warning'
+                elif str(resources['Usage'][i]) == 'nan':
+                    level = 'light_warning'
+                else:
+                    level = 'normal'
+
+                line_color = self.get_color(level)
                 resources['Usage'][i] = f"[{line_color}]" \
                     f"{resources['Usage'][i]}[/{line_color}]"
 
         return resources
 
-    def get_color(self, deviation, usage):
-        """
-        Get colors for the deviation of a usage.
-
-        Mark values with a value depending on the thresholds
-        (green, yellow, red) - (good, warning, bad)
-
-        :param deviation:
-        :param usage:
-        :return: color string
-        """
-        # color red
-        if deviation >= 1 + self.bad_usage \
-                or deviation <= 1 - self.bad_usage:
-            return "red"
-        # color yellow
-        elif deviation >= 1 + self.tolerated_usage \
-                or deviation <= 1 - self.tolerated_usage:
-            return "yellow"
-        # if nan, mark yellow
-        elif str(usage) == "nan":
-            return "yellow2"
-        # else it's okay, color green
-        else:
-            return "green"
+    @classmethod
+    def get_color(cls, level: str) -> str:
+        colors = {'error': 'red', 'warning': 'yellow',
+                  'light_warning': 'yellow2', 'normal': 'green'}
+        return colors[level]
 
     def read_file(self, file: str, file_ext):
         """
-        Read HTCondor stdout files.
+        Read a file.
 
-        :param: HTCondor stdout file
+        :param: file
         :return: content
         """
         output_string = ""
