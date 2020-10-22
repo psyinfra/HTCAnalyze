@@ -11,26 +11,24 @@ Exit Codes:
     Keyboard interruption: 4
 """
 
-import datetime
 import argparse
 import logging
 import sys
-from logging.handlers import RotatingFileHandler
-
-from typing import List
-
 import configargparse
 
-from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
-from htcanalyze.logvalidator import LogValidator
+from logging.handlers import RotatingFileHandler
+from typing import List
 from rich import print as rprint, box
 from rich.progress import Table
+from datetime import datetime as date_time
+
+# own classes
+from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
+from htcanalyze.logvalidator import LogValidator
 
 # typing identities
 LogDescriptionList = List[dict]
 LogList = List[str]
-date_time = datetime.datetime
-timedelta = datetime.timedelta
 
 # global variables
 ALLOWED_MODES = {"a": "analyze",

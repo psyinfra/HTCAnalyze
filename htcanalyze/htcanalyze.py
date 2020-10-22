@@ -1,16 +1,15 @@
 """module to summarize and analyze HTCondor log files."""
 
-import datetime
 import logging
 import os
 import re
 import socket
 import sys
-
-from plotille import Figure
-from htcondor import JobEventLog, JobEventType as jet
 import numpy as np
 
+from plotille import Figure
+from datetime import datetime as date_time, timedelta
+from htcondor import JobEventLog, JobEventType as jet
 from rich import print as rprint
 from rich.progress import Progress, track
 from typing import List
@@ -18,8 +17,6 @@ from typing import List
 # typing identities
 log_inf_list = List[dict]
 list_of_logs = List[str]
-date_time = datetime.datetime
-timedelta = datetime.timedelta
 
 
 class HTCAnalyze:
