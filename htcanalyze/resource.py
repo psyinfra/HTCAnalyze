@@ -39,8 +39,8 @@ class Resource:
         return f"({self.name}, " \
             f"{self.usage}, " \
             f"{self.requested}, " \
-            f"{self.allocated}), " \
-            f"{self.warning_level}"
+            f"{self.allocated}, " \
+            f"{self.warning_level})"
 
     def __str__(self):
         """Create a string representation of this class."""
@@ -55,18 +55,46 @@ class Resource:
         if self.requested != 0:
             deviation = self.usage / self.requested
 
-            if not 1 - bad_usage <= deviation <= 1 + bad_usage:
+            if str(self.usage) == 'nan':
+                self.warning_level = 'light_warning'
+            elif not 1 - bad_usage <= deviation <= 1 + bad_usage:
                 self.warning_level = 'error'
             elif not 1 - tolerated_usage <= deviation <= 1 + tolerated_usage:
                 self.warning_level = 'warning'
-            elif str(self.usage) == 'nan':
-                self.warning_level = 'light_warning'
             else:
                 self.warning_level = 'normal'
         elif self.usage > 0:  # Usage without any request ? NOT GOOD
             self.warning_level = 'error'
         else:
             self.warning_level = 'normal'
+
+
+def create_avg_on_resources(
+        job_resource_list: List[List[Resource]]
+) -> List[Resource]:
+    """
+    Create a new List of Resources in Average
+    :param job_resource_list: list(list(Resource))
+    :return: list(Resource)
+    """
+    res_cache = dict()
+
+    for job_resources in job_resource_list:
+        for resource in job_resources:
+            # add resource
+            if res_cache.get(resource.name):
+                res_cache[resource.name].usage += resource.usage
+                res_cache[resource.name].requested += resource.requested
+                res_cache[resource.name].allocated += resource.allocated
+            # create first entry
+            else:
+                res_cache[resource.name] = Resource(resource.name,
+                                                    resource.usage,
+                                                    resource.requested,
+                                                    resource.allocated)
+
+    print(res_cache)
+    return list(res_cache.values())
 
 
 def refactor_resources(resources: dict) -> List[Resource]:
@@ -76,3 +104,14 @@ def refactor_resources(resources: dict) -> List[Resource]:
     resources = [dict(zip(resources, v)) for v in zip(*resources.values())]
     resources = [Resource(**resource) for resource in resources]
     return resources
+
+
+def refactor_to_dict(resources: List[Resource]) -> dict:
+    res_dict = {
+        "Resources": [res.name for res in resources],
+        "Usage": [f"[{res.get_color()}]{res.usage}[/{res.get_color()}]"
+                  for res in resources],
+        "Requested": [res.requested for res in resources],
+        "Allocated": [res.allocated for res in resources]
+    }
+    return res_dict

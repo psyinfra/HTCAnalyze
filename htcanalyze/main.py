@@ -24,6 +24,7 @@ from datetime import datetime as date_time
 
 # own classes
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
+from htcanalyze.resource import refactor_to_dict
 from htcanalyze.logvalidator import LogValidator
 
 # typing identities
@@ -549,14 +550,16 @@ def print_results(htcanalyze: HTCAnalyze,
             if "all-resources" in ignore_list:
                 del data_dict["all-resources"]
             else:
+                resource_list = data_dict["all-resources"]
+                res_dict = refactor_to_dict(resource_list)
                 if "used-resources" in ignore_list:
-                    del data_dict["all-resources"]["Usage"]
+                    del res_dict["Usage"]
                 if "requested-resources" in ignore_list:
-                    del data_dict["all-resources"]["Requested"]
+                    del res_dict["Requested"]
                 if "allocated-resources" in ignore_list:
-                    del data_dict["all-resources"]["Allocated"]
+                    del res_dict["Allocated"]
 
-                table = wrap_dict_to_table(data_dict["all-resources"])
+                table = wrap_dict_to_table(res_dict)
                 rprint(table)
 
         if "ram-history" in data_dict:

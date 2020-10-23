@@ -14,6 +14,9 @@ from rich import print as rprint
 from rich.progress import Progress, track
 from typing import List
 
+# import own class
+from htcanalyze.resource import Resource, create_avg_on_resources
+
 # typing identities
 log_inf_list = List[dict]
 list_of_logs = List[str]
@@ -54,55 +57,6 @@ class HTCAnalyze:
         self.bad_usage = 0.25 if bad_usage is None else bad_usage
 
         self.show_legend = show_legend  # relevant for histogram
-
-    def manage_thresholds(self, resources: dict) -> dict:
-        """
-        Manage thresholds.
-
-        The important part is that the keywords exist
-        "Usage", "Requested"
-
-        :param resources: a dict like:
-        {
-            "Resources": ["Cpu", "Disk", "Memory"]
-            "Usage": [0, 13, 144]
-            "Requested": [1, 1000, 6000]
-            "Allocated": [1, 3000, 134900]
-        }
-        :return: resources with colors on usage column
-        """
-        # change to list, to avoid numpy type errors
-        resources.update(Usage=list(resources["Usage"]))
-
-        for i in range(len(resources['Resources'])):
-            # thresholds used vs. requested
-            if float(resources['Requested'][i]) != 0:  # avoid division by 0
-
-                deviation = float(resources['Usage'][i]) / float(
-                    resources['Requested'][i])
-
-                if not 1 - self.bad_usage <= deviation <= 1 + self.bad_usage:
-                    level = 'error'
-                elif not (1 - self.tolerated_usage <= deviation <= 1 +
-                          self.tolerated_usage):
-                    level = 'warning'
-                elif str(resources['Usage'][i]) == 'nan':
-                    level = 'light_warning'
-                else:
-                    level = 'normal'
-
-                line_color = self.get_color(level)
-                resources['Usage'][i] = f"[{line_color}]" \
-                    f"{resources['Usage'][i]}[/{line_color}]"
-
-        return resources
-
-    @classmethod
-    def get_color(cls, level: str) -> str:
-        """Return color for corresponding level."""
-        colors = {'error': 'red', 'warning': 'yellow',
-                  'light_warning': 'yellow2', 'normal': 'green'}
-        return colors[level]
 
     def read_file(self, file: str, file_ext):
         """
@@ -337,19 +291,25 @@ class HTCAnalyze:
                 memory_requested = event.get('RequestMemory', np.nan)
                 memory_allocated = event.get('Memory', np.nan)
 
-                # put the data in the dict
-                res_dict = {
-                    "Resources": ["Cpu", "Disk", "Memory"],
-                    "Usage": np.array(
-                        [cpu_usage, disk_usage, memory_usage],
-                        dtype=np.float64),
-                    "Requested": np.array(
-                        [cpu_requested, disk_requested, memory_requested],
-                        dtype=np.float64),
-                    "Allocated": np.array(
-                        [cpu_allocated, disk_allocated, memory_allocated],
-                        dtype=np.float64)
-                }
+                # create list with resoucres
+                resource_list = [Resource("Cpu",
+                                          cpu_usage,
+                                          cpu_requested,
+                                          cpu_allocated),
+                                 Resource("Disk (KB)",
+                                          disk_usage,
+                                          disk_requested,
+                                          disk_allocated),
+                                 Resource("Memory (MB)",
+                                          memory_usage,
+                                          memory_requested,
+                                          memory_allocated)]
+
+                # change level
+                for resource in resource_list:
+                    resource.chg_lvl_on_threholds(self.bad_usage,
+                                                  self.tolerated_usage)
+
                 normal_termination = event.get('TerminatedNormally')
                 # differentiate between normal and abnormal termination
                 if normal_termination:
@@ -442,7 +402,7 @@ class HTCAnalyze:
             }
 
         return (job_events_dict,
-                res_dict,
+                resource_list,
                 better_time_dict,
                 ram_history_dict,
                 error_dict)
@@ -473,7 +433,7 @@ class HTCAnalyze:
                 self.rdns_cache[ip] = ip
                 return ip
 
-    def analyze(self, log_files: list_of_logs) -> log_inf_list:
+    def analyze(self, log_files: LogList) -> LogDataList:
         """
         Analyze the given log files one by one.
 
@@ -501,7 +461,7 @@ class HTCAnalyze:
                 msg = f"[green]Job analysis of: {file}[/green]"
                 result_dict["description"] = msg
 
-                job_dict, res_dict, time_dict, \
+                job_dict, resource_list, time_dict, \
                     ram_history, occurred_errors = self.log_to_dict(file)
                 if job_dict:
                     result_dict["execution-details"] = job_dict
@@ -509,9 +469,8 @@ class HTCAnalyze:
                 if time_dict:
                     result_dict["times"] = time_dict
 
-                if res_dict:
-                    result_dict["all-resources"] = \
-                        self.manage_thresholds(res_dict)
+                if resource_list:
+                    result_dict["all-resources"] = resource_list
 
                 # show HTCondor errors
                 if occurred_errors:
@@ -559,7 +518,7 @@ class HTCAnalyze:
 
         return result_list
 
-    def summarize(self, log_files: list_of_logs) -> log_inf_list:
+    def summarize(self, log_files: LogList) -> LogDataList:
         """
         Summarize all given log files.
 
@@ -593,7 +552,7 @@ class HTCAnalyze:
         for file in track(log_files, transient=True,
                           description="Summarizing..."):
             try:
-                job_dict, res_dict, time_dict, _, _ = self.log_to_dict(file)
+                job_dict, resource_list, time_dict, _, _ = self.log_to_dict(file)
 
                 # continue if Process is still running
                 if job_dict['Execution details'][0].__eq__("Process is"):
@@ -622,9 +581,12 @@ class HTCAnalyze:
                 else:
                     host_nodes[host] = [1, time_dict['Values'][3]]
 
-                total_usages += np.nan_to_num(res_dict["Usage"])
-                total_requested += np.nan_to_num(res_dict["Requested"])
-                total_allocated += np.nan_to_num(res_dict["Allocated"])
+                total_usages += np.nan_to_num(
+                    [res.usage for res in resource_list])
+                total_requested += np.nan_to_num(
+                    [res.requested for res in resource_list])
+                total_allocated += np.nan_to_num(
+                    [res.allocated for res in resource_list])
 
             # Error ocurres when Job was aborted
             except ValueError or KeyError as err:
