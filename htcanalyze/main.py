@@ -24,7 +24,7 @@ from datetime import datetime as date_time
 
 # own classes
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
-from htcanalyze.resource import refactor_to_dict
+from htcanalyze.resource import convert_res_to_dict
 from htcanalyze.logvalidator import LogValidator
 
 # typing identities
@@ -500,7 +500,10 @@ def print_results(htcanalyze: HTCAnalyze,
                        extend=filter_extended,
                        mode=mode)
     elif mode.__eq__("analyzed-summary"):
-        results = htcanalyze.analyzed_summary(log_files)  # analyzed summary
+        if len(log_files) == 1:
+            results = htcanalyze.analyze(log_files)  # analyze single file
+        else:
+            results = htcanalyze.analyzed_summary(log_files)
     elif mode.__eq__("summarize"):
         results = htcanalyze.summarize(log_files)  # summarize information
     elif mode.__eq__("analyze"):
@@ -515,12 +518,11 @@ def print_results(htcanalyze: HTCAnalyze,
     # Allow this to happen
     if results is None:
         sys.exit(0)
-    # convert result to list, if given as dict, else copy
-    processed_data_list = [results] if isinstance(results, dict)\
-        else results[:]
+    # convert result to processed data list, if given as dict, else copy
+    proc_data_list = [results] if isinstance(results, dict) else results[:]
 
     # check for ignore values
-    for data_dict in processed_data_list:
+    for data_dict in proc_data_list:
 
         for key in data_dict:
             if data_dict[key] is None:
@@ -551,7 +553,9 @@ def print_results(htcanalyze: HTCAnalyze,
                 del data_dict["all-resources"]
             else:
                 resource_list = data_dict["all-resources"]
-                res_dict = refactor_to_dict(resource_list)
+                for resource in resource_list:
+                    resource.chg_lvl_on_threholds(0.25, 0.1)
+                res_dict = convert_res_to_dict(resource_list)
                 if "used-resources" in ignore_list:
                     del res_dict["Usage"]
                 if "requested-resources" in ignore_list:
