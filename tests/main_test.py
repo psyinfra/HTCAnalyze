@@ -1,7 +1,5 @@
 
-import sys
 import pytest
-import io
 from htcanalyze import main as ht
 
 
@@ -19,40 +17,7 @@ class PseudoTTY(object):
         return self.__isset
 
 
-def test_check_for_redirection():
-
-    # sys.stdin = io.StringIO('file1 file2')
-    # sys.stdin.__setattr__('isatty()', True)
-    # setattr(sys.stdin, 'isatty', True)
-
-    # test all cases of different redirection combinations
-    sys.stdin = PseudoTTY(sys.stdin, True)
-    sys.stdout = PseudoTTY(sys.stdout, True)
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is False \
-           and ht.GlobalServant.redirecting_stdout is False
-
-    sys.stdin = io.StringIO('Some file')
-    sys.stdout = PseudoTTY(sys.stdout, True)
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is True \
-           and ht.GlobalServant.redirecting_stdout is False
-
-    sys.stdin = PseudoTTY(sys.stdin, True)
-    sys.stdout = PseudoTTY(sys.stdout, False)
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is False \
-           and ht.GlobalServant.redirecting_stdout is True
-
-    sys.stdin = io.StringIO('Some file')
-    sys.stdout = PseudoTTY(sys.stdout, False)
-    ht.GlobalServant.check_for_redirection()
-    assert ht.GlobalServant.reading_stdin is True \
-           and ht.GlobalServant.redirecting_stdout is True
-
-
 def test_manage_params():
-    ht.GlobalServant.reset()
 
     args = "--version".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:

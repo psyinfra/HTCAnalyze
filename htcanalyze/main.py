@@ -11,26 +11,24 @@ Exit Codes:
     Keyboard interruption: 4
 """
 
-import datetime
 import argparse
 import logging
 import sys
-from logging.handlers import RotatingFileHandler
-
-from typing import List
-
 import configargparse
 
-from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
-from htcanalyze.logvalidator import LogValidator
+from logging.handlers import RotatingFileHandler
+from typing import List
 from rich import print as rprint, box
 from rich.progress import Table
+from datetime import datetime as date_time
+
+# own classes
+from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
+from htcanalyze.logvalidator import LogValidator
 
 # typing identities
-log_inf_list = List[dict]
-list_of_logs = List[str]
-date_time = datetime.datetime
-timedelta = datetime.timedelta
+LogDescriptionList = List[dict]
+LogList = List[str]
 
 # global variables
 ALLOWED_MODES = {"a": "analyze",
@@ -42,43 +40,6 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "used-resources", "requested-resources",
                          "allocated-resources", "all-resources",
                          "errors", "ram-history"]
-
-
-# class to store and change global variables
-class GlobalPlayer(object):
-    """handle global variables."""
-
-    def __init__(self):
-        """initialize."""
-        self.redirecting_stdout = None
-        self.reading_stdin = None
-        self.stdin_input = None
-
-    def reset(self):
-        """reset variables."""
-        self.redirecting_stdout = None
-        self.reading_stdin = None
-        self.stdin_input = None
-
-    def check_for_redirection(self):
-        """
-        Check if reading from stdin or redirecting stdout.
-
-        It changes the global variables of GlobalServant,
-        if stdin or stdout is set
-
-        :return:
-        """
-        self.redirecting_stdout = not sys.stdout.isatty()
-        self.reading_stdin = not sys.stdin.isatty()
-
-        if self.reading_stdin:
-            self.stdin_input = sys.stdin.readlines()
-
-
-###############################
-GlobalServant = GlobalPlayer()
-###############################
 
 
 def setup_logging_tool(log_file=None, verbose_mode=False):
@@ -151,23 +112,23 @@ class CustomFormatter(argparse.HelpFormatter):
         if not action.option_strings:
             metavar, = self._metavar_formatter(action, action.dest)(1)
             return metavar
+
+        parts = []
+        # if the Optional doesn't take a value, format is:
+        #    -s, --long
+        if action.nargs == 0:
+            parts.extend(action.option_strings)
+        # if the Optional takes a value, format is:
+        #    -s ARGS, --long ARGS
         else:
-            parts = []
-            # if the Optional doesn't take a value, format is:
-            #    -s, --long
-            if action.nargs == 0:
-                parts.extend(action.option_strings)
-            # if the Optional takes a value, format is:
-            #    -s ARGS, --long ARGS
-            else:
-                default = action.dest.upper()
-                args_string = self._format_args(action, default)
-                for option_string in action.option_strings:
-                    parts.append('%s %s' % (option_string, args_string))
-            if sum(len(s) for s in parts) < self._width - (len(parts) - 1) * 2:
-                return ', '.join(parts)
-            else:
-                return ',\n  '.join(parts)
+            default = action.dest.upper()
+            args_string = self._format_args(action, default)
+            for option_string in action.option_strings:
+                parts.append('%s %s' % (option_string, args_string))
+        if sum(len(s) for s in parts) < self._width - (len(parts) - 1) * 2:
+            return ', '.join(parts)
+        else:
+            return ',\n  '.join(parts)
 
 
 def setup_prioritized_parser():
@@ -203,7 +164,8 @@ def setup_commandline_parser(default_config_files=[])\
     """
     parser = configargparse.\
         ArgumentParser(formatter_class=CustomFormatter,
-                       default_config_files=default_config_files)
+                       default_config_files=default_config_files,
+                       description="Analyze or summarize HTCondor-Joblogs")
 
     parser.add_argument("path",
                         nargs="*",
@@ -357,11 +319,6 @@ def manage_params(args: list) -> dict:
     :param args: list of args
     :return: dict with params
     """
-    # listen to stdin and add these files
-    if GlobalServant.reading_stdin:
-        logging.debug("Listening to arguments from stdin")
-        for line in GlobalServant.stdin_input:
-            args.extend(line.rstrip('\n').split(" "))
 
     prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
     # first of all check for prioritised/exit params
@@ -507,32 +464,25 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
                   show_header=True,
                   header_style="bold magenta",
                   box=box.ASCII)
-    n_vals = 0
+    n_vals = len(next(iter(table_dict.values())))  # get len of first value
     for val in table_dict.keys():
         table.add_column(val)
-        if n_vals == 0:
-            n_vals = len(table_dict[val])
-        # Todo: could be reduce to one call
     for i in range(n_vals):
-        new_list = list()
-        # get the values from each column, convert to str
-        for val in table_dict:
-            new_list.append(str(table_dict[val][i]))
+        new_list = [str(table_dict[val][i]) for val in table_dict]
         table.add_row(*new_list)
 
-    # rprint(table)
     return table
 
 
 def print_results(htcanalyze: HTCAnalyze,
-                  log_files: list_of_logs,
+                  log_files: LogList,
                   mode: str,
                   ignore_list=list,
                   filter_keywords=list,
                   filter_extended=False,
                   **kwargs) -> str:
     """
-    Create the ouput specified by the mode.
+    Create the output specified by the mode.
 
     :param log_files:
     :param mode:
@@ -542,7 +492,6 @@ def print_results(htcanalyze: HTCAnalyze,
     :param kwargs:
     :return:
     """
-
     if filter_keywords:
         results = htcanalyze.\
             filter_for(log_files,
@@ -565,83 +514,94 @@ def print_results(htcanalyze: HTCAnalyze,
     # Allow this to happen
     if results is None:
         sys.exit(0)
-
-    work_with = results
-    # convert result to list, if given as dict
-    if isinstance(results, dict):
-        work_with = [results]
+    # convert result to list, if given as dict, else copy
+    processed_data_list = [results] if isinstance(results, dict)\
+        else results[:]
 
     # check for ignore values
-    for mystery in work_with:
+    for data_dict in processed_data_list:
 
-        for i in mystery:
-            if mystery[i] is None:
-                logging.debug(f"This musst be fixed, mystery['{i}'] is None.")
+        for key in data_dict:
+            if data_dict[key] is None:
+                logging.debug(f"This musst be fixed, "
+                              f"data_dict['{key}'] is None.")
                 rprint("[red]NoneType object found, "
                        "this should not happen[/red]")
 
-        if "description" in mystery:
-            rprint(mystery["description"])
+        if "description" in data_dict:
+            rprint(data_dict["description"])
 
-        if "execution-details" in mystery:
+        if "execution-details" in data_dict:
             if "execution-details" in ignore_list:
-                del mystery["execution-details"]
-            elif mystery["execution-details"]:
-                table = wrap_dict_to_table(mystery["execution-details"])
+                del data_dict["execution-details"]
+            elif data_dict["execution-details"]:
+                table = wrap_dict_to_table(data_dict["execution-details"])
                 rprint(table)
 
-        if "times" in mystery:
+        if "times" in data_dict:
             if "times" in ignore_list:
-                del mystery["times"]
-            elif mystery["times"]:
-                table = wrap_dict_to_table(mystery["times"])
+                del data_dict["times"]
+            elif data_dict["times"]:
+                table = wrap_dict_to_table(data_dict["times"])
                 rprint(table)
 
-        if "all-resources" in mystery:
+        if "all-resources" in data_dict:
             if "all-resources" in ignore_list:
-                del mystery["all-resources"]
+                del data_dict["all-resources"]
             else:
                 if "used-resources" in ignore_list:
-                    del mystery["all-resources"]["Usage"]
+                    del data_dict["all-resources"]["Usage"]
                 if "requested-resources" in ignore_list:
-                    del mystery["all-resources"]["Requested"]
+                    del data_dict["all-resources"]["Requested"]
                 if "allocated-resources" in ignore_list:
-                    del mystery["all-resources"]["Allocated"]
+                    del data_dict["all-resources"]["Allocated"]
 
-                table = wrap_dict_to_table(mystery["all-resources"])
+                table = wrap_dict_to_table(data_dict["all-resources"])
                 rprint(table)
 
-        if "ram-history" in mystery:
+        if "ram-history" in data_dict:
             if "ram-history" in ignore_list:
-                del mystery["ram-history"]
-            elif mystery["ram-history"] is not None:
-                print(mystery["ram-history"])
+                del data_dict["ram-history"]
+            elif data_dict["ram-history"] is not None:
+                print(data_dict["ram-history"])
 
-        if "errors" in mystery:
+        if "errors" in data_dict:
             if "errors" in ignore_list:
-                del mystery["errors"]
-            elif mystery["errors"] is not None:
-                table = wrap_dict_to_table(mystery["errors"],
+                del data_dict["errors"]
+            elif data_dict["errors"] is not None:
+                table = wrap_dict_to_table(data_dict["errors"],
                                            "Occurred HTCondor errors")
                 rprint(table)
 
-        if "host-nodes" in mystery:
+        if "host-nodes" in data_dict:
             if "host-nodes" in ignore_list:
-                del mystery["host-nodes"]
-            elif mystery["host-nodes"] is not None:
-                table = wrap_dict_to_table(mystery["host-nodes"])
+                del data_dict["host-nodes"]
+            elif data_dict["host-nodes"] is not None:
+                table = wrap_dict_to_table(data_dict["host-nodes"])
                 rprint(table)
 
         # Show more section
-        if "htc-out" in mystery and mystery["htc-out"] != "":
+        if "htc-out" in data_dict and data_dict["htc-out"] != "":
             rprint("\n[bold cyan]Related HTC standard output:[/bold cyan]")
-            rprint(mystery["htc-out"])
+            rprint(data_dict["htc-out"])
 
-        if "htc-err" in mystery and mystery["htc-err"] != "":
+        if "htc-err" in data_dict and data_dict["htc-err"] != "":
             rprint("\n[bold cyan]Related HTCondor standard error:[/bold cyan]")
-            rprint(mystery["htc-err"])
+            rprint(data_dict["htc-err"])
 
         print()
+
+
+def check_for_redirection() -> (bool, bool, list):
+    """Check if reading from stdin or redirecting stdout."""
+    redirecting_stdout = not sys.stdout.isatty()
+    reading_stdin = not sys.stdin.isatty()
+    stdin_input = None
+
+    if reading_stdin:
+        stdin_input = sys.stdin.readlines()
+
+    return redirecting_stdout, reading_stdin, stdin_input
 
 
 def run(commandline_args):
@@ -651,18 +611,19 @@ def run(commandline_args):
     :param commandline_args: list of args
     :return:
     """
-    # before running make sure Global Parameters are set to default
-    GlobalServant.reset()
 
     if not isinstance(commandline_args, list):
         commandline_args = commandline_args.split()
 
     try:
-        start = date_time.now()  # start date for runtime
+        start = date_time.now()
 
-        GlobalServant.check_for_redirection()
-        # if exit parameters are given that will interrupt this script,
-        # catch them here so the config won't be unnecessary loaded
+        redirecting_stdout, reading_stdin, std_input = check_for_redirection()
+
+        if reading_stdin and std_input is not None:
+            for line in std_input:
+                commandline_args.extend(line.rstrip('\n').split(" "))
+
         param_dict = manage_params(commandline_args)
 
         setup_logging_tool(param_dict["generate_log_file"],
@@ -670,7 +631,8 @@ def run(commandline_args):
 
         logging.debug("-------Start of htcanalyze script-------")
 
-        show_legend = not GlobalServant.redirecting_stdout  # redirected ?
+        # do not show legend, if output is redirected
+        show_legend = not redirecting_stdout
         htcanalyze = HTCAnalyze(
             ext_log=param_dict["ext_log"],
             ext_out=param_dict["ext_out"],
@@ -685,9 +647,9 @@ def run(commandline_args):
         if param_dict["verbose"]:
             logging.info('Verbose mode turned on')
 
-        if GlobalServant.reading_stdin:
+        if reading_stdin:
             logging.debug("Reading from stdin")
-        if GlobalServant.redirecting_stdout:
+        if redirecting_stdout:
             logging.debug("Output is getting redirected")
 
         validator = LogValidator(ext_log=param_dict["ext_log"],
@@ -706,7 +668,7 @@ def run(commandline_args):
 
         print_results(htcanalyze, log_files=valid_files, **param_dict)
 
-        end = date_time.now()  # end date for runtime
+        end = date_time.now()
 
         logging.debug(f"Runtime: {end - start}")  # runtime of this script
 

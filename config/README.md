@@ -84,8 +84,7 @@ Else if you just run the script by just:
 ```
 htcanalyze
 ```
-This will search for the config_file with the priorities from 1 (high) to 4 (low)
-if NOT --no-config Flag is set:
+If the --no-config Flag is NOT set, this will search following locations for the config_file with the priorities from 1 (high) to 4 (low):
 
 1.  environment_dir/config/htcanalyze.conf (virtual environment)
 2.  ~/.config/htcanalyze/htcanalyze.conf
@@ -125,7 +124,7 @@ mode = summarize
 ```
 </details>
 
-You could summarize *log_file1* and every log_file, that's found inside *log_directory1* just by:
+You could summarize or analyze *log_file1* and every log_file, that's found inside *log_directory1* just by:
 ```
 htcanalyze -c htcanalyze_setup.conf
 ```

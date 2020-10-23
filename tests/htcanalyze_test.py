@@ -22,8 +22,7 @@ def test_gen_time_dict():
 
     # test all None
     time_dict = gen_time_dict()
-    assert time_dict['Dates and times'] == []
-    assert time_dict['Values'] == []
+    assert time_dict is None
 
     # test only submission date given
     waiting_time = today - sub_date
