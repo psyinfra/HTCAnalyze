@@ -3,6 +3,7 @@ import datetime
 import pytest
 import numpy as np
 from htcanalyze.htcanalyze import HTCAnalyze, gen_time_dict, sort_dict_by_col
+from htcanalyze.resource import Resource
 
 
 def test_gen_time_dict():
@@ -160,25 +161,6 @@ def test_HTCAnalyze_init(htcan):
     assert htcan.bad_usage == 0.25
 
 
-def test_manage_thresholds(htcan):
-    htcan.tolerated_usage = 0.1
-    htcan.bad_usage = 0.25
-    res_dict = {
-        "Resources": ["Cpu", "Disk", "Memory"],
-        "Usage": [0.23, 3000, 4051],
-        "Requested": [1, 2700, 4500],
-        "Allocated": [1, 6000, 6000]
-    }
-    expected_dict = {'Resources': ['Cpu', 'Disk', 'Memory'],
-                     'Usage': ['[red]0.23[/red]',
-                               '[yellow]3000[/yellow]',
-                               '[green]4051[/green]'],
-                     'Requested': [1, 2700, 4500],
-                     'Allocated': [1, 6000, 6000]}
-    managed_res = htcan.manage_thresholds(res_dict)
-    assert managed_res == expected_dict
-
-
 def test_log_to_dict(htcan):
     """Tests the log_to_dict function of HTCAnalyze class.
 
@@ -191,7 +173,7 @@ def test_log_to_dict(htcan):
     :return:
     """
     file = "tests/test_logs/valid_logs/normal_log.log"
-    job_events_dict, res_dict, time_dict, \
+    job_events_dict, resource_list, time_dict, \
         ram_history_dict, error_dict = htcan.log_to_dict(file)
 
     assert job_events_dict == {
@@ -204,15 +186,20 @@ def test_log_to_dict(htcan):
                    '10.0.9.201',
                    1]}
 
-    assert list(res_dict.keys()) == [
-        "Resources", "Usage", "Requested", "Allocated"]
-    assert res_dict['Resources'] == ["Cpu", "Disk", "Memory"]
-    assert np.array_equal(res_dict['Usage'],
-                          [1.10e-01, 4.00e+00, 9.22e+02]) is True
-    assert np.array_equal(res_dict['Requested'],
-                          [1.000000e+00, 2.020096e+07, 2.048000e+04]) is True
-    assert np.array_equal(res_dict['Allocated'],
-                          [1.0000e+00, 2.2312484e+07, 2.0480000e+04]) is True
+    assert resource_list[0].name == "Cpu"
+    assert resource_list[0].usage == 0.11
+    assert resource_list[0].requested == 1
+    assert resource_list[0].allocated == 1
+
+    assert resource_list[1].name == "Disk (KB)"
+    assert resource_list[1].usage == 4
+    assert resource_list[1].requested == 20200960
+    assert resource_list[1].allocated == 22312484
+
+    assert resource_list[2].name == "Memory (MB)"
+    assert resource_list[2].usage == 922
+    assert resource_list[2].requested == 20480
+    assert resource_list[2].allocated == 20480
 
     assert time_dict == {
         'Dates and times': ['Submission date',
@@ -245,7 +232,7 @@ def test_log_to_dict(htcan):
         'Execution details': ['Process was', 'Submitted from', 'Executing on'],
         'Values': ['[red]Aborted[/red]', '10.0.8.10', '10.0.9.1']}
 
-    assert res_dict == {}
+    assert res_dict == []
 
     assert time_dict == {
         'Dates and times': ['Submission date',
