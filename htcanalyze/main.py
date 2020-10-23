@@ -320,7 +320,6 @@ def manage_params(args: list) -> dict:
     :param args: list of args
     :return: dict with params
     """
-
     prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
     # first of all check for prioritised/exit params
     if prio_parsed.version:
@@ -618,7 +617,6 @@ def run(commandline_args):
     :param commandline_args: list of args
     :return:
     """
-
     if not isinstance(commandline_args, list):
         commandline_args = commandline_args.split()
 

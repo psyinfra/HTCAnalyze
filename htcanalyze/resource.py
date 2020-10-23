@@ -1,4 +1,4 @@
-"""Class to define HTCondor Joblog resources"""
+"""Class to define HTCondor Joblog resources."""
 
 from typing import List
 from numpy import nan_to_num as ntn
@@ -6,9 +6,12 @@ from numpy import nan_to_num as ntn
 
 class Resource:
     """
-    Class of one single resource.
+    Class of one single HTCondor-JobLog resource.
 
+    One file contains usually multiple resources,
+    so that nested lists represent a collection of job resources
     """
+
     level_colors = {'error': 'red', 'warning': 'yellow',
                     'light_warning': 'yellow2', 'normal': 'green'}
 
@@ -27,7 +30,7 @@ class Resource:
         self.warning_level = warning_level
 
     def get_color(self) -> str:
-        """Convert an alert level to an appropriate color"""
+        """Convert an alert level to an appropriate color."""
         return self.level_colors.get(self.warning_level, "default")
 
     def resource_to_dict(self) -> dict:
@@ -36,6 +39,7 @@ class Resource:
                 if not k == "level_colors"}
 
     def __repr__(self):
+        """Own style of representing this class."""
         return f"({self.name}, " \
             f"{self.usage}, " \
             f"{self.requested}, " \
