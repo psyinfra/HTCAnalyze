@@ -18,8 +18,8 @@ from typing import List
 from htcanalyze.resource import Resource, create_avg_on_resources
 
 # typing identities
-log_inf_list = List[dict]
-list_of_logs = List[str]
+LogDataList = List[dict]
+LogList = List[str]
 
 
 class HTCAnalyze:
@@ -847,7 +847,7 @@ class HTCAnalyze:
             # Error ocurres when Job was aborted
             except ValueError or KeyError as err:
                 logging.exception(err)
-                logging.debug(f"[red]Error with summarizing: {file}[/red]")
+                logging.debug(f"Error with summarizing: {file}")
                 rprint(f"[red]Error with summarizing: {file}[/red]")
                 continue
             except TypeError as err:
