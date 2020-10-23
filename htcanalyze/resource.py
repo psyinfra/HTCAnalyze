@@ -1,7 +1,7 @@
 """Class to define HTCondor Joblog resources"""
 
-from rich import print as rprint
 from typing import List
+from numpy import nan_to_num as ntn
 
 
 class Resource:
@@ -28,7 +28,7 @@ class Resource:
 
     def get_color(self) -> str:
         """Convert an alert level to an appropriate color"""
-        return self.level_colors.get(self.warning_level, "")
+        return self.level_colors.get(self.warning_level, "default")
 
     def resource_to_dict(self) -> dict:
         """Return this class as a dict."""
@@ -73,32 +73,43 @@ def create_avg_on_resources(
         job_resource_list: List[List[Resource]]
 ) -> List[Resource]:
     """
-    Create a new List of Resources in Average
+    Create a new List of Resources in Average.
+
     :param job_resource_list: list(list(Resource))
     :return: list(Resource)
     """
+    n_jobs = len(job_resource_list)
     res_cache = dict()
 
+    # calc total
     for job_resources in job_resource_list:
         for resource in job_resources:
             # add resource
             if res_cache.get(resource.name):
-                res_cache[resource.name].usage += resource.usage
-                res_cache[resource.name].requested += resource.requested
-                res_cache[resource.name].allocated += resource.allocated
+                res_cache[resource.name].usage += ntn(resource.usage)
+                res_cache[resource.name].requested += ntn(resource.requested)
+                res_cache[resource.name].allocated += ntn(resource.allocated)
             # create first entry
             else:
                 res_cache[resource.name] = Resource(resource.name,
-                                                    resource.usage,
-                                                    resource.requested,
-                                                    resource.allocated)
+                                                    ntn(resource.usage),
+                                                    ntn(resource.requested),
+                                                    ntn(resource.allocated))
 
-    print(res_cache)
-    return list(res_cache.values())
+    avg_res_list = list(res_cache.values())
+
+    # calc avg
+    for resource in avg_res_list:
+        resource.name = "Average " + resource.name
+        resource.usage = round(resource.usage / n_jobs, 3)
+        resource.requested = round(resource.requested / n_jobs, 2)
+        resource.allocated = round(resource.allocated / n_jobs, 2)
+
+    return avg_res_list
 
 
 def refactor_resources(resources: dict) -> List[Resource]:
-    """Convert a dict of lists to a list of Resource objects"""
+    """Convert a dict of lists to a list of Resource objects."""
     resources = {k.lower(): v for k, v in resources.items()}
     resources["name"] = resources.pop("resources")
     resources = [dict(zip(resources, v)) for v in zip(*resources.values())]
@@ -106,7 +117,8 @@ def refactor_resources(resources: dict) -> List[Resource]:
     return resources
 
 
-def refactor_to_dict(resources: List[Resource]) -> dict:
+def convert_res_to_dict(resources: List[Resource]) -> dict:
+    """Convert a list of Resource back to this dict scheme."""
     res_dict = {
         "Resources": [res.name for res in resources],
         "Usage": [f"[{res.get_color()}]{res.usage}[/{res.get_color()}]"
