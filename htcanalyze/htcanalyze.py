@@ -17,10 +17,6 @@ from typing import List
 # import own class
 from htcanalyze.resource import Resource, create_avg_on_resources
 
-# typing identities
-LogDataList = List[dict]
-LogList = List[str]
-
 
 class HTCAnalyze:
     """
@@ -178,7 +174,7 @@ class HTCAnalyze:
         Consider that the return values can be None or empty dictionarys
         """
         job_events = list()
-        resource_list = list()
+        resources = list()
         time_dict = {
             "Submission date": None,
             "Execution date": None,
@@ -291,19 +287,19 @@ class HTCAnalyze:
                 memory_requested = event.get('RequestMemory', np.nan)
                 memory_allocated = event.get('Memory', np.nan)
 
-                # create list with resoucres
-                resource_list = [Resource("Cpu",
-                                          cpu_usage,
-                                          cpu_requested,
-                                          cpu_allocated),
-                                 Resource("Disk (KB)",
-                                          disk_usage,
-                                          disk_requested,
-                                          disk_allocated),
-                                 Resource("Memory (MB)",
-                                          memory_usage,
-                                          memory_requested,
-                                          memory_allocated)]
+                # create list with resources
+                resources = [Resource("Cpu",
+                                      cpu_usage,
+                                      cpu_requested,
+                                      cpu_allocated),
+                             Resource("Disk (KB)",
+                                      disk_usage,
+                                      disk_requested,
+                                      disk_allocated),
+                             Resource("Memory (MB)",
+                                      memory_usage,
+                                      memory_requested,
+                                      memory_allocated)]
 
                 normal_termination = event.get('TerminatedNormally')
                 # differentiate between normal and abnormal termination
@@ -397,7 +393,7 @@ class HTCAnalyze:
             }
 
         return (job_events_dict,
-                resource_list,
+                resources,
                 better_time_dict,
                 ram_history_dict,
                 error_dict)
@@ -428,7 +424,7 @@ class HTCAnalyze:
                 self.rdns_cache[ip] = ip
                 return ip
 
-    def analyze(self, log_files: LogList) -> LogDataList:
+    def analyze(self, log_files: List[str]) -> List[dict]:
         """
         Analyze the given log files one by one.
 
@@ -513,7 +509,7 @@ class HTCAnalyze:
 
         return result_list
 
-    def summarize(self, log_files: LogList) -> LogDataList:
+    def summarize(self, log_files: List[str]) -> List[dict]:
         """
         Summarize all given log files.
 
@@ -545,7 +541,7 @@ class HTCAnalyze:
         for file in track(log_files, transient=True,
                           description="Summarizing..."):
             try:
-                (job_dict, resource_list,
+                (job_dict, job_resources,
                  time_dict, _, _) = self.log_to_dict(file)
 
                 # continue if Process is still running
@@ -558,9 +554,14 @@ class HTCAnalyze:
                 elif job_dict['Execution details'][0].__eq__("Error"):
                     error_reading_files += 1
                     continue
+                elif not job_resources:
+                    logging.error("Expected but not found resources")
+                    rprint(f"[orange3]Expected but not found "
+                           f"resources in {file}[/orange3]")
+                    other_exception += 1
+                    continue
                 elif not job_dict:
-                    logging.error(
-                        "if this even get's printed out, more work is needed")
+                    logging.error("More work is needed developer")
                     rprint(f"[orange3]Process of {file} is strange,\n"
                            f"don't know how to handle this yet[/orange3]")
                     other_exception += 1
@@ -575,7 +576,7 @@ class HTCAnalyze:
                 else:
                     host_nodes[host] = [1, time_dict['Values'][3]]
 
-                job_resource_list.append(resource_list)
+                job_resource_list.append(job_resources)
 
             # Error ocurres when Job was aborted
             except ValueError or KeyError as err:
@@ -589,8 +590,8 @@ class HTCAnalyze:
 
         # number of jobs with associated resources,
         # only jobs with normal or abnormal termination state
-        n_associated_res = (len(log_files) - aborted_files - still_running
-                            - other_exception - error_reading_files)
+        n_associated_res = (len(log_files) - aborted_files - still_running -
+                            other_exception - error_reading_files)
 
         average_runtime = normal_runtime / n_associated_res \
             if n_associated_res != 0 else normal_runtime
@@ -678,7 +679,7 @@ class HTCAnalyze:
 
         return [result_dict]
 
-    def analyzed_summary(self, log_files: LogList) -> LogDataList:
+    def analyzed_summary(self, log_files: List[str]) -> List[dict]:
         """
         Summarize log files and analyze the results.
 
@@ -711,7 +712,7 @@ class HTCAnalyze:
         for file in track(log_files, transient=True,
                           description="Summarizing..."):
 
-            (job_dict, resource_list, time_dict,
+            (job_dict, job_resources, time_dict,
              ram_history, occurred_errors) = self.log_to_dict(file)
 
             if occurred_errors:
@@ -725,7 +726,7 @@ class HTCAnalyze:
             if "Executing on" in job_keys:
                 to_host = refactor_job_dict["Executing on"]
 
-            term_type = job_dict["Values"][0]
+            cur_state = job_dict["Values"][0]  # current state
 
             # if time dict exists
             time_keys = list()
@@ -744,75 +745,75 @@ class HTCAnalyze:
                 total_time = refactor_time_dict["Total runtime"]
 
             try:
-                if term_type in all_files:
+                if cur_state in all_files:
                     # logging.debug(all_files[termination_type])
-                    all_files[term_type][0] += 1  # count number
-                    all_files[term_type][1] += waiting_time
-                    all_files[term_type][2] += runtime
-                    all_files[term_type][3] += total_time
+                    all_files[cur_state][0] += 1  # count number
+                    all_files[cur_state][1] += waiting_time
+                    all_files[cur_state][2] += runtime
+                    all_files[cur_state][3] += total_time
 
                     # add errors
                     if occurred_errors:
                         for key in occurred_errors.keys():
                             # extend if already existent
-                            if key in all_files[term_type][6].keys():
-                                all_files[term_type][6][key].extend(
+                            if key in all_files[cur_state][6].keys():
+                                all_files[cur_state][6][key].extend(
                                     occurred_errors[key])
                             else:
-                                all_files[term_type][6] = occurred_errors
+                                all_files[cur_state][6] = occurred_errors
 
                     # resources not empty
-                    if all_files[term_type][4] and resource_list:
-                        all_files[term_type][4].append(resource_list)
-                    elif all_files[term_type][4]:
-                        rprint(f"[yellow]{term_type}: "
+                    if all_files[cur_state][4] and job_resources:
+                        all_files[cur_state][4].append(job_resources)
+                    elif all_files[cur_state][4]:
+                        rprint(f"[yellow]{cur_state}: "
                                f"has no resources[/yellow]")
 
                     # add cpu
                     if to_host is not None:
                         # cpu known ???
-                        if to_host in all_files[term_type][5].keys():
-                            all_files[term_type][5][to_host][0] += 1
-                            all_files[term_type][5][to_host][
+                        if to_host in all_files[cur_state][5].keys():
+                            all_files[cur_state][5][to_host][0] += 1
+                            all_files[cur_state][5][to_host][
                                 1] += total_time
                         else:
-                            all_files[term_type][5][to_host] = [1, total_time]
+                            all_files[cur_state][5][to_host] = [1, total_time]
                     elif "Submitted from" in job_dict["Execution details"]:
                         # other waiting jobs ???
                         if 'Waiting for execution' in \
-                                all_files[term_type][5].keys():
-                            all_files[term_type][5][
+                                all_files[cur_state][5].keys():
+                            all_files[cur_state][5][
                                 'Waiting for execution'][0] += 1
-                            all_files[term_type][5][
+                            all_files[cur_state][5][
                                 'Waiting for execution'][1] += total_time
                         elif "Aborted before execution" in \
-                                all_files[term_type][5].keys():
-                            all_files[term_type][5][
+                                all_files[cur_state][5].keys():
+                            all_files[cur_state][5][
                                 'Aborted before execution'][0] += 1
-                            all_files[term_type][5][
+                            all_files[cur_state][5][
                                 'Aborted before execution'][1] += total_time
                         else:
                             n_host_nodes = dict()
-                            if "Aborted" in term_type:
+                            if "Aborted" in cur_state:
                                 n_host_nodes['Aborted before'
                                              ' execution'] = [1, total_time]
                             else:
                                 n_host_nodes['Waiting for'
                                              ' execution'] = [1, total_time]
-                            all_files[term_type][5] = n_host_nodes
+                            all_files[cur_state][5] = n_host_nodes
                     else:
                         # other aborted before submission jobs ???
                         if 'Aborted before submission' in \
-                                all_files[term_type][5].keys():
-                            all_files[term_type][5][
+                                all_files[cur_state][5].keys():
+                            all_files[cur_state][5][
                                 'Aborted before submission'][0] += 1
-                            all_files[term_type][5][
+                            all_files[cur_state][5][
                                 'Aborted before submission'][1] += total_time
                         else:
                             n_host_nodes = dict()
                             n_host_nodes['Aborted before '
                                          'submission'] = [1, total_time]
-                            all_files[term_type][5] = n_host_nodes
+                            all_files[cur_state][5] = n_host_nodes
 
                 # else new entry
                 else:
@@ -824,7 +825,7 @@ class HTCAnalyze:
                     # else if still waiting
                     elif "Submitted from" in job_dict["Execution details"]:
                         n_host_nodes = dict()
-                        if "Aborted" in term_type:
+                        if "Aborted" in cur_state:
                             n_host_nodes['Aborted before'
                                          ' execution'] = [1, total_time]
                         else:
@@ -836,11 +837,11 @@ class HTCAnalyze:
                         n_host_nodes['Aborted before'
                                      ' submission'] = [1, total_time]
 
-                    all_files[term_type] = [1,
+                    all_files[cur_state] = [1,
                                             waiting_time,
                                             runtime,
                                             total_time,
-                                            [resource_list],
+                                            [job_resources],
                                             n_host_nodes,
                                             occurred_errors]
 
@@ -858,30 +859,30 @@ class HTCAnalyze:
 
         # Now put everything together
         result_list = list()
-        for term_state in all_files:
-            term_info = all_files[term_state]
+        for cur_state in all_files:
+            term_info = all_files[cur_state]
             result_dict = dict()
 
             # differentiate between terminated and running processes
-            if "Error while reading" in term_state:
+            if "Error while reading" in cur_state:
                 result_dict["description"] = "" \
                      "##################################################\n" \
                      "## All files, that caused an [red]" \
                      "error while reading[/red]\n" \
                      "##################################################"
-            elif term_state not in ["Waiting", "Executing"]:
+            elif cur_state not in ["Waiting", "Executing"]:
                 result_dict["description"] = f"" \
                     f"##################################################\n" \
-                    f"## All files with the termination state: {term_state}\n"\
+                    f"## All files with the termination state: {cur_state}\n"\
                     f"##################################################"
             else:
                 result_dict["description"] = f"" \
                     f"###########################################\n" \
-                    f"## All files, that are currently {term_state}\n" \
+                    f"## All files, that are currently {cur_state}\n" \
                     f"###########################################"
 
             n = int(term_info[0])
-            occurrence_dict[term_state] = str(n)
+            occurrence_dict[cur_state] = str(n)
 
             times = np.array([term_info[1], term_info[2], term_info[3]])
             av_times = times / n
@@ -898,8 +899,8 @@ class HTCAnalyze:
             result_dict["times"] = time_dict
 
             if term_info[4]:
-                avg_resource_list = create_avg_on_resources(term_info[4])
-                result_dict["all-resources"] = avg_resource_list
+                avg_resources = create_avg_on_resources(term_info[4])
+                result_dict["all-resources"] = avg_resources
 
             executed_jobs = list()
             runtime_per_node = list()
@@ -937,11 +938,11 @@ class HTCAnalyze:
         return result_list
 
     def filter_for(self,
-                   log_files: LogList,
+                   log_files: List[str],
                    keywords: list,
                    extend=False,
                    mode=None
-                   ) -> LogDataList:
+                   ) -> List[dict]:
         """
         Filter for given keywords.
 
