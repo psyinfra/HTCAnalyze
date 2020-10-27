@@ -288,7 +288,7 @@ class HTCAnalyze:
                 memory_allocated = event.get('Memory', np.nan)
 
                 # create list with resources
-                resources = [Resource("Cpu",
+                resources = [Resource("CPU",
                                       cpu_usage,
                                       cpu_requested,
                                       cpu_allocated),
