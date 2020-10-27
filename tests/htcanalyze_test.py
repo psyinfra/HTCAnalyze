@@ -1,9 +1,7 @@
 
 import datetime
 import pytest
-import numpy as np
 from htcanalyze.htcanalyze import HTCAnalyze, gen_time_dict, sort_dict_by_col
-from htcanalyze.resource import Resource
 
 
 def test_gen_time_dict():
@@ -173,7 +171,7 @@ def test_log_to_dict(htcan):
     :return:
     """
     file = "tests/test_logs/valid_logs/normal_log.log"
-    job_events_dict, resource_list, time_dict, \
+    job_events_dict, resources, time_dict, \
         ram_history_dict, error_dict = htcan.log_to_dict(file)
 
     assert job_events_dict == {
@@ -186,20 +184,20 @@ def test_log_to_dict(htcan):
                    '10.0.9.201',
                    1]}
 
-    assert resource_list[0].name == "Cpu"
-    assert resource_list[0].usage == 0.11
-    assert resource_list[0].requested == 1
-    assert resource_list[0].allocated == 1
+    assert resources[0].description == "Cpu"
+    assert resources[0].usage == 0.11
+    assert resources[0].requested == 1
+    assert resources[0].allocated == 1
 
-    assert resource_list[1].name == "Disk (KB)"
-    assert resource_list[1].usage == 4
-    assert resource_list[1].requested == 20200960
-    assert resource_list[1].allocated == 22312484
+    assert resources[1].description == "Disk (KB)"
+    assert resources[1].usage == 4
+    assert resources[1].requested == 20200960
+    assert resources[1].allocated == 22312484
 
-    assert resource_list[2].name == "Memory (MB)"
-    assert resource_list[2].usage == 922
-    assert resource_list[2].requested == 20480
-    assert resource_list[2].allocated == 20480
+    assert resources[2].description == "Memory (MB)"
+    assert resources[2].usage == 922
+    assert resources[2].requested == 20480
+    assert resources[2].allocated == 20480
 
     assert time_dict == {
         'Dates and times': ['Submission date',
@@ -225,14 +223,14 @@ def test_log_to_dict(htcan):
     assert error_dict == {}
 
     file = "tests/test_logs/valid_logs/aborted_with_errors.log"
-    job_events_dict, res_dict, time_dict, \
+    job_events_dict, resources, time_dict, \
         ram_history_dict, error_dict = htcan.log_to_dict(file)
 
     assert job_events_dict == {
         'Execution details': ['Process was', 'Submitted from', 'Executing on'],
         'Values': ['[red]Aborted[/red]', '10.0.8.10', '10.0.9.1']}
 
-    assert res_dict == []
+    assert resources == []
 
     assert time_dict == {
         'Dates and times': ['Submission date',
