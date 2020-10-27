@@ -54,7 +54,7 @@ class Resource:
             f"Allocated: {self.allocated}"
         return s_res
 
-    def chg_lvl_on_threholds(self, bad_usage, tolerated_usage):
+    def chg_lvl_by_threholds(self, bad_usage, tolerated_usage):
         """Set warning level depending on thresholds."""
         if self.requested != 0:
             deviation = self.usage / self.requested
@@ -113,7 +113,7 @@ def create_avg_on_resources(
     return avg_res_list
 
 
-def refactor_resources(resources: dict) -> List[Resource]:
+def dict_to_resources(resources: dict) -> List[Resource]:
     """Convert a dict of lists to a list of Resource objects."""
     resources = {k.lower(): v for k, v in resources.items()}
     resources["description"] = resources.pop("resources")
@@ -122,7 +122,7 @@ def refactor_resources(resources: dict) -> List[Resource]:
     return resources
 
 
-def convert_res_to_dict(resources: List[Resource]) -> dict:
+def resources_to_dict(resources: List[Resource]) -> dict:
     """Convert a list of Resource back to this dict scheme."""
     return {
         "Resources": [res.description for res in resources],

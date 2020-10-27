@@ -24,7 +24,7 @@ from datetime import datetime as date_time
 
 # own classes
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
-from htcanalyze.resource import convert_res_to_dict
+from htcanalyze.resource import resources_to_dict
 from htcanalyze.logvalidator import LogValidator
 
 # typing identities
@@ -553,8 +553,8 @@ def print_results(htcanalyze: HTCAnalyze,
             else:
                 resource_list = data_dict["all-resources"]
                 for resource in resource_list:
-                    resource.chg_lvl_on_threholds(0.25, 0.1)
-                res_dict = convert_res_to_dict(resource_list)
+                    resource.chg_lvl_by_threholds(0.25, 0.1)
+                res_dict = resources_to_dict(resource_list)
                 if "used-resources" in ignore_list:
                     del res_dict["Usage"]
                 if "requested-resources" in ignore_list:
