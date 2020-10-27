@@ -24,6 +24,7 @@ from datetime import datetime as date_time
 
 # own classes
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
+from htcanalyze.resource import resources_to_dict
 from htcanalyze.logvalidator import LogValidator
 
 # typing identities
@@ -319,7 +320,6 @@ def manage_params(args: list) -> dict:
     :param args: list of args
     :return: dict with params
     """
-
     prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
     # first of all check for prioritised/exit params
     if prio_parsed.version:
@@ -499,7 +499,10 @@ def print_results(htcanalyze: HTCAnalyze,
                        extend=filter_extended,
                        mode=mode)
     elif mode.__eq__("analyzed-summary"):
-        results = htcanalyze.analyzed_summary(log_files)  # analyzed summary
+        if len(log_files) == 1:
+            results = htcanalyze.analyze(log_files)  # analyze single file
+        else:
+            results = htcanalyze.analyzed_summary(log_files)
     elif mode.__eq__("summarize"):
         results = htcanalyze.summarize(log_files)  # summarize information
     elif mode.__eq__("analyze"):
@@ -514,12 +517,11 @@ def print_results(htcanalyze: HTCAnalyze,
     # Allow this to happen
     if results is None:
         sys.exit(0)
-    # convert result to list, if given as dict, else copy
-    processed_data_list = [results] if isinstance(results, dict)\
-        else results[:]
+    # convert result to processed data list, if given as dict, else copy
+    proc_data_list = [results] if isinstance(results, dict) else results.copy()
 
     # check for ignore values
-    for data_dict in processed_data_list:
+    for data_dict in proc_data_list:
 
         for key in data_dict:
             if data_dict[key] is None:
@@ -549,14 +551,18 @@ def print_results(htcanalyze: HTCAnalyze,
             if "all-resources" in ignore_list:
                 del data_dict["all-resources"]
             else:
+                resource_list = data_dict["all-resources"]
+                for resource in resource_list:
+                    resource.chg_lvl_by_threholds(0.25, 0.1)
+                res_dict = resources_to_dict(resource_list)
                 if "used-resources" in ignore_list:
-                    del data_dict["all-resources"]["Usage"]
+                    del res_dict["Usage"]
                 if "requested-resources" in ignore_list:
-                    del data_dict["all-resources"]["Requested"]
+                    del res_dict["Requested"]
                 if "allocated-resources" in ignore_list:
-                    del data_dict["all-resources"]["Allocated"]
+                    del res_dict["Allocated"]
 
-                table = wrap_dict_to_table(data_dict["all-resources"])
+                table = wrap_dict_to_table(res_dict)
                 rprint(table)
 
         if "ram-history" in data_dict:
@@ -611,7 +617,6 @@ def run(commandline_args):
     :param commandline_args: list of args
     :return:
     """
-
     if not isinstance(commandline_args, list):
         commandline_args = commandline_args.split()
 
