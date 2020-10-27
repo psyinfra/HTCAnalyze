@@ -184,7 +184,7 @@ def test_log_to_dict(htcan):
                    '10.0.9.201',
                    1]}
 
-    assert resources[0].description == "Cpu"
+    assert resources[0].description == "CPU"
     assert resources[0].usage == 0.11
     assert resources[0].requested == 1
     assert resources[0].allocated == 1
