@@ -10,6 +10,7 @@ class Resource:
 
     One file contains usually multiple resources,
     so that nested lists represent a collection of job resources
+
     """
 
     level_colors = {'error': 'red', 'warning': 'yellow',
