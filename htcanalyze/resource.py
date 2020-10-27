@@ -16,18 +16,17 @@ class Resource:
                     'light_warning': 'yellow2', 'normal': 'green'}
 
     def __init__(self,
-                 name: str,
+                 description: str,
                  usage: float,
                  requested: float,
-                 allocated: float,
-                 warning_level: str = None):
-        # naming in __init__ arguments should be
-        # consistent with names in the resources dictionary
-        self.name = name
+                 allocated: float):
+        # except description, naming in __init__ arguments should be
+        #   consistent with names in the resources dictionary
+        self.description = description
         self.usage = usage
         self.requested = requested
         self.allocated = allocated
-        self.warning_level = warning_level
+        self.warning_level = None
 
     def get_color(self) -> str:
         """Convert an alert level to an appropriate color."""
@@ -40,7 +39,7 @@ class Resource:
 
     def __repr__(self):
         """Own style of representing this class."""
-        return f"({self.name}, " \
+        return f"({self.description}, " \
             f"{self.usage}, " \
             f"{self.requested}, " \
             f"{self.allocated}, " \
@@ -48,7 +47,7 @@ class Resource:
 
     def __str__(self):
         """Create a string representation of this class."""
-        s_res = f"Resource: {self.name}\n" \
+        s_res = f"Resource: {self.description}\n" \
             f"Usage: [{self.get_color()}]{self.usage}[/{self.get_color()}], " \
             f"Requested: {self.requested}, " \
             f"Allocated: {self.allocated}"
@@ -88,23 +87,24 @@ def create_avg_on_resources(
     # calc total
     for job_resources in job_resource_list:
         for resource in job_resources:
+            desc = resource.description  # description shortcut
             # add resource
-            if res_cache.get(resource.name):
-                res_cache[resource.name].usage += ntn(resource.usage)
-                res_cache[resource.name].requested += ntn(resource.requested)
-                res_cache[resource.name].allocated += ntn(resource.allocated)
+            if res_cache.get(desc):
+                res_cache[desc].usage += ntn(resource.usage)
+                res_cache[desc].requested += ntn(resource.requested)
+                res_cache[desc].allocated += ntn(resource.allocated)
             # create first entry
             else:
-                res_cache[resource.name] = Resource(resource.name,
-                                                    ntn(resource.usage),
-                                                    ntn(resource.requested),
-                                                    ntn(resource.allocated))
+                res_cache[desc] = Resource(desc,
+                                           ntn(resource.usage),
+                                           ntn(resource.requested),
+                                           ntn(resource.allocated))
 
     avg_res_list = list(res_cache.values())
 
     # calc avg
     for resource in avg_res_list:
-        resource.name = "Average " + resource.name
+        resource.description = "Average " + resource.description
         resource.usage = round(resource.usage / n_jobs, 3)
         resource.requested = round(resource.requested / n_jobs, 2)
         resource.allocated = round(resource.allocated / n_jobs, 2)
@@ -115,7 +115,7 @@ def create_avg_on_resources(
 def refactor_resources(resources: dict) -> List[Resource]:
     """Convert a dict of lists to a list of Resource objects."""
     resources = {k.lower(): v for k, v in resources.items()}
-    resources["name"] = resources.pop("resources")
+    resources["description"] = resources.pop("resources")
     resources = [dict(zip(resources, v)) for v in zip(*resources.values())]
     resources = [Resource(**resource) for resource in resources]
     return resources
@@ -123,11 +123,10 @@ def refactor_resources(resources: dict) -> List[Resource]:
 
 def convert_res_to_dict(resources: List[Resource]) -> dict:
     """Convert a list of Resource back to this dict scheme."""
-    res_dict = {
-        "Resources": [res.name for res in resources],
+    return {
+        "Resources": [res.description for res in resources],
         "Usage": [f"[{res.get_color()}]{res.usage}[/{res.get_color()}]"
                   for res in resources],
         "Requested": [res.requested for res in resources],
         "Allocated": [res.allocated for res in resources]
     }
-    return res_dict
