@@ -512,8 +512,9 @@ def print_results(htcanalyze: HTCAnalyze,
     # Allow this to happen
     if results is None:
         sys.exit(0)
-    # convert result to processed data list, if given as dict, else copy
-    proc_data_list = [results] if isinstance(results, dict) else results.copy()
+
+    # convert result to processed data list, if not a list
+    proc_data_list = [results] if not isinstance(results, list) else results
 
     # check for ignore values
     for data_dict in proc_data_list:
