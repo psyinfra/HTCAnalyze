@@ -18,6 +18,7 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime as date_time
 
 import configargparse
+from typing import List
 from rich import print as rprint, box
 from rich.progress import Table
 
@@ -25,11 +26,6 @@ from rich.progress import Table
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
 from htcanalyze.resource import resources_to_dict
 from htcanalyze.logvalidator import LogValidator
-
-# global variables
-ALLOWED_MODES = {"a": "analyze",
-                 "s": "summarize",
-                 "as": "analyzed-summary"}
 
 ALLOWED_SHOW_VALUES = ["htc-err", "htc-out"]
 ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
@@ -198,23 +194,10 @@ def setup_commandline_parser(default_config_files=[])\
                              "if no file is specified,"
                              " default: htcanalyze.log")
 
-    all_vals = []
-    for item in ALLOWED_MODES.items():
-        all_vals.extend(list(item))
-
-    parser.add_argument("-m", "--mode",
-                        help="Specifiy an interpretation mode",
-                        choices=all_vals)
-
-    parser.add_argument("-s", dest="summarize_mode",
-                        help="Short for --mode summarize,"
-                             " combine with -a for analyzed-summary mode",
-                        action="store_true")
-
-    parser.add_argument("-a", dest="analyze_mode",
-                        help="Short for --mode analyze,"
-                             " combine with -s for analyzed-summary mode",
-                        action="store_true")
+    parser.add_argument("--one-by-one",
+                        action="store_true",
+                        default=None,
+                        help="Analyze given files one by one")
 
     parser.add_argument("--ext-log",
                         help="Suffix of HTCondor job logs (default: none)",
@@ -256,12 +239,6 @@ def setup_commandline_parser(default_config_files=[])\
                         dest="filter_keywords",
                         action="append",
                         type=str)
-    parser.add_argument("--extend",
-                        action="store_true",
-                        dest="filter_extended",
-                        default=None,
-                        help="extend the filter keyword list "
-                             "by specific error keywords")
 
     parser.add_argument("--rdns-lookup",
                         action="store_true",
@@ -298,15 +275,13 @@ def manage_params(args: list) -> dict:
 
      {'verbose': False,
       'generate_log_file': None,
-      'mode': None,
       'ext_log': '',
       'ext_out': '.out',
       'ext_err': '.err',
       'ignore_list': [],
       'show_list': [],
       'no_config': False,
-      'filter_keywords': [],
-      'extend': False,
+      'filter_keywords': []
       'rdns_lookup': False
       'files': []
       ....
@@ -393,36 +368,15 @@ def manage_params(args: list) -> dict:
         new_filter_list.extend(li)
     cmd_dict["filter_keywords"] = new_filter_list
 
-    # parse the mode correctly
-    if commands_parsed.analyze_mode and commands_parsed.summarize_mode:
-        mode = "analyzed-summary"
-    elif commands_parsed.analyze_mode:
-        mode = "analyze"
-    elif commands_parsed.summarize_mode:
-        mode = "summarize"
-    elif commands_parsed.mode is not None:
-        if commands_parsed.mode in ALLOWED_MODES.keys():
-            mode = ALLOWED_MODES[commands_parsed.mode]
-        else:
-            mode = commands_parsed.mode
-    else:
-        mode = None  # will result in default mode
-
-    cmd_dict["mode"] = mode
     # error handling
     try:
-        if cmd_dict["filter_extended"] and not cmd_dict["filter_keywords"]:
-            raise_value_error("--extend not allowed without --filter")
-        if cmd_dict["show_list"] and (
-                mode == "analyzed-summary" or mode == "summarize"):
+        if cmd_dict["show_list"] and not cmd_dict["one_by_one"]:
             raise_value_error("--show only allowed with analyze mode")
     except ValueError as err:
         rprint(f"[red]htcanalyze: error: {err}[/red]")
         sys.exit(2)
 
     # delete unnecessary information
-    del cmd_dict["summarize_mode"]
-    del cmd_dict["analyze_mode"]
     del cmd_dict["version"]
     del cmd_dict["no_config"]
 
@@ -470,44 +424,32 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
 
 
 def print_results(htcanalyze: HTCAnalyze,
-                  log_files: LogList,
-                  mode: str,
+                  log_files: List[str],
+                  one_by_one: bool,
                   ignore_list=list,
                   filter_keywords=list,
-                  filter_extended=False,
                   **kwargs) -> str:
     """
     Create the output specified by the mode.
 
+    :param htcanalyze:
     :param log_files:
-    :param mode:
+    :param one_by_one:
     :param ignore_list:
     :param filter_keywords:
-    :param filter_extended:
     :param kwargs:
     :return:
     """
     if filter_keywords:
-        results = htcanalyze.\
-            filter_for(log_files,
-                       keywords=filter_keywords,
-                       extend=filter_extended,
-                       mode=mode)
-    elif mode.__eq__("analyzed-summary"):
-        if len(log_files) == 1:
-            results = htcanalyze.analyze(log_files)  # analyze single file
-        else:
-            results = htcanalyze.analyzed_summary(log_files)
-    elif mode.__eq__("summarize"):
-        results = htcanalyze.summarize(log_files)  # summarize information
-    elif mode.__eq__("analyze"):
-        results = htcanalyze.analyze(log_files)  # analyze
+        log_files = htcanalyze.filter_for(log_files,
+                                          keywords=filter_keywords)
+    if not log_files:
+        print("No files to process")
+        sys.exit(0)
+    if one_by_one or len(log_files) == 1:
+        results = htcanalyze.analyze_one_by_one(log_files)
     else:
-        # default entry points
-        if len(log_files) == 1:
-            results = htcanalyze.analyze(log_files)  # analyze single file
-        else:
-            results = htcanalyze.analyzed_summary(log_files)  # else
+        results = htcanalyze.summarize(log_files)
 
     # Allow this to happen
     if results is None:
@@ -559,7 +501,8 @@ def print_results(htcanalyze: HTCAnalyze,
                     del res_dict["Allocated"]
 
                 table = wrap_dict_to_table(res_dict)
-                rprint(table)
+                if table:
+                    rprint(table)
 
         if "ram-history" in data_dict:
             if "ram-history" in ignore_list:

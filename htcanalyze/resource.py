@@ -124,10 +124,13 @@ def dict_to_resources(resources: dict) -> List[Resource]:
 
 def resources_to_dict(resources: List[Resource]) -> dict:
     """Convert a list of Resource back to this dict scheme."""
-    return {
-        "Resources": [res.description for res in resources],
-        "Usage": [f"[{res.get_color()}]{res.usage}[/{res.get_color()}]"
-                  for res in resources],
-        "Requested": [res.requested for res in resources],
-        "Allocated": [res.allocated for res in resources]
-    }
+    if resources:
+        return {
+            "Resources": [res.description for res in resources],
+            "Usage": [f"[{res.get_color()}]{res.usage}[/{res.get_color()}]"
+                      for res in resources],
+            "Requested": [res.requested for res in resources],
+            "Allocated": [res.allocated for res in resources]
+        }
+    else:
+        return {}

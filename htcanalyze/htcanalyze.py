@@ -16,6 +16,7 @@ from typing import List
 
 # import own module
 from htcanalyze.resource import Resource, create_avg_on_resources
+from htcanalyze.time_manager import TimeManager, calc_avg_on_times
 
 
 class HTCAnalyze:
@@ -169,7 +170,7 @@ class HTCAnalyze:
         :type file: str
         :param file: HTCondor log file
         :param sec: seconds to wait for new events
-        :return: job_dict, res_dict, time_dict, ram_history, errors
+        :return: job_dict, resources, time_manager, ram_history, errors
 
         Consider that the return values can be None or empty dictionarys
         """
@@ -359,7 +360,7 @@ class HTCAnalyze:
             job_events.insert(0, ("Process is", f"[blue]{state}[/blue]"))
         # file not fully readable
         elif invalid_file:
-            better_time_dict = dict()  # times have no meaning here
+            time_manager = TimeManager()
             job_events.insert(0, ("Error", "[red]Error while reading[/red]"))
 
         job_events_dict = dict()
@@ -424,7 +425,7 @@ class HTCAnalyze:
                 self.rdns_cache[ip] = ip
                 return ip
 
-    def analyze(self, log_files: List[str]) -> List[dict]:
+    def analyze_one_by_one(self, log_files: List[str]) -> List[dict]:
         """
         Analyze the given log files one by one.
 
@@ -510,176 +511,6 @@ class HTCAnalyze:
         return result_list
 
     def summarize(self, log_files: List[str]) -> List[dict]:
-        """
-        Summarize all given log files.
-
-        Runs through the log files via the log_to_dict function
-        Creates average runtimes and average use of resources
-        for normal terminated HTCondor Jobs.
-        Other types of execution will be ignored
-
-        :return:
-        """
-        logging.info('Starting the summarize mode')
-
-        # no given files
-        if not log_files:
-            raise_value_error("No files to summarize")
-
-        # allocated all different datatypes, easier to handle
-        result_dict = dict()
-
-        aborted_files = 0
-        still_running = 0
-        error_reading_files = 0
-        other_exception = 0
-        normal_runtime = timedelta()
-        host_nodes = dict()
-
-        job_resource_list = list()
-
-        for file in track(log_files, transient=True,
-                          description="Summarizing..."):
-            try:
-                (job_dict, job_resources,
-                 time_dict, _, _) = self.log_to_dict(file)
-
-                # continue if Process is still running
-                if job_dict['Execution details'][0].__eq__("Process is"):
-                    still_running += 1
-                    continue
-                elif job_dict['Execution details'][0].__eq__("Process was"):
-                    aborted_files += 1
-                    continue
-                elif job_dict['Execution details'][0].__eq__("Error"):
-                    error_reading_files += 1
-                    continue
-                elif not job_resources:
-                    logging.error("Expected but not found resources")
-                    rprint(f"[orange3]Expected but not found "
-                           f"resources in {file}[/orange3]")
-                    other_exception += 1
-                    continue
-                elif not job_dict:
-                    logging.error("More work is needed developer")
-                    rprint(f"[orange3]Process of {file} is strange,\n"
-                           f"don't know how to handle this yet[/orange3]")
-                    other_exception += 1
-                    continue
-
-                if "Total runtime" in time_dict["Dates and times"]:
-                    normal_runtime += time_dict['Values'][3]
-                host = job_dict['Values'][2]
-                if host in host_nodes:
-                    host_nodes[host][0] += 1
-                    host_nodes[host][1] += time_dict['Values'][3]
-                else:
-                    host_nodes[host] = [1, time_dict['Values'][3]]
-
-                job_resource_list.append(job_resources)
-
-            # Error ocurres when Job was aborted
-            except ValueError or KeyError as err:
-                logging.exception(err)
-                rprint(f"[red]Error with summarizing: {file}[/red]")
-                continue
-            except TypeError as err:
-                logging.exception(err)
-                rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-                sys.exit(3)
-
-        # number of jobs with associated resources,
-        # only jobs with normal or abnormal termination state
-        n_associated_res = (len(log_files) - aborted_files - still_running -
-                            other_exception - error_reading_files)
-
-        average_runtime = normal_runtime / n_associated_res \
-            if n_associated_res != 0 else normal_runtime
-        average_runtime = timedelta(days=average_runtime.days,
-                                    seconds=average_runtime.seconds)
-
-        exec_dict = {
-            "Job types": ["Successfully terminated jobs"],
-            "Occurrence": [n_associated_res]
-        }
-        if aborted_files > 0:
-            exec_dict["Job types"].append("Aborted jobs")
-            exec_dict["Occurrence"].append(aborted_files)
-        if still_running > 0:
-            exec_dict["Job types"].append("Still running jobs")
-            exec_dict["Occurrence"].append(still_running)
-        if error_reading_files > 0:
-            exec_dict["Job types"].append("Error while reading")
-            exec_dict["Occurrence"].append(error_reading_files)
-        if other_exception > 0:
-            exec_dict["Job types"].append("Other exceptions")
-            exec_dict["Occurrence"].append(other_exception)
-
-        result_dict["execution-details"] = \
-            sort_dict_by_col(exec_dict, "Occurrence")
-
-        result_dict["description"] = "The following data only implies " \
-                                     "on sucessful executed jobs"
-
-        # do not even try further if the only files
-        # given have been aborted, are still running etc.
-        if n_associated_res == 0:
-            return [result_dict]
-
-        create_desc = "The following data implies" \
-                      " only on jobs with associated resources"
-        if aborted_files > 0 or still_running > 0 \
-                or other_exception > 0 or error_reading_files:
-            create_desc += "\n[light_grey]" \
-                           "Use the analyzed-summary mode " \
-                           "for more details about the other jobs" \
-                           "[/light_grey]"
-
-        result_dict["summation-description"] = create_desc
-
-        time_desc_list = list()
-        time_value_list = list()
-        if normal_runtime != timedelta(0, 0, 0):
-            time_desc_list.append("Total runtime")
-            time_value_list.append(normal_runtime)
-        if average_runtime:
-            time_desc_list.append("Average runtime")
-            time_value_list.append(average_runtime)
-
-        result_dict["times"] = {
-            "Times": time_desc_list,
-            "Values": time_value_list
-        }
-
-        if n_associated_res != 0:  # do nothing, if all valid jobs were aborted
-
-            avg_res_list = create_avg_on_resources(job_resource_list)
-            result_dict["all-resources"] = avg_res_list
-
-        if host_nodes:
-
-            executed_jobs = list()
-            runtime_per_node = list()
-            for val in host_nodes.values():
-                executed_jobs.append(val[0])
-                average_job_duration = val[1] / val[0]  # timedelta object
-                runtime_per_node.append(
-                    timedelta(average_job_duration.days,
-                              average_job_duration.seconds)
-                )
-
-            cpu_dict = {
-                "Host Nodes": list(host_nodes.keys()),
-                "Executed Jobs": executed_jobs,
-                "Average job duration": runtime_per_node
-            }
-
-            result_dict["host-nodes"] = sort_dict_by_col(cpu_dict,
-                                                         "Executed Jobs")
-
-        return [result_dict]
-
-    def analyzed_summary(self, log_files: List[str]) -> List[dict]:
         """
         Summarize log files and analyze the results.
 
@@ -939,10 +770,8 @@ class HTCAnalyze:
 
     def filter_for(self,
                    log_files: List[str],
-                   keywords: list,
-                   extend=False,
-                   mode=None
-                   ) -> List[dict]:
+                   keywords: list
+                   ) -> List[str]:
         """
         Filter for given keywords.
 
@@ -959,8 +788,7 @@ class HTCAnalyze:
         :param extend:
         :param mode:
         :return:
-            list with dicts depending on the used mode,
-            list of files if mode is None
+            filtered log files
         """
         logging.info('Starting the filter mode')
 
@@ -973,25 +801,7 @@ class HTCAnalyze:
                 f"or list with keywords, not {keywords}")
             raise TypeError("Expecting a list or a string")
 
-        # if extend is set, keywords like err will
-        # also look for keywords like warn exception, aborted, etc.
-        if extend:  # apply some rules
-            # the error list
-            err_list = ["err", "warn", "exception", "aborted", "abortion",
-                        "abnormal", "fatal"]
-
-            # remove keyword if already in err_list
-            for keyword in keyword_list:
-                if keyword.lower() in err_list:
-                    keyword_list.remove(keyword)
-
-            keyword_list.extend(err_list)  # extend search
-
-            rprint("[green]Keyword List was extended, "
-                   "now search for these keywords:[/green]",
-                   keyword_list)
-        else:
-            rprint("[green]Search for these keywords:[/green]", keyword_list)
+        rprint("[green]Search for these keywords:[/green]", keyword_list)
 
         if len(keyword_list) == 1 and keyword_list[0] == "":
             logging.debug("Empty filter, don't know what to do")
@@ -1023,25 +833,13 @@ class HTCAnalyze:
                         found_logs.append(file)
                         break
 
-        return_dicts = None
         if not found_at_least_one:
             rprint("[red]Unable to find these keywords:[/red]", keyword_list)
             rprint("[red]maybe try again with similar expressions[/red]")
 
-        elif mode is not None:
-            print(f"Total count: {len(found_logs)}")
-            if mode.__eq__("analyzed-summary"):
-                rprint("[magenta]Give an analyzed summary"
-                       " for these files[/magenta]")
-                return_dicts = self.analyzed_summary(found_logs)
-            elif mode.__eq__("summarize"):
-                rprint("[magenta]Summarize these files[/magenta]")
-                return_dicts = self.summarize(found_logs)
-            elif mode.__eq__("analyze"):
-                rprint("[magenta]Analyze these files[/magenta]")
-                return_dicts = self.analyze(found_logs)
+        print(f"Total count: {len(found_logs)}")
 
-        return return_dicts
+        return found_logs
 
 
 def raise_value_error(message: str) -> ValueError:
@@ -1073,125 +871,6 @@ def _int_formatter(val, chars, delta, left=False):
     """
     align = '<' if left else ''
     return '{:{}{}d}'.format(int(val), align, chars)
-
-
-def gen_time_dict(submission_date: date_time = None,
-                  execution_date: date_time = None,
-                  termination_date: date_time = None
-                  ) -> (timedelta, timedelta, timedelta):
-    """
-    Generate a time dict.
-
-    Takes in three dates, return the timedelta objects.
-    Depending on the given arguments,
-    this function will try to calculate
-    the time differences between the events.
-    If not all three values are given, it will return None
-
-    :param submission_date: Job Sumbission date from the user
-    :param execution_date: The date when the job actually started executing
-    :param termination_date: The date when the job was finished
-    :return: (waiting_time, runtime, total_time)
-
-    """
-    if not any(locals().values()):  # all params are None
-        return None
-
-    waiting_time = None
-    runtime = None
-    total_time = None
-    today = date_time.now()
-    today = today.replace(microsecond=0)  # remove unnecessary microseconds
-
-    time_desc = list()
-    time_vals = list()
-    running_over_newyear = False
-
-    # calculate the time difference to last year,
-    # if the date is higher that today of running jobs
-    # this means the execution started before newyear
-    if termination_date is None:
-        if submission_date and submission_date > today:
-            running_over_newyear = True
-            submission_date = submission_date.replace(
-                year=submission_date.year - 1)
-        if execution_date and execution_date > today:
-            running_over_newyear = True
-            execution_date = execution_date.replace(
-                year=execution_date.year - 1)
-
-    if execution_date and submission_date:
-        execution_date = execution_date
-        # new year ?
-        if submission_date > execution_date:
-            running_over_newyear = True
-            submission_date = submission_date.replace(
-                year=submission_date.year - 1)
-        waiting_time = execution_date - submission_date
-
-    if termination_date:
-        if waiting_time:
-            pass
-        if execution_date:
-            # new year ?
-            if execution_date > termination_date:
-                running_over_newyear = True
-                execution_date = execution_date.replace(
-                    year=execution_date.year - 1)
-            runtime = termination_date - execution_date
-        if submission_date:
-            # new year ?
-            if submission_date > termination_date:
-                running_over_newyear = True
-                submission_date = submission_date.replace(
-                    year=submission_date.year - 1)
-            total_time = termination_date - submission_date
-    # Process still running
-    elif waiting_time:
-        runtime = today - execution_date
-    # Still waiting for execution
-    elif submission_date:
-        waiting_time = today - submission_date
-
-    # now after collecting all available values try to produce a dict
-    # if new year was hitted by one of them, show the year as well
-    if running_over_newyear:
-        if submission_date:
-            time_desc.append("Submission date")
-            time_vals.append(submission_date)
-        if execution_date:
-            time_desc.append("Execution date")
-            time_vals.append(execution_date)
-        if termination_date:
-            time_desc.append("Termination date")
-            time_vals.append(termination_date)
-    else:
-        if submission_date:
-            time_desc.append("Submission date")
-            time_vals.append(submission_date.strftime("%m/%d %H:%M:%S"))
-        if execution_date:
-            time_desc.append("Execution date")
-            time_vals.append(execution_date.strftime("%m/%d %H:%M:%S"))
-        if termination_date:
-            time_desc.append("Termination date")
-            time_vals.append(termination_date.strftime("%m/%d %H:%M:%S"))
-
-    if waiting_time:
-        time_desc.append("Waiting time")
-        time_vals.append(waiting_time)
-    if runtime:
-        time_desc.append("Execution runtime")
-        time_vals.append(runtime)
-    if total_time:
-        time_desc.append("Total runtime")
-        time_vals.append(total_time)
-
-    time_dict = {
-        "Dates and times": time_desc,
-        "Values": time_vals
-    }
-
-    return time_dict
 
 
 def sort_dict_by_col(dictionary, column, reverse=True):

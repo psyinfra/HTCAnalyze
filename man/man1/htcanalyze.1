@@ -9,11 +9,9 @@
 .Sh SYNOPSIS
 .Nm
 .Op Ar
-.Op Fl afhrsv
+.Op Fl fhrv
 .Op Fl Fl help
 .Op Fl Fl files
-.Op Fl m Ar mode
-.Op Fl Fl mode Ar mode
 .Op Fl Fl version
 .Op Fl Fl verbose
 .Op Fl Fl ext-log Ar suffix
@@ -66,57 +64,6 @@ to prevent this, always hand the files first, like:
 Prints a summary of
 .Nm Ap s
 command\[hy]line options and exits.
-.
-.It Fl m Ar mode | Fl Fl mode Ar mode
-Specify the mode, to interpret HTCondor log files,
-.Bd -literal
-Valid arguments:
- ['a' or 'analyze', 's' or 'summarize',
- 'as' or 'analyzed-summary']
-.Ed
-.Bd -literal
-The standard mode of the script is 'analyzed-summary'
-for multiple log files and 'analyze' for a single log file.
-
-analyze mode:
-    For more detailed output, use the analyze mode.
-    Features:
-    - provides ram histogram
-    - shows HTCondor errors
-    - more details in general
-    - have a look in running processes
-
-summarize mode:
-    summarize a collection of log files based on its used resources
-    Features:
-    - average usages of all collected log files
-    - average usage and durations on each host node
-    NOTE: this will ignore running, aborted and other processes,
-          that do not contain details about the resource usages
-
-analyzed-summary mode:
-    This mode is a combination of the summarize and analyze mode.
-    Features:
-    - Seperate the summation based on the termination types
-    - Also handles running processes
-
-.Ed
-.
-.It Fl s
-Short for
-.Fl Fl mode Ar summarize .
-When used with
-.Fl a ,
-it's the same as
-.Fl Fl mode Ar analyzed-summary
-.
-.It Fl a
-Short for
-.Fl Fl mode Ar analyze .
-When used with
-.Fl s ,
-it's the same as
-.Fl Fl mode Ar analyzed-summary
 .
 .It Fl Fl filter Ar keywords Op OPTIONS
 Its options are as follows:
