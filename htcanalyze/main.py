@@ -488,7 +488,7 @@ def print_results(htcanalyze: HTCAnalyze,
         if "all-resources" in data_dict:
             if "all-resources" in ignore_list:
                 del data_dict["all-resources"]
-            else:
+            elif data_dict["all-resources"]:
                 resource_list = data_dict["all-resources"]
                 for resource in resource_list:
                     resource.chg_lvl_by_threholds(0.25, 0.1)
@@ -501,8 +501,7 @@ def print_results(htcanalyze: HTCAnalyze,
                     del res_dict["Allocated"]
 
                 table = wrap_dict_to_table(res_dict)
-                if table:
-                    rprint(table)
+                rprint(table)
 
         if "ram-history" in data_dict:
             if "ram-history" in ignore_list:

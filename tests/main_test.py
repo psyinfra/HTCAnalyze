@@ -37,7 +37,7 @@ def test_manage_params():
     assert res_dict["ext_out"] == ".output"
     assert res_dict["ext_err"] == ".error"
 
-    args = "-a --show htc-err htc-out --ignore execution-details " \
+    args = "--one-by-one --show htc-err htc-out --ignore execution-details " \
            "times errors host-nodes used-resources requested-resources " \
            "allocated-resources all-resources ram-history".split()
     res_dict = ht.manage_params(args)
@@ -78,56 +78,5 @@ def test_manage_params():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 2
 
-    # all ways to start analyze mode
-    args = "-a".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyze"
-    args = "--mode analyze".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyze"
-    args = "--mode a".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyze"
-    args = "-m analyze".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyze"
-    args = "-m a".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyze"
-
-    # all ways to start summarize mode
-    args = "-s".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "summarize"
-    args = "--mode summarize".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "summarize"
-    args = "--mode s".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "summarize"
-    args = "-m summarize".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "summarize"
-    args = "-m s".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "summarize"
-
-    # all ways to start the analyzed-summary mode
-    args = "-as".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyzed-summary"
-    args = "--mode analyzed-summary".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyzed-summary"
-    res_dict["mode"] = None
-    args = "--mode as".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyzed-summary"
-    args = "-m analyzed-summary".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyzed-summary"
-    args = "-m as".split()
-    res_dict = ht.manage_params(args)
-    assert res_dict["mode"] == "analyzed-summary"
 
 # Todo: other methods test
