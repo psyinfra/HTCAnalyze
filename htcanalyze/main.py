@@ -14,22 +14,17 @@ Exit Codes:
 import argparse
 import logging
 import sys
-import configargparse
-
 from logging.handlers import RotatingFileHandler
-from typing import List
+from datetime import datetime as date_time
+
+import configargparse
 from rich import print as rprint, box
 from rich.progress import Table
-from datetime import datetime as date_time
 
 # own classes
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
 from htcanalyze.resource import resources_to_dict
 from htcanalyze.logvalidator import LogValidator
-
-# typing identities
-LogDescriptionList = List[dict]
-LogList = List[str]
 
 # global variables
 ALLOWED_MODES = {"a": "analyze",

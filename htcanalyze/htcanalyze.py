@@ -5,8 +5,8 @@ import os
 import re
 import socket
 import sys
-import numpy as np
 
+import numpy as np
 from plotille import Figure
 from datetime import datetime as date_time, timedelta
 from htcondor import JobEventLog, JobEventType as jet
@@ -14,7 +14,7 @@ from rich import print as rprint
 from rich.progress import Progress, track
 from typing import List
 
-# import own class
+# import own module
 from htcanalyze.resource import Resource, create_avg_on_resources
 
 
