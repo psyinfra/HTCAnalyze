@@ -533,21 +533,25 @@ class HTCAnalyze:
                 host_nodes = HostNodes(self.rdns_lookup)
                 if job_details.executing_on:
                     host_nodes.add_node(SingleNode(to_host, tt_time))
-                # else if still waiting
-                elif job_details.submitted_by:
-                    if "Aborted" in cur_state:
+                # else if aborted
+                elif cur_state == 'aborted':
+                    # aborted before submission
+                    if not job_details.submitted_by:
+                        host_nodes.add_node(
+                            SingleNode('Aborted before submission', tt_time)
+                        )
+                    # aborted before executing
+                    else:
                         host_nodes.add_node(
                             SingleNode('Aborted before execution', tt_time)
                         )
-                    else:
-                        host_nodes.add_node(
-                            SingleNode('Waiting for execution', tt_time)
-                        )
-                # else aborted before submission ?
-                else:
+                # else waiting or executing
+                elif cur_state in ['waiting', 'executing']:
                     host_nodes.add_node(
-                        SingleNode('Aborted before submission', tt_time)
+                        SingleNode('Waiting for execution', tt_time)
                     )
+                else:
+                    rprint("[red]Situation not handled yet[/red]")
 
                 all_files[cur_state] = {"occurrence": 1,
                                         "time_managers": [time_manager],
@@ -573,36 +577,31 @@ class HTCAnalyze:
                 if all_files[cur_state]["job_resources"] and job_resources:
                     all_files[cur_state]["job_resources"].append(job_resources)
 
-                # add cpu
+                cur_host_nodes = all_files[cur_state]["host_nodes"]
+                # add cpu if not None
                 if to_host is not None:
-                    all_files[cur_state]["host_nodes"].add_node(
+                    cur_host_nodes.add_node(
                         SingleNode(to_host, tt_time)
                     )
-                elif job_details.submitted_by:
-                    # other waiting jobs ???
-                    if 'Waiting for execution' in \
-                            all_files[cur_state]["host_nodes"].keys():
-                        all_files[cur_state]["host_nodes"].add_node(
-                            SingleNode('Waiting for execution', tt_time)
+                # is state aborted
+                elif cur_state == 'aborted':
+                    # aborted before submission
+                    if not job_details.submitted_by:
+                        cur_host_nodes.add_node(
+                            SingleNode('Aborted before submission', tt_time)
                         )
-                    elif "Aborted before execution" in \
-                            all_files[cur_state]["host_nodes"].keys():
-                        all_files[cur_state]["host_nodes"].add_node(
-                            SingleNode('Aborted before execution', tt_time)
-                        )
-                    elif "Aborted" in cur_state:
-                        all_files[cur_state]["host_nodes"].add_node(
-                            SingleNode('Aborted before execution', tt_time)
-                        )
+                    # aborted before executing
                     else:
-                        all_files[cur_state]["host_nodes"].add_node(
-                            SingleNode('Waiting for execution', tt_time)
+                        cur_host_nodes.add_node(
+                            SingleNode('Aborted before execution', tt_time)
                         )
-                elif 'Aborted before submission' in \
-                        all_files[cur_state]["host_nodes"].keys():
-                    all_files[cur_state]["host_nodes"].add_node(
-                        SingleNode('Aborted before submission', tt_time)
+                # else waiting or executing
+                elif cur_state in ['waiting', 'executing']:
+                    cur_host_nodes.add_node(
+                        SingleNode('Waiting for execution', tt_time)
                     )
+                else:
+                    rprint("[red]Situation not handled yet[/red]")
 
         # Now put everything together
         result_list = list()

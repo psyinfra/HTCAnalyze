@@ -50,7 +50,7 @@ class SingleNode:
 class HostNodes:
 
     def __init__(self, rdns_lookup=False):
-        self.host_nodes = dict()
+        self.nodes = dict()
         self.rdns_lookup = rdns_lookup
 
     def add_node(self, node: SingleNode):
@@ -60,21 +60,21 @@ class HostNodes:
             key = node_cache.gethostbyaddrcached(key)
 
         try:
-            self.host_nodes[key]['n_jobs'] += 1
-            self.host_nodes[key]['tt_time'] += node.total_runtime
+            self.nodes[key]['n_jobs'] += 1
+            self.nodes[key]['tt_time'] += node.total_runtime
         except KeyError:
-            self.host_nodes[key] = dict()
-            self.host_nodes[key]['n_jobs'] = 1
-            self.host_nodes[key]['tt_time'] = node.total_runtime
+            self.nodes[key] = dict()
+            self.nodes[key]['n_jobs'] = 1
+            self.nodes[key]['tt_time'] = node.total_runtime
 
     def nodes_to_avg_dict(self) -> dict:
-        keys = self.host_nodes.keys()
+        keys = self.nodes.keys()
         executed_jobs = list()
         avg_times_spend = list()
         for key in keys:
-            n_jobs = self.host_nodes[key]['n_jobs']
+            n_jobs = self.nodes[key]['n_jobs']
             executed_jobs.append(n_jobs)
-            avg_job_duration = self.host_nodes[key]['tt_time'] / n_jobs
+            avg_job_duration = self.nodes[key]['tt_time'] / n_jobs
             avg_times_spend.append(
                 timedelta(avg_job_duration.days,
                           avg_job_duration.seconds)
