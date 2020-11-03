@@ -17,6 +17,7 @@ from typing import List
 from htcanalyze.resource import Resource, create_avg_on_resources
 from htcanalyze.time_manager import TimeManager, calc_avg_on_times
 from htcanalyze.host_nodes import SingleNode, HostNodes, node_cache
+from htcanalyze.job_details import JobDetails, format_job_state
 
 
 class HTCAnalyze:
@@ -159,8 +160,15 @@ class HTCAnalyze:
             job_spec_id = os.path.splitext(file)[0]
         return job_spec_id
 
-    def log_to_dict(self, file: str, sec: int = 0
-                    ) -> (dict, dict, dict, dict, dict):
+    def log_to_dict(
+            self,
+            file: str,
+            sec: int = 0
+    ) -> (JobDetails,
+          List[Resource],
+          TimeManager,
+          dict,
+          dict):
         """
         Read the log file with the htcondor module.
 
@@ -170,11 +178,11 @@ class HTCAnalyze:
         :type file: str
         :param file: HTCondor log file
         :param sec: seconds to wait for new events
-        :return: job_dict, resources, time_manager, ram_history, errors
+        :return: job_details, resources, time_manager, ram_history, errors
 
-        Consider that the return values can be None or empty dictionarys
+        Consider that the return values can be None or empty dictionaries
         """
-        job_events = list()
+        job_details = JobDetails()
         resources = list()
         submission_date = None
         execution_date = None
@@ -219,7 +227,7 @@ class HTCAnalyze:
                                            event.get('SubmitHost'))
                 if match_from_host:
                     submitted_host = match_from_host[1]
-                    job_events.append(('Submitted from', submitted_host))
+                    job_details.submitted_by = submitted_host
                 # ERROR
                 else:
                     invalid_file = True
@@ -227,13 +235,9 @@ class HTCAnalyze:
                     occurred_errors.append(
                         [event_type_number, "Now", "invalid user address",
                          reason])
-                    job_events.append(('Submitted from', "invalid user"))
+                    job_details.submitted_by = "invalid user"
 
-                    try:
-                        raise_value_error(f"Wrong submission host: {file}")
-                    except ValueError as err:
-                        logging.exception(err)
-                        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+                    rprint(f"[red]Wrong submission host: {file}[/red]")
 
             # update execution date, execution node
             if event.type == jet.EXECUTE:
@@ -243,7 +247,7 @@ class HTCAnalyze:
                                          event.get('ExecuteHost'))
                 if match_to_host:
                     execution_host = match_to_host[1]
-                    job_events.append(('Executing on', execution_host))
+                    job_details.executing_on = execution_host
                 # ERROR
                 else:
                     invalid_file = True
@@ -251,12 +255,8 @@ class HTCAnalyze:
                     occurred_errors.append(
                         [event_type_number, "Now", "invalid host address",
                          reason])
-                    job_events.append(('Executing on', "invalid host"))
-                    try:
-                        raise_value_error(f"Wrong execution host: {file}")
-                    except ValueError as err:
-                        logging.exception(err)
-                        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+                    job_details.executing_on = "invalid host"
+                    rprint(f"[red]Wrong execution host: {file}[]/red]")
 
             # update ram history dict
             if event.type == jet.IMAGE_SIZE:
@@ -297,18 +297,18 @@ class HTCAnalyze:
                                       memory_allocated)]
 
                 normal_termination = event.get('TerminatedNormally')
+
+                job_details.state_desc = "Termination State"
                 # differentiate between normal and abnormal termination
                 if normal_termination:
-                    job_events.insert(0, ("Termination State",
-                                          "[green]Normal[/green]"))
+                    job_details.state = 'normal'
                     return_value = event.get('ReturnValue')
-                    job_events.append(("Return Value", return_value))
+                    job_details.return_value = return_value
                 # mostly due to signal/exit code 11
                 else:
-                    job_events.insert(0, ("Termination State",
-                                          "[red]Abnormal[/red]"))
+                    job_details.state = 'abnormal'
                     signal = event.get('TerminatedBySignal')
-                    job_events.append(("Terminated by Signal", signal))
+                    job_details.return_value = signal
 
             # update error dict and termination date
             if event.type == jet.JOB_ABORTED:
@@ -319,7 +319,8 @@ class HTCAnalyze:
                 occurred_errors.append(
                     [event_type_number, date.strftime("%m/%d %H:%M:%S"),
                      "Aborted", reason])
-                job_events.insert(0, ("Process was", "[red]Aborted[/red]"))
+                job_details.state_desc = "Process was"
+                job_details.state = 'aborted'
 
             # update error dict
             if event.type == jet.JOB_HELD:
@@ -346,29 +347,23 @@ class HTCAnalyze:
             if time_manager.total_runtime:
                 rprint("[red]This is not supposed to happen,"
                        " check your code[/red]")
-                state = "Strange"
+                state = "strange"
             elif time_manager.execution_time:
-                state = "Executing"
+                state = "executing"
             elif time_manager.waiting_time:
-                state = "Waiting"
+                state = "waiting"
             else:
-                state = "Unknown"
-            job_events.insert(0, ("Process is", f"[blue]{state}[/blue]"))
+                state = "unknown"
+            job_details.state_desc = "Process is"
+            job_details.state = state
         # file not fully readable
         elif invalid_file:
             time_manager = TimeManager()
-            job_events.insert(0, ("Error", "[red]Error while reading[/red]"))
+            job_details.state_desc = "Error"
+            job_details.state = "ewr"
 
-        job_events_dict = dict()
         error_dict = dict()
         ram_history_dict = dict()
-        # convert job_events to a nice and simple dictionary
-        if job_events:
-            desc, val = zip(*job_events)
-            job_events_dict = {
-                "Execution details": list(desc),
-                "Values": list(val)
-            }
 
         # convert errors into a dictionary
         if occurred_errors:
@@ -389,7 +384,7 @@ class HTCAnalyze:
                 "Resident Set Sizes": list(res_set_size)
             }
 
-        return (job_events_dict,
+        return (job_details,
                 resources,
                 time_manager,
                 ram_history_dict,
@@ -423,17 +418,16 @@ class HTCAnalyze:
                 msg = f"[green]Job analysis of: {file}[/green]"
                 result_dict["description"] = msg
 
-                job_dict, resources, time_manager, \
+                job_details, resources, time_manager, \
                     ram_history, occurred_errors = self.log_to_dict(file)
 
-                if job_dict and self.rdns_lookup:
-                    ip = job_dict['Values'][2]
-                    job_dict['Values'][2] = (
+                if job_details.executing_on and self.rdns_lookup:
+                    ip = job_details.executing_on
+                    job_details.executing_on = (
                         node_cache.gethostbyaddrcached(ip)
                     )
 
-                if job_dict:
-                    result_dict["execution-details"] = job_dict
+                result_dict["execution-details"] = job_details.to_dict()
 
                 if time_manager:
                     result_dict["times"] = time_manager.create_time_dict()
@@ -520,21 +514,16 @@ class HTCAnalyze:
         for file in track(log_files, transient=True,
                           description="Summarizing..."):
 
-            (job_dict, job_resources, time_manager,
+            (job_details, job_resources, time_manager,
              ram_history, occurred_errors) = self.log_to_dict(file)
 
             if occurred_errors:
                 n_event_err = len(occurred_errors["Event Number"])
                 occurred_errors['File'] = [file] * n_event_err
 
-            refactor_job_dict = dict(
-                zip(job_dict["Execution details"], job_dict["Values"]))
-            job_keys = list(refactor_job_dict.keys())
-            to_host = None
-            if "Executing on" in job_keys:
-                to_host = refactor_job_dict["Executing on"]
+            to_host = job_details.executing_on
 
-            cur_state = job_dict["Values"][0]  # current state
+            cur_state = job_details.state
 
             tt_time = time_manager.total_runtime
 
@@ -542,11 +531,10 @@ class HTCAnalyze:
             if cur_state not in all_files:
                 # if host exists
                 host_nodes = HostNodes(self.rdns_lookup)
-                if "Executing on" in job_dict["Execution details"]:
-                    # to_host = job_dict["Values"][2]
+                if job_details.executing_on:
                     host_nodes.add_node(SingleNode(to_host, tt_time))
                 # else if still waiting
-                elif "Submitted from" in job_dict["Execution details"]:
+                elif job_details.submitted_by:
                     if "Aborted" in cur_state:
                         host_nodes.add_node(
                             SingleNode('Aborted before execution', tt_time)
@@ -590,7 +578,7 @@ class HTCAnalyze:
                     all_files[cur_state]["host_nodes"].add_node(
                         SingleNode(to_host, tt_time)
                     )
-                elif "Submitted from" in job_dict["Execution details"]:
+                elif job_details.submitted_by:
                     # other waiting jobs ???
                     if 'Waiting for execution' in \
                             all_files[cur_state]["host_nodes"].keys():
@@ -621,27 +609,30 @@ class HTCAnalyze:
         for cur_state in all_files:
             state_info = all_files[cur_state]
             result_dict = dict()
+            f_state = format_job_state(cur_state)
 
             # differentiate between terminated and running processes
-            if "Error while reading" in cur_state:
+            if "ewr" in cur_state:
                 result_dict["description"] = "" \
                      "##################################################\n" \
                      "## All files, that caused an [red]" \
                      "error while reading[/red]\n" \
                      "##################################################"
-            elif cur_state not in ["Waiting", "Executing"]:
-                result_dict["description"] = f"" \
-                    f"##################################################\n" \
-                    f"## All files with the termination state: {cur_state}\n"\
-                    f"##################################################"
-            else:
+            elif cur_state in ["waiting", "executing"]:
                 result_dict["description"] = f"" \
                     f"###########################################\n" \
-                    f"## All files, that are currently {cur_state}\n" \
+                    f"## All files, that are currently " \
+                    f"{f_state}\n" \
                     f"###########################################"
+            else:
+                result_dict["description"] = f"" \
+                    f"##################################################\n" \
+                    f"## All files with the termination state: " \
+                    f"{f_state}\n"\
+                    f"##################################################"
 
-            n = int(state_info["occurrence"])
-            occurrence_dict[cur_state] = str(n)
+            n_jobs_with_state = int(state_info["occurrence"])
+            occurrence_dict[f_state] = str(n_jobs_with_state)
 
             result_dict["times"] = calc_avg_on_times(
                 state_info["time_managers"])

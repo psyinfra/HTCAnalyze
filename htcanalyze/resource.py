@@ -13,8 +13,12 @@ class Resource:
 
     """
 
-    level_colors = {'error': 'red', 'warning': 'yellow',
-                    'light_warning': 'yellow2', 'normal': 'green'}
+    level_colors = {
+        'error': 'red',
+        'warning': 'yellow',
+        'light_warning': 'yellow2',
+        'normal': 'green'
+    }
 
     def __init__(self,
                  description: str,
@@ -33,7 +37,7 @@ class Resource:
         """Convert an alert level to an appropriate color."""
         return self.level_colors.get(self.warning_level, "default")
 
-    def resource_to_dict(self) -> dict:
+    def to_dict(self) -> dict:
         """Return this class as a dict."""
         return {k: v for k, v in self.__dict__.items()
                 if not k == "level_colors"}

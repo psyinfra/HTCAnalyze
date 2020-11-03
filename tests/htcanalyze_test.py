@@ -78,18 +78,14 @@ def test_log_to_dict(htcan):
     :return:
     """
     file = "tests/test_logs/valid_logs/normal_log.log"
-    job_events_dict, resources, time_manager, \
-        ram_history_dict, error_dict = htcan.log_to_dict(file)
+    (job_details, resources, time_manager,
+     ram_history_dict, error_dict) = htcan.log_to_dict(file)
 
-    assert job_events_dict == {
-        'Execution details': ['Termination State',
-                              'Submitted from',
-                              'Executing on',
-                              'Return Value'],
-        'Values': ['[green]Normal[/green]',
-                   '10.0.8.10',
-                   '10.0.9.201',
-                   1]}
+    assert job_details.state_desc == "Termination State"
+    assert job_details.state == 'normal'
+    assert job_details.submitted_by == '10.0.8.10'
+    assert job_details.executing_on == '10.0.9.201'
+    assert job_details.return_value == 1
 
     assert resources[0].description == "CPU"
     assert resources[0].usage == 0.11
@@ -130,12 +126,13 @@ def test_log_to_dict(htcan):
     assert error_dict == {}
 
     file = "tests/test_logs/valid_logs/aborted_with_errors.log"
-    job_events_dict, resources, time_manager, \
-        ram_history_dict, error_dict = htcan.log_to_dict(file)
+    (job_details, resources, time_manager,
+     ram_history_dict, error_dict) = htcan.log_to_dict(file)
 
-    assert job_events_dict == {
-        'Execution details': ['Process was', 'Submitted from', 'Executing on'],
-        'Values': ['[red]Aborted[/red]', '10.0.8.10', '10.0.9.1']}
+    assert job_details.state_desc == "Process was"
+    assert job_details.state == "aborted"
+    assert job_details.submitted_by == "10.0.8.10"
+    assert job_details.executing_on == "10.0.9.1"
 
     assert resources == []
 

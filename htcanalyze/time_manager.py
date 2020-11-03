@@ -138,10 +138,13 @@ class TimeManager:
             time_desc.append("Total runtime")
             time_vals.append(self.total_runtime)
 
-        return {
-            "Dates and times": time_desc,
-            "Values": time_vals
-        }
+        if time_desc:
+            return {
+                "Dates and times": time_desc,
+                "Values": time_vals
+            }
+        else:
+            return {}
 
 
 def calc_avg_on_times(time_managers: List[TimeManager]) -> dict:
