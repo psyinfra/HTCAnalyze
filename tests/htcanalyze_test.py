@@ -168,10 +168,3 @@ def test_log_to_dict(htcan):
                    'Error from slot1_4@cpu1.htc.inm7.de: '
                    'Job has encountered an out-of-memory event.',
                    'via condor_rm (by user tkadelka)']}
-
-
-def test_rdns_lookup(htcan):
-    htcan.gethostbyaddrcached("172.217.0.0")
-    assert htcan.rdns_cache["172.217.0.0"] == "ord38s04-in-f0.1e100.net"
-    htcan.gethostbyaddrcached("NoIP")
-    assert htcan.rdns_cache["NoIP"] == "NoIP"
