@@ -2,6 +2,12 @@
 
 
 class JobDetails:
+    """
+    Class to store and manage the different job details.
+
+    Mostly the complexity lies in creating
+    colored output depending on the states
+    """
 
     state_colors = {
         'abnormal': 'red',
@@ -22,9 +28,11 @@ class JobDetails:
         self.return_value = None
 
     def get_state_color(self):
+        """Return the color for the given state."""
         return self.state_colors.get(self.state)
 
     def to_dict(self):
+        """Resolve the given JobDetails to a dictionary."""
         titles = list()
         values = list()
         if self.state_desc and self.state:
@@ -53,13 +61,15 @@ class JobDetails:
         }
 
     def to_table(self):
+        """Todo."""
         pass
 
 
 def format_job_state(state):
+    """Format the state to a colored capitalized string."""
     dummy_jd = JobDetails()
     dummy_jd.state = state
     color = dummy_jd.get_state_color()
     if state == "ewr":
         state = "Error while reading"
-    return f"[{color}]{state}[/{color}]"
+    return f"[{color}]{state.capitalize()}[/{color}]"
