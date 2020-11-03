@@ -16,6 +16,7 @@ from typing import List
 # import own module
 from htcanalyze.resource import Resource, create_avg_on_resources
 from htcanalyze.time_manager import TimeManager, calc_avg_on_times
+from htcanalyze.host_nodes import SingleNode, HostNodes, node_cache
 
 
 class HTCAnalyze:
@@ -242,10 +243,6 @@ class HTCAnalyze:
                                          event.get('ExecuteHost'))
                 if match_to_host:
                     execution_host = match_to_host[1]
-                    if self.rdns_lookup:  # resolve
-                        execution_host = \
-                            self.gethostbyaddrcached(execution_host)
-
                     job_events.append(('Executing on', execution_host))
                 # ERROR
                 else:
@@ -306,6 +303,7 @@ class HTCAnalyze:
                                           "[green]Normal[/green]"))
                     return_value = event.get('ReturnValue')
                     job_events.append(("Return Value", return_value))
+                # mostly due to signal/exit code 11
                 else:
                     job_events.insert(0, ("Termination State",
                                           "[red]Abnormal[/red]"))
@@ -397,32 +395,6 @@ class HTCAnalyze:
                 ram_history_dict,
                 error_dict)
 
-    def gethostbyaddrcached(self, ip: str):
-        """
-        Get the hostname by address, with an in-memory cache.
-
-        This prevents excessive queries to DNS servers.
-
-        :param ip: ip represented by a string
-        :return: resolved domain name, else give back the IP
-        """
-        try:
-            # try our cache first
-            return self.rdns_cache[ip]
-        except KeyError:
-            # do the lookup
-            try:
-                rdns = socket.gethostbyaddr(ip)
-                logging.debug(f"rDNS lookup successful: "
-                              f"{ip} resolved as {rdns[0]}")
-                self.rdns_cache[ip] = rdns[0]
-                return rdns[0]
-            except socket.error:
-                logging.debug(f"Unable to perform rDNS lookup for {ip}")
-                # cache negative responses too
-                self.rdns_cache[ip] = ip
-                return ip
-
     def analyze_one_by_one(self, log_files: List[str]) -> List[dict]:
         """
         Analyze the given log files one by one.
@@ -451,16 +423,23 @@ class HTCAnalyze:
                 msg = f"[green]Job analysis of: {file}[/green]"
                 result_dict["description"] = msg
 
-                job_dict, resource_list, time_manager, \
+                job_dict, resources, time_manager, \
                     ram_history, occurred_errors = self.log_to_dict(file)
+
+                if job_dict and self.rdns_lookup:
+                    ip = job_dict['Values'][2]
+                    job_dict['Values'][2] = (
+                        node_cache.gethostbyaddrcached(ip)
+                    )
+
                 if job_dict:
                     result_dict["execution-details"] = job_dict
 
                 if time_manager:
                     result_dict["times"] = time_manager.create_time_dict()
 
-                if resource_list:
-                    result_dict["all-resources"] = resource_list
+                if resources:
+                    result_dict["all-resources"] = resources
 
                 # show HTCondor errors
                 if occurred_errors:
@@ -520,7 +499,7 @@ class HTCAnalyze:
         - Normal termination
         - Abnormal termination
         - Waiting for execution
-        - Currently running
+        - Currently executing
         - Aborted
         - Aborted before submission
         - Aborted before execution
@@ -562,22 +541,25 @@ class HTCAnalyze:
             # new entry
             if cur_state not in all_files:
                 # if host exists
-                host_nodes = dict()
+                host_nodes = HostNodes(self.rdns_lookup)
                 if "Executing on" in job_dict["Execution details"]:
                     # to_host = job_dict["Values"][2]
-                    host_nodes[to_host] = [1, tt_time]
+                    host_nodes.add_node(SingleNode(to_host, tt_time))
                 # else if still waiting
                 elif "Submitted from" in job_dict["Execution details"]:
                     if "Aborted" in cur_state:
-                        host_nodes['Aborted before '
-                                   'execution'] = [1, tt_time]
+                        host_nodes.add_node(
+                            SingleNode('Aborted before execution', tt_time)
+                        )
                     else:
-                        host_nodes['Waiting for '
-                                   'execution'] = [1, tt_time]
+                        host_nodes.add_node(
+                            SingleNode('Waiting for execution', tt_time)
+                        )
                 # else aborted before submission ?
                 else:
-                    host_nodes['Aborted before '
-                               'submission'] = [1, tt_time]
+                    host_nodes.add_node(
+                        SingleNode('Aborted before submission', tt_time)
+                    )
 
                 all_files[cur_state] = {"occurrence": 1,
                                         "time_managers": [time_manager],
@@ -602,56 +584,37 @@ class HTCAnalyze:
                 # resources not empty
                 if all_files[cur_state]["job_resources"] and job_resources:
                     all_files[cur_state]["job_resources"].append(job_resources)
-                elif all_files[cur_state]["job_resources"]:
-                    rprint(f"[yellow]{cur_state}: "
-                           f"has no resources[/yellow]")
 
                 # add cpu
                 if to_host is not None:
-                    # cpu known ???
-                    if to_host in all_files[cur_state]["host_nodes"].keys():
-                        all_files[cur_state]["host_nodes"][to_host][0] += 1
-                        all_files[cur_state][
-                            "host_nodes"][to_host][1] += tt_time
-                    else:
-                        all_files[cur_state][
-                            "host_nodes"][to_host] = [1, tt_time]
+                    all_files[cur_state]["host_nodes"].add_node(
+                        SingleNode(to_host, tt_time)
+                    )
                 elif "Submitted from" in job_dict["Execution details"]:
                     # other waiting jobs ???
                     if 'Waiting for execution' in \
                             all_files[cur_state]["host_nodes"].keys():
-                        all_files[cur_state]["host_nodes"][
-                            'Waiting for execution'][0] += 1
-                        all_files[cur_state]["host_nodes"][
-                            'Waiting for execution'][1] += tt_time
+                        all_files[cur_state]["host_nodes"].add_node(
+                            SingleNode('Waiting for execution', tt_time)
+                        )
                     elif "Aborted before execution" in \
                             all_files[cur_state]["host_nodes"].keys():
-                        all_files[cur_state]["host_nodes"][
-                            'Aborted before execution'][0] += 1
-                        all_files[cur_state]["host_nodes"][
-                            'Aborted before execution'][1] += tt_time
+                        all_files[cur_state]["host_nodes"].add_node(
+                            SingleNode('Aborted before execution', tt_time)
+                        )
+                    elif "Aborted" in cur_state:
+                        all_files[cur_state]["host_nodes"].add_node(
+                            SingleNode('Aborted before execution', tt_time)
+                        )
                     else:
-                        host_nodes = dict()
-                        if "Aborted" in cur_state:
-                            host_nodes['Aborted before '
-                                       'execution'] = [1, tt_time]
-                        else:
-                            host_nodes['Waiting for '
-                                       'execution'] = [1, tt_time]
-                        all_files[cur_state]["host_nodes"] = host_nodes
-                else:
-                    # other aborted before submission jobs ???
-                    if 'Aborted before submission' in \
-                            all_files[cur_state]["host_nodes"].keys():
-                        all_files[cur_state]["host_nodes"][
-                            'Aborted before submission'][0] += 1
-                        all_files[cur_state]["host_nodes"][
-                            'Aborted before submission'][1] += tt_time
-                    else:
-                        host_nodes = dict()
-                        host_nodes['Aborted before '
-                                   'submission'] = [1, tt_time]
-                        all_files[cur_state]["host_nodes"] = host_nodes
+                        all_files[cur_state]["host_nodes"].add_node(
+                            SingleNode('Waiting for execution', tt_time)
+                        )
+                elif 'Aborted before submission' in \
+                        all_files[cur_state]["host_nodes"].keys():
+                    all_files[cur_state]["host_nodes"].add_node(
+                        SingleNode('Aborted before submission', tt_time)
+                    )
 
         # Now put everything together
         result_list = list()
@@ -688,20 +651,7 @@ class HTCAnalyze:
                     state_info["job_resources"])
                 result_dict["all-resources"] = avg_resources
 
-            executed_jobs = list()
-            runtime_per_node = list()
-            for val in state_info["host_nodes"].values():
-                executed_jobs.append(val[0])
-                average_job_duration = val[1] / val[0]
-                runtime_per_node.append(
-                    timedelta(average_job_duration.days,
-                              average_job_duration.seconds))
-
-            host_nodes_dict = {
-                "Host Nodes": list(state_info["host_nodes"].keys()),
-                "Executed Jobs": executed_jobs,
-                "Average job duration": runtime_per_node
-            }
+            host_nodes_dict = state_info["host_nodes"].nodes_to_avg_dict()
 
             result_dict["host-nodes"] = \
                 sort_dict_by_col(host_nodes_dict, "Executed Jobs")
