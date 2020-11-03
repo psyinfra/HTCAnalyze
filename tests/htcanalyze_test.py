@@ -78,7 +78,7 @@ def test_log_to_dict(htcan):
     :return:
     """
     file = "tests/test_logs/valid_logs/normal_log.log"
-    job_events_dict, resources, time_dict, \
+    job_events_dict, resources, time_manager, \
         ram_history_dict, error_dict = htcan.log_to_dict(file)
 
     assert job_events_dict == {
@@ -106,7 +106,7 @@ def test_log_to_dict(htcan):
     assert resources[2].requested == 20480
     assert resources[2].allocated == 20480
 
-    assert time_dict == {
+    assert time_manager.create_time_dict() == {
         'Dates and times': ['Submission date',
                             'Execution date',
                             'Termination date',
@@ -130,7 +130,7 @@ def test_log_to_dict(htcan):
     assert error_dict == {}
 
     file = "tests/test_logs/valid_logs/aborted_with_errors.log"
-    job_events_dict, resources, time_dict, \
+    job_events_dict, resources, time_manager, \
         ram_history_dict, error_dict = htcan.log_to_dict(file)
 
     assert job_events_dict == {
@@ -139,7 +139,7 @@ def test_log_to_dict(htcan):
 
     assert resources == []
 
-    assert time_dict == {
+    assert time_manager.create_time_dict() == {
         'Dates and times': ['Submission date',
                             'Execution date',
                             'Termination date',
