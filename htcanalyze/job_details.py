@@ -60,10 +60,6 @@ class JobDetails:
             "Values": values
         }
 
-    def to_table(self):
-        """Todo."""
-        pass
-
 
 def format_job_state(state):
     """Format the state to a colored capitalized string."""
