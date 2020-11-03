@@ -5,6 +5,7 @@ from datetime import timedelta
 
 
 class NodeCache:
+    """Cache to save reverse DNS lookups."""
 
     def __init__(self):
         self.rdns_cache = dict()
@@ -41,20 +42,30 @@ node_cache = NodeCache()
 
 
 class SingleNode:
+    """Single Node saving runtime on a node specified by ip or description."""
 
-    def __init__(self, ip_or_desc:str = None, total_runtime=None):
+    def __init__(self, ip_or_desc: str = None, total_runtime=None):
         self.ip_or_desc = ip_or_desc
         self.total_runtime = total_runtime
 
 
 class HostNodes:
+    """Collection of nodes."""
 
     def __init__(self, rdns_lookup=False):
         self.nodes = dict()
         self.rdns_lookup = rdns_lookup
 
     def add_node(self, node: SingleNode):
+        """
+        Add a node to the nodes dictionary.
 
+        Make a first entry with the ip or description
+        or increase existing entries.
+
+        :param node:
+        :return:
+        """
         key = node.ip_or_desc
         if self.rdns_lookup:
             key = node_cache.gethostbyaddrcached(key)
@@ -68,6 +79,7 @@ class HostNodes:
             self.nodes[key]['tt_time'] = node.total_runtime
 
     def nodes_to_avg_dict(self) -> dict:
+        """Create dict with average run times per node."""
         keys = self.nodes.keys()
         executed_jobs = list()
         avg_times_spend = list()
@@ -85,4 +97,3 @@ class HostNodes:
             "Executed Jobs": executed_jobs,
             "Average job duration": avg_times_spend
         }
-

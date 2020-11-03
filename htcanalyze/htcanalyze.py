@@ -3,11 +3,10 @@
 import logging
 import os
 import re
-import socket
 
 import numpy as np
 from plotille import Figure
-from datetime import datetime as date_time, timedelta
+from datetime import datetime as date_time
 from htcondor import JobEventLog, JobEventType as jet
 from rich import print as rprint
 from rich.progress import Progress, track
