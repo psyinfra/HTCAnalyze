@@ -62,16 +62,16 @@ class TimeManager:
                     self.running_over_newyear = True
                     self.execution_date = self.execution_date.replace(
                         year=self.execution_date.year - 1)
-                self.execution_time = self.termination_date \
-                                          - self.execution_date
+                self.execution_time = (self.termination_date -
+                                       self.execution_date)
             if self.submission_date:
                 # new year ?
                 if self.submission_date > self.termination_date:
                     self.running_over_newyear = True
                     self.submission_date = self.submission_date.replace(
                         year=self.submission_date.year - 1)
-                self.total_runtime = self.termination_date - \
-                                        self.submission_date
+                self.total_runtime = (self.termination_date -
+                                      self.submission_date)
         # Process still running
         elif self.execution_date:
             self.execution_time = today - self.execution_date
@@ -167,6 +167,3 @@ def calc_avg_on_times(time_managers: List[TimeManager]) -> dict:
         }
     else:
         return {}
-
-
-
