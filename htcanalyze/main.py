@@ -382,10 +382,18 @@ def manage_params(args: list) -> dict:
 
     if cmd_dict['ext_log'] is None:
         cmd_dict['ext_log'] = ""
+    elif not cmd_dict['ext_log'].startswith('.'):
+        cmd_dict['ext_log'] = '.' + cmd_dict['ext_log']
+
     if cmd_dict['ext_err'] is None:
         cmd_dict['ext_err'] = ".err"
+    elif not cmd_dict['ext_err'].startswith('.'):
+        cmd_dict['ext_err'] = '.' + cmd_dict['ext_err']
+
     if cmd_dict['ext_out'] is None:
         cmd_dict['ext_out'] = ".out"
+    elif not cmd_dict['ext_out'].startswith('.'):
+        cmd_dict['ext_out'] = '.' + cmd_dict['ext_out']
 
     return cmd_dict
 
