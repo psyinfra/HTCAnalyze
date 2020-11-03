@@ -159,8 +159,8 @@ class HTCAnalyze:
             job_spec_id = os.path.splitext(file)[0]
         return job_spec_id
 
+    @staticmethod
     def log_to_dict(
-            self,
             file: str,
             sec: int = 0
     ) -> (JobDetails,
