@@ -1,9 +1,20 @@
-import numpy as np
+"""Manage times of HTCondor job logs."""
 from datetime import datetime as date_time, timedelta
 from typing import List
 
 
 class TimeManager:
+    """
+    Manage time differences and representation.
+
+    This class creates time differences between the
+    submission, execution and termination date of one job log
+    By that it calculates the runtime.
+
+    Furthermore it can be returned as a dictionary resolving the year,
+    only if the job was running of new year.
+
+    """
 
     def __init__(self,
                  submission_date: date_time = None,
@@ -29,7 +40,7 @@ class TimeManager:
 
         """
         today = date_time.now()
-        today = today.replace(microsecond=0)  # remove unnecessary microseconds
+        today = today.replace(microsecond=0)  # remove microseconds
 
         # calculate the time difference to last year,
         # if the date is higher that today of running jobs
@@ -79,7 +90,15 @@ class TimeManager:
         elif self.submission_date:
             self.waiting_time = today - self.submission_date
 
-    def create_time_dict(self):
+    def create_time_dict(self) -> dict:
+        """
+        Return a fancy representation as a dict.
+
+        The feature here, is that the year only gets represented
+        if a job was running over new year.
+
+        :return: dict
+        """
         time_desc = list()
         time_vals = list()
 
@@ -119,15 +138,22 @@ class TimeManager:
             time_desc.append("Total runtime")
             time_vals.append(self.total_runtime)
 
-        time_dict = {
+        return {
             "Dates and times": time_desc,
             "Values": time_vals
         }
 
-        return time_dict
-
 
 def calc_avg_on_times(time_managers: List[TimeManager]) -> dict:
+    """
+    Calculate the average of a list with time managers.
+
+    Only the the different time differences get added
+    and divided by the number of time managers.
+
+    :param time_managers: list of TimeManager's
+    :return: dict with total and average time differences
+    """
     # all values empty
     waiting_for = timedelta()
     executing_for = timedelta()

@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import socket
-import sys
 
 import numpy as np
 from plotille import Figure
@@ -841,7 +840,7 @@ def sort_dict_by_col(dictionary, column, reverse=True):
 
     :param dictionary:
     :param column:
-    :param reversed:
+    :param reverse:
     :return:
     """
     # sorted_dict = dict.fromkeys(dictionary.keys())
