@@ -423,7 +423,7 @@ class HTCAnalyze:
                 if job_details.executing_on and self.rdns_lookup:
                     ip = job_details.executing_on
                     job_details.executing_on = (
-                        node_cache.gethostbyaddrcached(ip)
+                        node_cache.get_host_by_addr_cached(ip)
                     )
 
                 result_dict["execution-details"] = job_details.to_dict()

@@ -10,7 +10,7 @@ class NodeCache:
     def __init__(self):
         self.rdns_cache = dict()
 
-    def gethostbyaddrcached(self, ip):
+    def get_host_by_addr_cached(self, ip):
         """
         Get the hostname by address, with an in-memory cache.
 
@@ -62,13 +62,10 @@ class HostNodes:
 
         Make a first entry with the ip or description
         or increase existing entries.
-
-        :param node:
-        :return:
         """
         key = node.ip_or_desc
         if self.rdns_lookup:
-            key = node_cache.gethostbyaddrcached(key)
+            key = node_cache.get_host_by_addr_cached(key)
 
         try:
             self.nodes[key]['n_jobs'] += 1
