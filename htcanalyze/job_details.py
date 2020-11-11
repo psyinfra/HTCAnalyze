@@ -12,7 +12,7 @@ class JobDetails:
     state_colors = {
         'abnormal': 'red',
         'aborted': 'red',
-        'ewr': 'red',  # error while reading
+        'error_while_reading': 'red',
         'normal': 'green',
         'waiting': 'blue',
         'executing': 'blue',
@@ -39,7 +39,7 @@ class JobDetails:
             titles.append(self.state_desc)
             color = self.get_state_color()
             cpy_state = self.state
-            if cpy_state == "ewr":
+            if cpy_state == "error_while_reading":
                 cpy_state = "Error while reading"
             cpy_state = cpy_state.capitalize()
             values.append(f"[{color}]{cpy_state}[/{color}]")
@@ -66,6 +66,6 @@ def format_job_state(state):
     dummy_jd = JobDetails()
     dummy_jd.state = state
     color = dummy_jd.get_state_color()
-    if state == "ewr":
+    if state == "error_while_reading":
         state = "Error while reading"
     return f"[{color}]{state.capitalize()}[/{color}]"

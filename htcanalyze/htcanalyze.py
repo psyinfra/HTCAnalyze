@@ -359,7 +359,7 @@ class HTCAnalyze:
         elif invalid_file:
             time_manager = TimeManager()
             job_details.state_desc = "Error"
-            job_details.state = "ewr"
+            job_details.state = "error_while_reading"
 
         error_dict = dict()
         ram_history_dict = dict()
@@ -610,7 +610,7 @@ class HTCAnalyze:
             f_state = format_job_state(cur_state)
 
             # differentiate between terminated and running processes
-            if "ewr" in cur_state:
+            if "error_while_reading" in cur_state:
                 result_dict["description"] = "" \
                      "##################################################\n" \
                      "## All files, that caused an [red]" \
