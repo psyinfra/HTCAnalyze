@@ -13,8 +13,12 @@ class Resource:
 
     """
 
-    level_colors = {'error': 'red', 'warning': 'yellow',
-                    'light_warning': 'yellow2', 'normal': 'green'}
+    level_colors = {
+        'error': 'red',
+        'warning': 'yellow',
+        'light_warning': 'yellow2',
+        'normal': 'green'
+    }
 
     def __init__(self,
                  description: str,
@@ -33,7 +37,7 @@ class Resource:
         """Convert an alert level to an appropriate color."""
         return self.level_colors.get(self.warning_level, "default")
 
-    def resource_to_dict(self) -> dict:
+    def to_dict(self) -> dict:
         """Return this class as a dict."""
         return {k: v for k, v in self.__dict__.items()
                 if not k == "level_colors"}
@@ -124,10 +128,13 @@ def dict_to_resources(resources: dict) -> List[Resource]:
 
 def resources_to_dict(resources: List[Resource]) -> dict:
     """Convert a list of Resource back to this dict scheme."""
-    return {
-        "Resources": [res.description for res in resources],
-        "Usage": [f"[{res.get_color()}]{res.usage}[/{res.get_color()}]"
-                  for res in resources],
-        "Requested": [res.requested for res in resources],
-        "Allocated": [res.allocated for res in resources]
-    }
+    if resources:
+        return {
+            "Resources": [res.description for res in resources],
+            "Usage": [f"[{res.get_color()}]{res.usage}[/{res.get_color()}]"
+                      for res in resources],
+            "Requested": [res.requested for res in resources],
+            "Allocated": [res.allocated for res in resources]
+        }
+    else:
+        return {}

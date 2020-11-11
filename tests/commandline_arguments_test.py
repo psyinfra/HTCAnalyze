@@ -73,12 +73,6 @@ def test_wrong_opts_or_args():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 2
 
-    args = "--mode=None".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 2
-
     # wrong ignore value
     args = "--ignore None ".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -107,7 +101,7 @@ def test_show_values():
     # analyze
     args = "tests/test_logs/valid_logs/normal_log.log " \
            "tests/test_logs/valid_logs/gpu_usage.log " \
-           "--show htc-err htc-out -a".split()
+           "--show htc-err htc-out --one-by-one".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -117,8 +111,8 @@ def test_show_values():
 def test_ignore_values():
     args = "--ignore execution-details times host-nodes " \
            "used-resources requested-resources allocated-resources " \
-           "all-resources errors ram-history -as " \
-           "tests/test_logs/valid_logs/gpu_usage.log".split()
+           "all-resources errors ram-history " \
+           "-f tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -151,7 +145,7 @@ def test_independent_opts():
 
 def test_analyze_mode():
 
-    args = "--mode analyze tests/test_logs/valid_" \
+    args = "--one-by-one tests/test_logs/valid_" \
            "logs/aborted_before_submission.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
@@ -160,24 +154,7 @@ def test_analyze_mode():
 
     # dictionary
     sys.stdout = open('test_output.txt', 'w')
-    args = "-m a tests/test_logs/valid_logs/normal_log.log".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-
-def test_summarize_mode():
-    # single files
-    args = "--mode summarize tests/test_" \
-           "logs/valid_logs/aborted_before_submission.log".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    # dictionary
-    args = "-m s tests/test_logs/valid_logs/".split()
+    args = "--one-by-one tests/test_logs/valid_logs/normal_log.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -185,14 +162,13 @@ def test_summarize_mode():
 
 
 def test_analyzed_summary():
-    args = "--mode analyzed-summary " \
-           "tests/test_logs/valid_logs/aborted_before_submission.log".split()
+    args = "tests/test_logs/valid_logs/aborted_before_submission.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
-    args = "-m analyzed-summary tests/test_logs/valid_logs".split()
+    args = "tests/test_logs/valid_logs".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -201,25 +177,13 @@ def test_analyzed_summary():
 
 def test_filter_mode():
 
-    args = "tests/test_logs/valid_logs --filter err --extend".split()
+    args = "tests/test_logs/valid_logs --filter err".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
-    args = "--filter err -a tests/test_logs/valid_logs/gpu_usage.log".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    args = "--filter err -as tests/test_logs/valid_logs/gpu_usage.log".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    args = "--filter err -s tests/test_logs/valid_logs/gpu_usage.log".split()
+    args = "--filter err -f tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
@@ -234,19 +198,13 @@ def _all_modes_by_logfiles(logfile, return_value):
     assert pytest_wrapped_e.value.code == return_value
 
     ht.input = lambda x: 'y'
-    args = ["-a", logfile, "--no-config"]
+    args = ["--one-by-one", logfile, "--no-config"]
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == return_value
 
-    args = ["-s", logfile, "--no-config"]
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == return_value
-
-    args = ["-as", logfile, "--no-config"]
+    args = [logfile, "--no-config"]
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit

@@ -1,100 +1,7 @@
 
 import datetime
 import pytest
-from htcanalyze.htcanalyze import HTCAnalyze, gen_time_dict, sort_dict_by_col
-
-
-def test_gen_time_dict():
-
-    strp_format = "%Y-%m-%dT%H:%M:%S"
-    strf_format = "%m/%d %H:%M:%S"
-    today = datetime.datetime.now()
-    today = today.replace(microsecond=0)
-
-    submission = "2019-6-23T22:25:25"
-    execution = "2019-6-24T06:32:25"
-    termination = "2020-01-13T6:5:5"
-
-    sub_date = datetime.datetime.strptime(submission, strp_format)
-    exec_date = datetime.datetime.strptime(execution, strp_format)
-    term_date = datetime.datetime.strptime(termination, strp_format)
-
-    # test all None
-    time_dict = gen_time_dict()
-    assert time_dict is None
-
-    # test only submission date given
-    waiting_time = today - sub_date
-    time_dict = gen_time_dict(sub_date)
-    assert time_dict['Dates and times'] == ['Submission date', 'Waiting time']
-    assert time_dict['Values'][0] == sub_date.strftime(strf_format)
-    assert time_dict['Values'][1] == waiting_time
-
-    # test only execution date given
-    time_dict = gen_time_dict(execution_date=exec_date)
-    assert time_dict['Dates and times'] == ['Execution date']
-    assert time_dict['Values'][0] == exec_date.strftime(strf_format)
-
-    # test only termination date given
-    time_dict = gen_time_dict(termination_date=term_date)
-    assert time_dict['Dates and times'] == ['Termination date']
-    assert time_dict['Values'][0] == term_date.strftime(strf_format)
-
-    # test only submission and execution date given
-    time_dict = gen_time_dict(sub_date, exec_date)
-    assert time_dict['Dates and times'] == ['Submission date',
-                                            'Execution date',
-                                            'Waiting time',
-                                            'Execution runtime']
-    waiting_time = exec_date - sub_date
-    execution_runtime = today - exec_date
-    assert time_dict['Values'][0] == sub_date.strftime(strf_format)
-    assert time_dict['Values'][1] == exec_date.strftime(strf_format)
-    assert time_dict['Values'][2] == waiting_time
-    assert time_dict['Values'][3] == execution_runtime
-
-    # test only submission and termination date given
-    time_dict = gen_time_dict(submission_date=sub_date,
-                              termination_date=term_date)
-    assert time_dict['Dates and times'] == ['Submission date',
-                                            'Termination date',
-                                            'Total runtime']
-    total_runtime = term_date - sub_date
-    assert time_dict['Values'][0] == sub_date.strftime(strf_format)
-    assert time_dict['Values'][1] == term_date.strftime(strf_format)
-    assert time_dict['Values'][2] == total_runtime
-
-    # test only execution and termination date given
-    time_dict = gen_time_dict(submission_date=None,
-                              execution_date=exec_date,
-                              termination_date=term_date)
-    execution_runtime = term_date - exec_date
-    assert time_dict['Dates and times'] == ['Execution date',
-                                            'Termination date',
-                                            'Execution runtime']
-    assert time_dict['Values'][0] == exec_date.strftime(strf_format)
-    assert time_dict['Values'][1] == term_date.strftime(strf_format)
-    assert time_dict['Values'][2] == execution_runtime
-
-    # test all given
-    time_dict = gen_time_dict(submission_date=sub_date,
-                              execution_date=exec_date,
-                              termination_date=term_date)
-    assert time_dict['Dates and times'] == ['Submission date',
-                                            'Execution date',
-                                            'Termination date',
-                                            'Waiting time',
-                                            'Execution runtime',
-                                            'Total runtime']
-    waiting_time = exec_date - sub_date
-    execution_runtime = term_date - exec_date
-    total_runtime = term_date - sub_date
-    assert time_dict['Values'][0] == sub_date.strftime(strf_format)
-    assert time_dict['Values'][1] == exec_date.strftime(strf_format)
-    assert time_dict['Values'][2] == term_date.strftime(strf_format)
-    assert time_dict['Values'][3] == waiting_time
-    assert time_dict['Values'][4] == execution_runtime
-    assert time_dict['Values'][5] == total_runtime
+from htcanalyze.htcanalyze import HTCAnalyze, sort_dict_by_col
 
 
 def test_sort_dict_by_column():
@@ -171,18 +78,14 @@ def test_log_to_dict(htcan):
     :return:
     """
     file = "tests/test_logs/valid_logs/normal_log.log"
-    job_events_dict, resources, time_dict, \
-        ram_history_dict, error_dict = htcan.log_to_dict(file)
+    (job_details, resources, time_manager,
+     ram_history_dict, error_dict) = htcan.log_to_dict(file)
 
-    assert job_events_dict == {
-        'Execution details': ['Termination State',
-                              'Submitted from',
-                              'Executing on',
-                              'Return Value'],
-        'Values': ['[green]Normal[/green]',
-                   '10.0.8.10',
-                   '10.0.9.201',
-                   1]}
+    assert job_details.state_desc == "Termination State"
+    assert job_details.state == 'normal'
+    assert job_details.submitted_by == '10.0.8.10'
+    assert job_details.executing_on == '10.0.9.201'
+    assert job_details.return_value == 1
 
     assert resources[0].description == "CPU"
     assert resources[0].usage == 0.11
@@ -199,7 +102,7 @@ def test_log_to_dict(htcan):
     assert resources[2].requested == 20480
     assert resources[2].allocated == 20480
 
-    assert time_dict == {
+    assert time_manager.create_time_dict() == {
         'Dates and times': ['Submission date',
                             'Execution date',
                             'Termination date',
@@ -223,16 +126,17 @@ def test_log_to_dict(htcan):
     assert error_dict == {}
 
     file = "tests/test_logs/valid_logs/aborted_with_errors.log"
-    job_events_dict, resources, time_dict, \
-        ram_history_dict, error_dict = htcan.log_to_dict(file)
+    (job_details, resources, time_manager,
+     ram_history_dict, error_dict) = htcan.log_to_dict(file)
 
-    assert job_events_dict == {
-        'Execution details': ['Process was', 'Submitted from', 'Executing on'],
-        'Values': ['[red]Aborted[/red]', '10.0.8.10', '10.0.9.1']}
+    assert job_details.state_desc == "Process was"
+    assert job_details.state == "aborted"
+    assert job_details.submitted_by == "10.0.8.10"
+    assert job_details.executing_on == "10.0.9.1"
 
     assert resources == []
 
-    assert time_dict == {
+    assert time_manager.create_time_dict() == {
         'Dates and times': ['Submission date',
                             'Execution date',
                             'Termination date',
@@ -261,10 +165,3 @@ def test_log_to_dict(htcan):
                    'Error from slot1_4@cpu1.htc.inm7.de: '
                    'Job has encountered an out-of-memory event.',
                    'via condor_rm (by user tkadelka)']}
-
-
-def test_rdns_lookup(htcan):
-    htcan.gethostbyaddrcached("172.217.0.0")
-    assert htcan.rdns_cache["172.217.0.0"] == "ord38s04-in-f0.1e100.net"
-    htcan.gethostbyaddrcached("NoIP")
-    assert htcan.rdns_cache["NoIP"] == "NoIP"
