@@ -45,12 +45,6 @@ bad-usage = 0.25
 mode = default
 # valid modes: [summarize, analyze, analyzed-summary, default]
 
-
-filter = []
-filter-extended = false
-## if set, filter is extended with these keywords:
-## [err, warn, exception, aborted, abortion, abnormal, fatal]
-
 # more features
 verbose = false
 # generate-log-file = htcanalyze.log
