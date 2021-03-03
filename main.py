@@ -18,21 +18,27 @@ from datetime import datetime as date_time
 
 import configargparse
 from argparse import HelpFormatter
-from typing import List
-from rich import print as rprint, box
-from rich.progress import Table
+from rich import print as rprint
 
 # own classes
-from htcanalyze import setup_logging_tool
+from htcanalyze.display import print_results, check_for_redirection
+from htcanalyze import setup_logging_tool, get_package_name
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
-from htcanalyze.resource import resources_to_dict
 from htcanalyze.logvalidator import LogValidator
 
+# config paths to watch in the following order
+CONFIG_PATHS = [
+    f'/etc/{get_package_name()}.conf',
+    f'~/.config/{get_package_name()}.conf',
+    f'{sys.prefix}/config/{get_package_name()}.conf'
+]
+
 ALLOWED_SHOW_VALUES = ["htc-err", "htc-out"]
-ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
-                         "used-resources", "requested-resources",
-                         "allocated-resources", "all-resources",
-                         "errors", "ram-history"]
+ALLOWED_IGNORE_VALUES = [
+    "execution-details", "times", "host-nodes", "used-resources",
+    "requested-resources", "allocated-resources", "all-resources",
+    "errors", "ram-history"
+]
 
 NORMAL_EXECUTION = 0
 NO_VALID_FILES = 1
@@ -99,18 +105,20 @@ def setup_prioritized_parser():
     return parser
 
 
-def setup_commandline_parser(default_config_files=[])\
-        -> configargparse.ArgumentParser:
+def setup_commandline_parser(
+        default_config_files=[]
+) -> configargparse.ArgumentParser:
     """
     Define parser with all arguments listed below.
 
     :param default_config_files: list with config file hierarchy to look for
     :return: parser
     """
-    parser = configargparse.\
-        ArgumentParser(formatter_class=CustomFormatter,
-                       default_config_files=default_config_files,
-                       description="Analyze or summarize HTCondor-Joblogs")
+    parser = configargparse.ArgumentParser(
+        formatter_class=CustomFormatter,
+        default_config_files=default_config_files,
+        description="Analyze or summarize HTCondor-Joblogs"
+    )
 
     parser.add_argument("path",
                         nargs="*",
@@ -257,10 +265,7 @@ def manage_params(args: list) -> dict:
 
     # parse config file if not --no-config is set, might change nothing
     if not prio_parsed.no_config:
-        config_paths = ['/etc/htcanalyze.conf',
-                        '~/.config/htcanalyze/htcanalyze.conf',
-                        f'{sys.prefix}/config/htcanalyze.conf']
-        cmd_parser = setup_commandline_parser(config_paths)
+        cmd_parser = setup_commandline_parser(CONFIG_PATHS)
         commands_parsed = cmd_parser.parse_args(args)
         cmd_dict = vars(commands_parsed).copy()
 
@@ -334,161 +339,6 @@ def manage_params(args: list) -> dict:
         cmd_dict['ext_out'] = f".{cmd_dict['ext_out']}"
 
     return cmd_dict
-
-
-def wrap_dict_to_table(table_dict, title="") -> Table:
-    """
-    Wrap dict to rich table.
-
-    Takes a dict of the format :
-    {
-        column1: [Header1, Header2, Header3]
-        column2: [val1, val2, val3]
-    }
-    Why ? Because the tool tabulate took the data like this
-    and this function is supposed to reduce the usage of tabulate
-    without too much work
-    :param table_dict:
-    :param title: title of table
-    :return: table
-    """
-    if not table_dict:
-        return None
-
-    table = Table(title=title,
-                  show_header=True,
-                  header_style="bold magenta",
-                  box=box.ASCII)
-    n_vals = len(next(iter(table_dict.values())))  # get len of first value
-    for val in table_dict.keys():
-        table.add_column(val)
-    for i in range(n_vals):
-        new_list = [str(table_dict[val][i]) for val in table_dict]
-        table.add_row(*new_list)
-
-    return table
-
-
-def print_results(
-        htcanalyze: HTCAnalyze,
-        log_files: List[str],
-        one_by_one: bool,
-        ignore_list=list,
-        **kwargs
-) -> str:
-    """
-    Create the output specified by the mode.
-
-    :param htcanalyze:
-    :param log_files:
-    :param one_by_one:
-    :param ignore_list:
-    :param kwargs:
-    :return:
-    """
-    if not log_files:
-        print("No files to process")
-        sys.exit(0)
-    if one_by_one or len(log_files) == 1:
-        results = htcanalyze.analyze_one_by_one(log_files)
-    else:
-        results = htcanalyze.summarize(log_files)
-
-    # Allow this to happen
-    if results is None:
-        sys.exit(0)
-
-    # convert result to processed data list, if not a list
-    proc_data_list = [results] if not isinstance(results, list) else results
-
-    # check for ignore values
-    for data_dict in proc_data_list:
-
-        for key in data_dict:
-            if data_dict[key] is None:
-                logging.debug(f"This musst be fixed, "
-                              f"data_dict['{key}'] is None.")
-                rprint("[red]NoneType object found, "
-                       "this should not happen[/red]")
-
-        if "description" in data_dict:
-            rprint(data_dict["description"])
-
-        if "execution-details" in data_dict:
-            if "execution-details" in ignore_list:
-                del data_dict["execution-details"]
-            elif data_dict["execution-details"]:
-                table = wrap_dict_to_table(data_dict["execution-details"])
-                rprint(table)
-
-        if "times" in data_dict:
-            if "times" in ignore_list:
-                del data_dict["times"]
-            elif data_dict["times"]:
-                table = wrap_dict_to_table(data_dict["times"])
-                rprint(table)
-
-        if "all-resources" in data_dict:
-            if "all-resources" in ignore_list:
-                del data_dict["all-resources"]
-            elif data_dict["all-resources"]:
-                resource_list = data_dict["all-resources"]
-                for resource in resource_list:
-                    resource.chg_lvl_by_threholds(0.25, 0.1)
-                res_dict = resources_to_dict(resource_list)
-                if "used-resources" in ignore_list:
-                    del res_dict["Usage"]
-                if "requested-resources" in ignore_list:
-                    del res_dict["Requested"]
-                if "allocated-resources" in ignore_list:
-                    del res_dict["Allocated"]
-
-                table = wrap_dict_to_table(res_dict)
-                rprint(table)
-
-        if "ram-history" in data_dict:
-            if "ram-history" in ignore_list:
-                del data_dict["ram-history"]
-            elif data_dict["ram-history"] is not None:
-                print(data_dict["ram-history"])
-
-        if "errors" in data_dict:
-            if "errors" in ignore_list:
-                del data_dict["errors"]
-            elif data_dict["errors"] is not None:
-                table = wrap_dict_to_table(data_dict["errors"],
-                                           "Occurred HTCondor errors")
-                rprint(table)
-
-        if "host-nodes" in data_dict:
-            if "host-nodes" in ignore_list:
-                del data_dict["host-nodes"]
-            elif data_dict["host-nodes"] is not None:
-                table = wrap_dict_to_table(data_dict["host-nodes"])
-                rprint(table)
-
-        # Show more section
-        if "htc-out" in data_dict and data_dict["htc-out"] != "":
-            rprint("\n[bold cyan]Related HTC standard output:[/bold cyan]")
-            rprint(data_dict["htc-out"])
-
-        if "htc-err" in data_dict and data_dict["htc-err"] != "":
-            rprint("\n[bold cyan]Related HTCondor standard error:[/bold cyan]")
-            rprint(data_dict["htc-err"])
-
-        print()
-
-
-def check_for_redirection() -> (bool, bool, list):
-    """Check if reading from stdin or redirecting stdout."""
-    redirecting_stdout = not sys.stdout.isatty()
-    reading_stdin = not sys.stdin.isatty()
-    stdin_input = None
-
-    if reading_stdin:
-        stdin_input = sys.stdin.readlines()
-
-    return redirecting_stdout, reading_stdin, stdin_input
 
 
 def run(commandline_args):
