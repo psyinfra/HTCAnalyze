@@ -78,6 +78,7 @@ def test_log_to_dict(htcan):
     :return:
     """
     file = "tests/test_logs/valid_logs/normal_log.log"
+    today = datetime.datetime.today()
     (job_details, resources, time_manager,
      ram_history_dict, error_dict) = htcan.log_to_dict(file)
 
@@ -117,8 +118,8 @@ def test_log_to_dict(htcan):
                    datetime.timedelta(seconds=359)]}
 
     assert ram_history_dict == {
-        'Dates': [datetime.datetime(2020, 7, 11, 20, 40, 3),
-                  datetime.datetime(2020, 7, 11, 20, 45, 4)],
+        'Dates': [datetime.datetime(today.year, 7, 11, 20, 40, 3),
+                  datetime.datetime(today.year, 7, 11, 20, 45, 4)],
         'Image size updates': [448, 1052936],
         'Memory usages': [1, 922],
         'Resident Set Sizes': [448, 943244]}
@@ -151,7 +152,7 @@ def test_log_to_dict(htcan):
                    datetime.timedelta(days=13, seconds=85461)]}
 
     assert ram_history_dict == {
-        'Dates': [datetime.datetime(2020, 2, 11, 12, 29, 26)],
+        'Dates': [datetime.datetime(today.year, 2, 11, 12, 29, 26)],
         'Image size updates': [28644],
         'Memory usages': [28],
         'Resident Set Sizes': [28644]}
