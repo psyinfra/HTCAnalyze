@@ -14,15 +14,16 @@ Exit Codes:
 import argparse
 import logging
 import sys
-from logging.handlers import RotatingFileHandler
 from datetime import datetime as date_time
 
 import configargparse
+from argparse import HelpFormatter
 from typing import List
 from rich import print as rprint, box
 from rich.progress import Table
 
 # own classes
+from htcanalyze import setup_logging_tool
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
 from htcanalyze.resource import resources_to_dict
 from htcanalyze.logvalidator import LogValidator
@@ -33,62 +34,14 @@ ALLOWED_IGNORE_VALUES = ["execution-details", "times", "host-nodes",
                          "allocated-resources", "all-resources",
                          "errors", "ram-history"]
 
-
-def setup_logging_tool(log_file=None, verbose_mode=False):
-    """
-        Set up the logging device.
-
-        to generate a log file, with --generate-log-file
-        or to print more descriptive output with the verbose mode to stdout
-
-        both modes are compatible together
-    :return:
-    """
-    # disable the loggeing tool by default
-    logging.getLogger().disabled = True
-
-    # I don't know why a root handler is already set,
-    # but we have to remove him in order
-    # to get just the output of our own handler
-    if len(logging.root.handlers) == 1:
-        default_handler = logging.root.handlers[0]
-        logging.root.removeHandler(default_handler)
-
-    # if logging tool is set to use
-    if log_file is not None:
-        # activate logger if not already activated
-        logging.getLogger().disabled = False
-
-        # more specific view into the script itself
-        logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d]' \
-                              ' %(levelname)s : %(message)s'
-        file_formatter = logging.Formatter(logging_file_format)
-
-        handler = RotatingFileHandler(log_file, maxBytes=1000000,
-                                      backupCount=1)
-        handler.setLevel(logging.DEBUG)
-        handler.setFormatter(file_formatter)
-
-        log = logging.getLogger()
-        log.setLevel(logging.DEBUG)
-        log.addHandler(handler)
-
-    if verbose_mode:
-        # activate logger if not already activated
-        logging.getLogger().disabled = False
-
-        logging_stdout_format = '%(asctime)s - %(levelname)s: %(message)s'
-        stdout_formatter = logging.Formatter(logging_stdout_format)
-
-        stdout_handler = logging.StreamHandler(sys.stdout)
-        stdout_handler.setLevel(logging.DEBUG)
-        stdout_handler.setFormatter(stdout_formatter)
-        log = logging.getLogger()
-        log.setLevel(logging.DEBUG)
-        log.addHandler(stdout_handler)
+NORMAL_EXECUTION = 0
+NO_VALID_FILES = 1
+HTCANALYZE_ERROR = 2
+TYPE_ERROR = 3
+KEYBOARD_INTERRUPT = 4
 
 
-class CustomFormatter(argparse.HelpFormatter):
+class CustomFormatter(HelpFormatter):
     """
 
     Custom formatter for setting argparse formatter_class.
@@ -294,7 +247,7 @@ def manage_params(args: list) -> dict:
     # first of all check for prioritised/exit params
     if prio_parsed.version:
         print("Version: v1.3.0")
-        sys.exit(0)
+        sys.exit(NORMAL_EXECUTION)
 
     # get files from prio_parsed
     files_list = list()
@@ -305,9 +258,10 @@ def manage_params(args: list) -> dict:
         # do not use config files if --no-config flag is set
         if prio_parsed.no_config:
             # if as well config is set, exit, because of conflict
-            print("htcanalyze: error: conflict between "
-                  "--no-config and --config")
-            sys.exit(2)
+            print(
+                "htcanalyze: error: conflict between --no-config and --config"
+            )
+            sys.exit(HTCANALYZE_ERROR)
         # else add config again
         args.extend(["--config", prio_parsed.config[0]])
 
@@ -374,7 +328,7 @@ def manage_params(args: list) -> dict:
             raise_value_error("--show only allowed with analyze mode")
     except ValueError as err:
         rprint(f"[red]htcanalyze: error: {err}[/red]")
-        sys.exit(2)
+        sys.exit(HTCANALYZE_ERROR)
 
     # delete unnecessary information
     del cmd_dict["version"]
@@ -431,12 +385,14 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
     return table
 
 
-def print_results(htcanalyze: HTCAnalyze,
-                  log_files: List[str],
-                  one_by_one: bool,
-                  ignore_list=list,
-                  filter_keywords=list,
-                  **kwargs) -> str:
+def print_results(
+        htcanalyze: HTCAnalyze,
+        log_files: List[str],
+        one_by_one: bool,
+        ignore_list=list,
+        filter_keywords=list,
+        **kwargs
+) -> str:
     """
     Create the output specified by the mode.
 
@@ -449,8 +405,10 @@ def print_results(htcanalyze: HTCAnalyze,
     :return:
     """
     if filter_keywords:
-        log_files = htcanalyze.filter_for(log_files,
-                                          keywords=filter_keywords)
+        log_files = htcanalyze.filter_for(
+            log_files,
+            keywords=filter_keywords
+        )
     if not log_files:
         print("No files to process")
         sys.exit(0)
@@ -610,12 +568,14 @@ def run(commandline_args):
 
         valid_files = validator.common_validation(param_dict["files"])
 
-        rprint(f"[green]{len(valid_files)}"
-               f" valid log file(s)[/green]\n")
+        rprint(
+            f"[green]{len(valid_files)} valid log file(s)[/green]\n"
+        )
 
         if not valid_files:
             rprint("[red]No valid HTCondor log files found[/red]")
-            sys.exit(1)
+            logging.debug("-------End of htcanalyze script-------")
+            sys.exit(NO_VALID_FILES)
 
         print_results(htcanalyze, log_files=valid_files, **param_dict)
 
@@ -625,17 +585,17 @@ def run(commandline_args):
 
         logging.debug("-------End of htcanalyze script-------")
 
-        sys.exit(0)
+        sys.exit(NORMAL_EXECUTION)
 
     except TypeError as err:
         logging.exception(err)
         rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
-        sys.exit(3)
+        sys.exit(TYPE_ERROR)
 
     except KeyboardInterrupt:
         logging.info("Script was interrupted by the user")
-        print("Script was interrupted")
-        sys.exit(4)
+        print("Interrupted by user")
+        sys.exit(KEYBOARD_INTERRUPT)
 
 
 def main():
