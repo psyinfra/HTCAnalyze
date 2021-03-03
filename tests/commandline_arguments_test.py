@@ -175,21 +175,6 @@ def test_analyzed_summary():
     assert pytest_wrapped_e.value.code == 0
 
 
-def test_filter_mode():
-
-    args = "tests/test_logs/valid_logs --filter err".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    args = "--filter err -f tests/test_logs/valid_logs/gpu_usage.log".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-
 def _all_modes_by_logfiles(logfile, return_value):
     args = [logfile, "--no-config", "-v"]
     with pytest.raises(SystemExit) as pytest_wrapped_e:
