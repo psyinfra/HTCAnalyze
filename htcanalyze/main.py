@@ -184,15 +184,6 @@ def setup_commandline_parser(default_config_files=[])\
                         default=[],
                         help="Show more details")
 
-    parser.add_argument("--filter",
-                        nargs="+",
-                        metavar="keywords",
-                        help="Filter for the given keywords",
-                        default=[],
-                        dest="filter_keywords",
-                        action="append",
-                        type=str)
-
     parser.add_argument("--rdns-lookup",
                         action="store_true",
                         default=None,
@@ -234,7 +225,6 @@ def manage_params(args: list) -> dict:
       'ignore_list': [],
       'show_list': [],
       'no_config': False,
-      'filter_keywords': []
       'rdns_lookup': False
       'files': []
       ....
@@ -316,12 +306,6 @@ def manage_params(args: list) -> dict:
         new_show_list.extend(li)
     cmd_dict["show_list"] = new_show_list
 
-    # concat filter list
-    new_filter_list = list()
-    for li in cmd_dict["filter_keywords"]:
-        new_filter_list.extend(li)
-    cmd_dict["filter_keywords"] = new_filter_list
-
     # error handling
     try:
         if cmd_dict["show_list"] and not cmd_dict["one_by_one"]:
@@ -390,7 +374,6 @@ def print_results(
         log_files: List[str],
         one_by_one: bool,
         ignore_list=list,
-        filter_keywords=list,
         **kwargs
 ) -> str:
     """
@@ -400,15 +383,9 @@ def print_results(
     :param log_files:
     :param one_by_one:
     :param ignore_list:
-    :param filter_keywords:
     :param kwargs:
     :return:
     """
-    if filter_keywords:
-        log_files = htcanalyze.filter_for(
-            log_files,
-            keywords=filter_keywords
-        )
     if not log_files:
         print("No files to process")
         sys.exit(0)

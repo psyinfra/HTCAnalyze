@@ -26,8 +26,7 @@ class HTCAnalyze:
     The modes:
         analyze,
         summarize,
-        analyzed-summary,
-        filter_for
+        analyzed-summary
 
     """
 
@@ -661,79 +660,6 @@ class HTCAnalyze:
         result_list.insert(0, {"execution-details": sorted_occ})
 
         return result_list
-
-    def filter_for(self,
-                   log_files: List[str],
-                   keywords: list
-                   ) -> List[str]:
-        """
-        Filter for given keywords.
-
-        The keywords can be extended by:
-        "err", "warn", "exception", "aborted", "abortion", "abnormal", "fatal"
-
-        The filtering is NOT case sensitive.
-
-        The filtered files can be analyzed, summarize, etc afterwards,
-        else this function will return the files
-
-        :param log_files:
-        :param keywords:
-        :param extend:
-        :param mode:
-        :return:
-            filtered log files
-        """
-        logging.info('Starting the filter mode')
-
-        # if the keywords are given as a string, try to create a list
-        if isinstance(keywords, list):
-            keyword_list = keywords
-        else:
-            logging.debug(
-                f"Filter mode only accepts a string "
-                f"or list with keywords, not {keywords}")
-            raise TypeError("Expecting a list or a string")
-
-        rprint("[green]Search for these keywords:[/green]", keyword_list)
-
-        if len(keyword_list) == 1 and keyword_list[0] == "":
-            logging.debug("Empty filter, don't know what to do")
-            return "[yellow]" \
-                   "Don't know what to do with an empty filter,\n" \
-                   "if you activate the filter mode in the config file, \n" \
-                   "please add a [filter] section with the filter" \
-                   "_keywords = your_filter[/yellow]"
-
-        logging.debug(f"These are the keywords to look for: {keyword_list}")
-
-        # now search
-        found_at_least_one = False
-        found_logs = []
-        for file in track(log_files, transient=True,
-                          description="Filtering..."):
-            found = False
-            with open(file, "r") as read_file:
-                for line in read_file:
-                    for keyword in keyword_list:
-                        if re.search(keyword.lower(), line.lower()):
-                            if not found_at_least_one:
-                                print("Matches:")
-                            rprint(f"[grey74]{keyword} in:\t{file}[/grey74] ")
-                            found = True
-                            found_at_least_one = True
-                            break
-                    if found:
-                        found_logs.append(file)
-                        break
-
-        if not found_at_least_one:
-            rprint("[red]Unable to find these keywords:[/red]", keyword_list)
-            rprint("[red]maybe try again with similar expressions[/red]")
-
-        print(f"Total count: {len(found_logs)}")
-
-        return found_logs
 
 
 def raise_value_error(message: str) -> ValueError:
