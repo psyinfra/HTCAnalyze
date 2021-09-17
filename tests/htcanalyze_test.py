@@ -1,6 +1,6 @@
 
 import datetime
-import pytestgi
+import pytest
 from htcanalyze.htcanalyze import HTCAnalyze, sort_dict_by_col
 
 
