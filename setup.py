@@ -7,8 +7,8 @@ with open("README.md", "r") as readme:
 
 setup(
     name='htcanalyze',
-    version_format='{tag}.dev{commitcount}+{gitsha}',
-    setup_requires=['setuptools-git-version'],
+    version_config=True,
+    setup_requires=["setuptools-git-versioning"],
     description='Analyze and summarize HTCondor use logs',
     long_description=long_description,
     author='Mathis Loevenich',
@@ -18,7 +18,7 @@ setup(
     python_requires='>=3.6',
     install_requires=[
         "numpy",
-        "htcondor",
+        "htcondor>=8.8.6",
         "plotille>=3.7",
         "configargparse==1.2.3",
         "rich>=3.0.3"

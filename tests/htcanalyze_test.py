@@ -1,6 +1,6 @@
 
 import datetime
-import pytest
+import pytestgi
 from htcanalyze.htcanalyze import HTCAnalyze, sort_dict_by_col
 
 
@@ -55,7 +55,7 @@ def htcan():
     return htcan
 
 
-def test_HTCAnalyze_init(htcan):
+def test_htcan_init(htcan):
     assert htcan.ext_log == ""
     assert htcan.ext_err == ".err"
     assert htcan.ext_out == ".out"

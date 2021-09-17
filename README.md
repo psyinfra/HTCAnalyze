@@ -1,8 +1,7 @@
 # HTCAnalyze
 
-[![Build Status](https://travis-ci.org/psyinfra/HTCAnalyze.svg?branch=master)](https://travis-ci.org/psyinfra/HTCAnalyze)
+![Build Status](https://github.com/psyinfra/HTCAnalyze/actions/workflows/tests.yml/badge.svg)
 [![codecov](https://codecov.io/gh/psyinfra/HTCAnalyze/branch/master/graph/badge.svg)](https://codecov.io/gh/psyinfra/HTCAnalyze)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/d8fff0409968467d855a0efbf2ab8f7d)](https://www.codacy.com/gh/psyinfra/HTCAnalyze?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=psyinfra/HTCAnalyze&amp;utm_campaign=Badge_Grade)
 
 Search through [HTCondor](https://research.cs.wisc.edu/htcondor/) user log files
 to extract information, identify patterns, and build time-based graphs of
@@ -95,8 +94,10 @@ pip install -U -r requirements-test.txt
 ```
 
 To run the tests:
-```
-pytest tests
-```
 
-More details can be found in [TESTS](https://github.com/psyinfra/HTCAnalyze/blob/master/tests/README.md).
+    pytest tests 
+
+or with coverage:
+
+    pytest  --cov=htcanalyze  tests
+
