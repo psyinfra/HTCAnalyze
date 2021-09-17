@@ -7,8 +7,8 @@ with open("README.md", "r") as readme:
 
 setup(
     name='htcanalyze',
-    version_format='{tag}.dev{commitcount}+{gitsha}',
-    setup_requires=['setuptools-git-version'],
+    version_config=True,
+    setup_requires=["setuptools-git-versioning"],
     description='Analyze and summarize HTCondor use logs',
     long_description=long_description,
     author='Mathis Loevenich',
