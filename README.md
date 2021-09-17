@@ -94,8 +94,10 @@ pip install -U -r requirements-test.txt
 ```
 
 To run the tests:
-```
-pytest tests
-```
 
-More details can be found in [TESTS](https://github.com/psyinfra/HTCAnalyze/blob/master/tests/README.md).
+    pytest tests 
+
+or with coverage:
+
+    pytest  --cov=htcanalyze  tests
+

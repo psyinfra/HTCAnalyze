@@ -3,3 +3,5 @@ rich>=3.0.3
 numpy
 htcondor>=8.8.6
 configargparse==1.2.3
+setuptools-git-version>=1.0.3
+

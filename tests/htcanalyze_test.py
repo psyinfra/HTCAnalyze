@@ -55,7 +55,7 @@ def htcan():
     return htcan
 
 
-def test_HTCAnalyze_init(htcan):
+def test_htcan_init(htcan):
     assert htcan.ext_log == ""
     assert htcan.ext_err == ".err"
     assert htcan.ext_out == ".out"
@@ -116,9 +116,10 @@ def test_log_to_dict(htcan):
                    datetime.timedelta(seconds=356),
                    datetime.timedelta(seconds=359)]}
 
+    year = datetime.datetime.today().year
     assert ram_history_dict == {
-        'Dates': [datetime.datetime(2020, 7, 11, 20, 40, 3),
-                  datetime.datetime(2020, 7, 11, 20, 45, 4)],
+        'Dates': [datetime.datetime(year, 7, 11, 20, 40, 3),
+                  datetime.datetime(year, 7, 11, 20, 45, 4)],
         'Image size updates': [448, 1052936],
         'Memory usages': [1, 922],
         'Resident Set Sizes': [448, 943244]}
@@ -151,7 +152,7 @@ def test_log_to_dict(htcan):
                    datetime.timedelta(days=13, seconds=85461)]}
 
     assert ram_history_dict == {
-        'Dates': [datetime.datetime(2020, 2, 11, 12, 29, 26)],
+        'Dates': [datetime.datetime(year, 2, 11, 12, 29, 26)],
         'Image size updates': [28644],
         'Memory usages': [28],
         'Resident Set Sizes': [28644]}
