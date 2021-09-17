@@ -18,7 +18,7 @@ setup(
     python_requires='>=3.6',
     install_requires=[
         "numpy",
-        "htcondor",
+        "htcondor>=8.8.6",
         "plotille>=3.7",
         "configargparse==1.2.3",
         "rich>=3.0.3"
