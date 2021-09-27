@@ -147,7 +147,7 @@ def print_results(
 
         for key in data_dict:
             if data_dict[key] is None:
-                logging.debug(f"This musst be fixed, "
+                logging.debug(f"This must be fixed, "
                               f"data_dict['{key}'] is None.")
                 rprint("[red]NoneType object found, "
                        "this should not happen[/red]")
