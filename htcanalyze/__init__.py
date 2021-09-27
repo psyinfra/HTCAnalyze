@@ -35,8 +35,11 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
                               ' %(levelname)s : %(message)s'
         file_formatter = logging.Formatter(logging_file_format)
 
-        handler = RotatingFileHandler(log_file, maxBytes=1000000,
-                                      backupCount=1)
+        handler = RotatingFileHandler(
+            log_file,
+            maxBytes=1000000,
+            backupCount=1
+        )
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(file_formatter)
 
@@ -57,3 +60,7 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
         log = logging.getLogger()
         log.setLevel(logging.DEBUG)
         log.addHandler(stdout_handler)
+
+
+def get_package_name():
+    return __name__
