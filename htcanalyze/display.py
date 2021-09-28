@@ -7,12 +7,7 @@ from rich.table import Table, box
 
 from htcanalyze.htcanalyze import HTCAnalyze
 from htcanalyze.resource import resources_to_dict
-
-#
-MAX_ERRORS = 10
-
-# sys exit calls
-NORMAL_EXECUTION = 0
+from htcanalyze.globals import NORMAL_EXECUTION, MAX_ERROR_LIMIT
 
 
 def check_for_redirection() -> (bool, bool, list):
@@ -66,7 +61,7 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
 
 
 def wrap_error_dict_to_table(
-        errors, title, show_all=False, max_errors=MAX_ERRORS
+        errors, title, show_all=False, max_errors=MAX_ERROR_LIMIT
 ):
     if not errors:
         return None

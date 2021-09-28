@@ -14,9 +14,7 @@ Exit Codes:
 import argparse
 import logging
 import sys
-import os
 import subprocess
-import warnings
 from datetime import datetime as date_time
 
 import configargparse
@@ -25,29 +23,10 @@ from rich import print as rprint
 
 # own classes
 from htcanalyze.display import print_results, check_for_redirection
-from htcanalyze import setup_logging_tool, get_package_name
+from htcanalyze import setup_logging_tool
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
 from htcanalyze.logvalidator import LogValidator
-
-# config paths to watch in the following order
-CONFIG_PATHS = [
-    f'/etc/{get_package_name()}.conf',
-    f'~/.config/{get_package_name()}.conf',
-    f'{sys.prefix}/config/{get_package_name()}.conf'
-]
-
-ALLOWED_SHOW_VALUES = ["htc-err", "htc-out"]
-ALLOWED_IGNORE_VALUES = [
-    "execution-details", "times", "host-nodes", "used-resources",
-    "requested-resources", "allocated-resources", "all-resources",
-    "errors", "ram-history"
-]
-
-NORMAL_EXECUTION = 0
-NO_VALID_FILES = 1
-HTCANALYZE_ERROR = 2
-TYPE_ERROR = 3
-KEYBOARD_INTERRUPT = 4
+from htcanalyze.globals import *
 
 
 def version():

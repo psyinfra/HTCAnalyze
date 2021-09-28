@@ -1,5 +1,7 @@
 """Save HTCondor job execution details."""
 
+from htcanalyze.globals import STATE_COLORS
+
 
 class JobDetails:
     """
@@ -9,23 +11,13 @@ class JobDetails:
     colored output depending on the states
     """
 
-    state_colors = {
-        'abnormal': 'red',
-        'aborted': 'red',
-        'error_while_reading': 'red',
-        'normal': 'green',
-        'waiting': 'blue',
-        'executing': 'blue',
-        'strange': 'red',
-        'unknown': 'yellow'
-    }
-
     def __init__(self):
         self.state_desc = None
         self.state = None
         self.submitted_by = None
         self.executing_on = None
         self.return_value = None
+        self.stats_colors = STATE_COLORS
 
     def get_state_color(self):
         """Return the color for the given state."""

@@ -16,11 +16,12 @@ class TimeManager:
 
     """
 
-    def __init__(self,
-                 submission_date: date_time = None,
-                 execution_date: date_time = None,
-                 termination_date: date_time = None
-                 ):
+    def __init__(
+            self,
+            submission_date: date_time = None,
+            execution_date: date_time = None,
+            termination_date: date_time = None
+    ):
         self.submission_date = submission_date
         self.execution_date = execution_date
         self.termination_date = termination_date
