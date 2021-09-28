@@ -2,6 +2,7 @@
 
 import sys
 import pytest
+import subprocess
 from htcanalyze import main as ht
 
 
@@ -59,6 +60,12 @@ def test_exit_opts():
     _help()
     _version()
 
+def test_version():
+    # subprocess.check_output("")
+    version = ht.version()
+    tags = subprocess.check_output("git tag", shell=True)
+    latest_tag = tags.decode('utf-8').split('\n')[-2]
+    assert version in latest_tag
 
 def test_wrong_opts_or_args():
     args = "--abs"  # not a list
