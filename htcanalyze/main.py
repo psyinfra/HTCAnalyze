@@ -14,6 +14,9 @@ Exit Codes:
 import argparse
 import logging
 import sys
+import os
+import subprocess
+import warnings
 from datetime import datetime as date_time
 
 import configargparse
@@ -45,6 +48,14 @@ NO_VALID_FILES = 1
 HTCANALYZE_ERROR = 2
 TYPE_ERROR = 3
 KEYBOARD_INTERRUPT = 4
+
+
+def version():
+    output = subprocess.check_output(
+        "python -W ignore setup.py --version",
+        shell=True
+    )
+    return output.decode('utf-8').split('\n')[0]
 
 
 class CustomFormatter(HelpFormatter):
@@ -93,7 +104,7 @@ def setup_prioritized_parser():
                         action="store_true")
     parser.add_argument("-c", "--config", nargs=1)
     parser.add_argument("--version",
-                        help="Print out extended execution details",
+                        help="Print out version",
                         action="store_true")
 
     parser.add_argument("-f", "--files",
@@ -244,7 +255,7 @@ def manage_params(args: list) -> dict:
     prio_parsed, args = setup_prioritized_parser().parse_known_args(args)
     # first of all check for prioritised/exit params
     if prio_parsed.version:
-        print("Version: v1.3.0")
+        print(f"Version: {version()}")
         sys.exit(NORMAL_EXECUTION)
 
     # get files from prio_parsed
