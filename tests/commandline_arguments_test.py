@@ -60,12 +60,18 @@ def test_exit_opts():
     _help()
     _version()
 
-def test_version():
-    # subprocess.check_output("")
-    version = ht.version()
+
+def test_version(monkeypatch):
+    version = "1.3.1"
+
+    def mock_check_output(*_, **__):
+        return b"1.0.0\n1.1.0\n1.1.1\n1.1.2\n1.2.0\n1.3.0\n1.3.1\n"
+
+    monkeypatch.setattr(subprocess, 'check_output', mock_check_output)
     tags = subprocess.check_output("git tag", shell=True)
     latest_tag = tags.decode('utf-8').split('\n')[-2]
     assert version in latest_tag
+
 
 def test_wrong_opts_or_args():
     args = "--abs"  # not a list
