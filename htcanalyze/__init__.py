@@ -63,4 +63,5 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
 
 
 def get_package_name():
+    """Return package name."""
     return __name__

@@ -15,10 +15,9 @@ import argparse
 import logging
 import sys
 import subprocess
-from datetime import datetime as date_time
 
-import configargparse
-from argparse import HelpFormatter
+from datetime import datetime as date_time
+from configargparse import ArgumentParser, HelpFormatter
 from rich import print as rprint
 
 # own classes
@@ -26,15 +25,19 @@ from htcanalyze.display import print_results, check_for_redirection
 from htcanalyze import setup_logging_tool
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
 from htcanalyze.logvalidator import LogValidator
-from htcanalyze.globals import *
+from htcanalyze.globals import ALLOWED_IGNORE_VALUES, \
+    ALLOWED_SHOW_VALUES, CONFIG_PATHS, \
+    NORMAL_EXECUTION, NO_VALID_FILES, \
+    HTCANALYZE_ERROR, TYPE_ERROR, KEYBOARD_INTERRUPT
 
 
 def version():
+    """Get version from setup.py."""
     output = subprocess.check_output(
         "python -W ignore setup.py --version",
         shell=True
     )
-    return output.decode('utf-8').split('\n')[0]
+    return output.decode('utf-8').split('\n', maxsplit=1)[0]
 
 
 class CustomFormatter(HelpFormatter):
@@ -65,11 +68,13 @@ class CustomFormatter(HelpFormatter):
             default = action.dest.upper()
             args_string = self._format_args(action, default)
             for option_string in action.option_strings:
-                parts.append('%s %s' % (option_string, args_string))
+                # parts.append('%s %s' % (option_string, args_string))
+                parts.append(f"{option_string}, {args_string}")
+
         if sum(len(s) for s in parts) < self._width - (len(parts) - 1) * 2:
             return ', '.join(parts)
-        else:
-            return ',\n  '.join(parts)
+        # else
+        return ',\n  '.join(parts)
 
 
 def setup_prioritized_parser():
@@ -96,15 +101,18 @@ def setup_prioritized_parser():
 
 
 def setup_commandline_parser(
-        default_config_files=[]
-) -> configargparse.ArgumentParser:
+        default_config_files=None
+) -> ArgumentParser:
     """
     Define parser with all arguments listed below.
 
     :param default_config_files: list with config file hierarchy to look for
     :return: parser
     """
-    parser = configargparse.ArgumentParser(
+    if default_config_files is None:
+        default_config_files = []
+
+    parser = ArgumentParser(
         formatter_class=CustomFormatter,
         default_config_files=default_config_files,
         description="Analyze or summarize HTCondor-Joblogs"
@@ -238,7 +246,7 @@ def manage_params(args: list) -> dict:
         sys.exit(NORMAL_EXECUTION)
 
     # get files from prio_parsed
-    files_list = list()
+    files_list = []
     for log_file in prio_parsed.more_files:
         files_list.extend(log_file)
 
@@ -273,16 +281,16 @@ def manage_params(args: list) -> dict:
         # inserts empty strings, when list is empty
         for val in cmd_dict.keys():
             if isinstance(cmd_dict[val], list):
-                for li in cmd_dict[val]:
-                    if len(li) == 1 and li[0] == "":
-                        li.remove("")
+                for item in cmd_dict[val]:
+                    if len(item) == 1 and item[0] == "":
+                        item.remove("")
 
     else:
         cmd_parser = setup_commandline_parser()
         commands_parsed = cmd_parser.parse_args(args)
         # extend files list by given paths
-        for li in commands_parsed.path:
-            files_list.extend(li)
+        for item in commands_parsed.path:
+            files_list.extend(item)
         cmd_dict = vars(commands_parsed).copy()
 
     del cmd_dict["path"]
@@ -290,15 +298,15 @@ def manage_params(args: list) -> dict:
     cmd_dict["files"] = files_list
 
     # concat ignore list
-    new_ignore_list = list()
-    for li in cmd_dict["ignore_list"]:
-        new_ignore_list.extend(li)
+    new_ignore_list = []
+    for item in cmd_dict["ignore_list"]:
+        new_ignore_list.extend(item)
     cmd_dict["ignore_list"] = new_ignore_list
 
     # concat show list
-    new_show_list = list()
-    for li in cmd_dict["show_list"]:
-        new_show_list.extend(li)
+    new_show_list = []
+    for item in cmd_dict["show_list"]:
+        new_show_list.extend(item)
     cmd_dict["show_list"] = new_show_list
 
     # error handling
@@ -421,5 +429,4 @@ def main():
 
 
 if __name__ == "main":
-    """execute module."""
     main()

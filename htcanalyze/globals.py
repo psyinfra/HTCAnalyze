@@ -1,3 +1,4 @@
+"""Global parameters."""
 
 import sys
 from htcanalyze import get_package_name

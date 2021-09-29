@@ -1,3 +1,5 @@
+"""Display module to create visual output."""
+
 import logging
 import sys
 from typing import List
@@ -61,23 +63,24 @@ def wrap_dict_to_table(table_dict, title="") -> Table:
 
 
 def wrap_error_dict_to_table(
-        errors, title, show_all=False, max_errors=MAX_ERROR_LIMIT
+        errors,
+        title,
+        show_all=False,
+        max_errors=MAX_ERROR_LIMIT
 ):
+    """
+    Wrap error dict to table.
+    """
     if not errors:
         return None
-    elif show_all:
+    if show_all:
         return wrap_dict_to_table(errors, title)
 
     n_vals = len(next(iter(errors.values())))  # get len of first value
     if n_vals > max_errors:
         prettify_table = {}
-        for event_n, time, label, file in zip(
-                errors['Event Number'],
-                errors['Time'],
-                errors['Error'],
-                errors['File'],
-        ):
-            if label in prettify_table.keys():
+        for event_n, _, label, _ in zip(**errors):
+            if label in prettify_table:
                 prettify_table[label]['count'] += 1
             else:
                 prettify_table[label] = {
@@ -94,8 +97,7 @@ def wrap_error_dict_to_table(
         table.add_column('Error')
         table.add_column('Event Number')
         table.add_column('Appearance')
-        for key in prettify_table.keys():
-            vals = prettify_table[key]
+        for key, vals in prettify_table.items():
             row = [key, str(vals['event_n']), str(vals['count'])]
             table.add_row(*row)
 
@@ -110,7 +112,7 @@ def print_results(
         log_files: List[str],
         one_by_one: bool,
         ignore_list=list,
-        **kwargs
+        **__
 ) -> str:
     """
     Create the output specified by the mode.
@@ -214,6 +216,6 @@ def print_results(
 
         if "htc-err" in data_dict and data_dict["htc-err"] != "":
             rprint("\n[bold cyan]Related HTCondor standard error:[/bold cyan]")
-            rprint(data_dict["htc-err"])
+            rprint(f"[red]{data_dict['htc-err']}[/red]")
 
         print()

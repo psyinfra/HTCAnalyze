@@ -17,7 +17,7 @@ class JobDetails:
         self.submitted_by = None
         self.executing_on = None
         self.return_value = None
-        self.stats_colors = STATE_COLORS
+        self.state_colors = STATE_COLORS
 
     def get_state_color(self):
         """Return the color for the given state."""
@@ -25,8 +25,8 @@ class JobDetails:
 
     def to_dict(self):
         """Resolve the given JobDetails to a dictionary."""
-        titles = list()
-        values = list()
+        titles = []
+        values = []
         if self.state_desc and self.state:
             titles.append(self.state_desc)
             color = self.get_state_color()

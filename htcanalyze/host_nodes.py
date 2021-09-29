@@ -8,33 +8,35 @@ class NodeCache:
     """Cache to save reverse DNS lookups."""
 
     def __init__(self):
-        self.rdns_cache = dict()
+        self.rdns_cache = {}
 
-    def get_host_by_addr_cached(self, ip):
+    def get_host_by_addr_cached(self, ip_address):
         """
         Get the hostname by address, with an in-memory cache.
 
         This prevents excessive queries to DNS servers.
 
-        :param ip: ip represented by a string
+        :param ip_address: ip_address represented by a string
         :return: resolved domain name, else give back the IP
         """
         try:
             # try our cache first
-            return self.rdns_cache[ip]
+            return self.rdns_cache[ip_address]
         except KeyError:
             # do the lookup
             try:
-                rdns = socket.gethostbyaddr(ip)
+                rdns = socket.gethostbyaddr(ip_address)
                 logging.debug(f"rDNS lookup successful: "
-                              f"{ip} resolved as {rdns[0]}")
-                self.rdns_cache[ip] = rdns[0]
+                              f"{ip_address} resolved as {rdns[0]}")
+                self.rdns_cache[ip_address] = rdns[0]
                 return rdns[0]
             except socket.error:
-                logging.debug(f"Unable to perform rDNS lookup for {ip}")
+                logging.debug(
+                    f"Unable to perform rDNS lookup for {ip_address}"
+                )
                 # cache negative responses too
-                self.rdns_cache[ip] = ip
-                return ip
+                self.rdns_cache[ip_address] = ip_address
+                return ip_address
 
 
 # global instance to cache reverse dns lookup
@@ -53,7 +55,7 @@ class HostNodes:
     """Collection of nodes."""
 
     def __init__(self, rdns_lookup=False):
-        self.nodes = dict()
+        self.nodes = {}
         self.rdns_lookup = rdns_lookup
 
     def add_node(self, node: SingleNode):
@@ -71,15 +73,15 @@ class HostNodes:
             self.nodes[key]['n_jobs'] += 1
             self.nodes[key]['tt_time'] += node.total_runtime
         except KeyError:
-            self.nodes[key] = dict()
+            self.nodes[key] = {}
             self.nodes[key]['n_jobs'] = 1
             self.nodes[key]['tt_time'] = node.total_runtime
 
     def nodes_to_avg_dict(self) -> dict:
         """Create dict with average run times per node."""
         keys = self.nodes.keys()
-        executed_jobs = list()
-        avg_times_spend = list()
+        executed_jobs = []
+        avg_times_spend = []
         for key in keys:
             n_jobs = self.nodes[key]['n_jobs']
             executed_jobs.append(n_jobs)

@@ -50,15 +50,14 @@ class LogValidator:
             return False
 
         try:
-            with open(file, "r") as read_file:
-
-                if re.match(r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
-                            read_file.readline()):
-
-                    return True
-                else:
-                    return False
-        except Exception:
+            with open(file, "r", encoding='utf-8') as read_file:
+                return bool(
+                    re.match(
+                        r"[0-9]{3} \([0-9]+.[0-9]+.[0-9]{3}\)",
+                        read_file.readline()
+                    )
+                )
+        except (FileNotFoundError, TypeError):
             return False
 
     def validate_dir(self, directory, progress_details=None):
@@ -69,7 +68,7 @@ class LogValidator:
         :param progress_details: Quadrupel (progress, task, total, advance)
         :return:
         """
-        valid_dir_files = list()
+        valid_dir_files = []
         file_dir = os.listdir(directory)
         # progress bar given
         if progress_details is not None:
@@ -125,7 +124,7 @@ class LogValidator:
         :param file_list: list of HTCondor logs, that need to be validated
         :return: list with valid HTCondor log files
         """
-        valid_files = list()
+        valid_files = []
         total = len(file_list)
 
         logging.info('Validate given log files')

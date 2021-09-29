@@ -4,13 +4,14 @@ import logging
 import os
 import re
 
+from typing import List
+from datetime import datetime as date_time
 import numpy as np
 from plotille import Figure
-from datetime import datetime as date_time
 from htcondor import JobEventLog, JobEventType as jet
 from rich import print as rprint
 from rich.progress import Progress, track
-from typing import List
+
 
 # import own module
 from htcanalyze.resource import Resource, create_avg_on_resources
@@ -45,7 +46,7 @@ class HTCAnalyze:
 
         self.show_list = [] if show_list is None else show_list
 
-        self.rdns_cache = dict()
+        self.rdns_cache = {}
         self.rdns_lookup = False if rdns_lookup is None else rdns_lookup
 
         self.tolerated_usage = 0.1 if \
@@ -54,7 +55,7 @@ class HTCAnalyze:
 
         self.show_legend = show_legend  # relevant for histogram
 
-    def read_file(self, file: str, file_ext):
+    def read_file(self, file: str):
         """
         Read a file.
 
@@ -67,48 +68,16 @@ class HTCAnalyze:
             if os.path.getsize(file) == 0:
                 return output_string
 
-            with open(file, "r") as output_content:
+            with open(file, "r", encoding='utf-8') as output_content:
                 output_string = output_content.read()
         except NameError as err:
-            self.handle_name_error(err, file_ext)
+            logging.exception(err)
         except FileNotFoundError:
-            self.handle_filenotfound_error(file, file_ext)
+            rprint(f"[yellow]There is no file: {file}")
         except TypeError as err:
             logging.exception(err)
-        finally:
-            return output_string
 
-    @classmethod
-    def handle_name_error(cls, err, file_ext):
-        """
-        Handle NameError.
-
-        :param err: An exception
-        :param file_ext: file extension
-        :return: None
-        """
-        logging.exception(err)
-        rprint(f"[red]The smart_output method requires a "
-               f"{file_ext} file as parameter[/red]")
-
-    @classmethod
-    def handle_filenotfound_error(cls, file, file_ext):
-        """
-        Handle FileNotFoundError.
-
-        :param file: file that was not found
-        :param file_ext: file extension
-        :return: None
-        """
-        relevant = file.split(os.path.sep)[-2:]
-        # match the file on ProcessID_ClusterID, if possible
-        match = re.match(r".*?([0-9]{3,}_[0-9]+)" + file_ext, relevant[1])
-        rprint(
-            f"[yellow]There is no related {file_ext} "
-            f"file: {relevant[1]} in the directory:\n"
-            f"[/yellow][cyan]'{os.path.abspath(relevant[0])}'\n"
-            f"with the prefix: {match[1]}[/cyan]"
-        )
+        return output_string
 
     def htcondor_stderr(self, file: str) -> str:
         """
@@ -117,25 +86,16 @@ class HTCAnalyze:
         :param file: HTCondor stderr file
         :return: filtered content
         """
-        output_string = ""
-
-        for line in self.read_file(file, self.ext_err):
-            line = line.strip("\n")
-            if "err" in line.lower():
-                output_string += f"[red]{line}[/red]\n"
-            elif "warn" in line.lower():
-                output_string += f"[yellow]{line}[/yellow]\n"
-
-        return output_string
+        return self.read_file(file)
 
     def htcondor_stdout(self, file: str) -> str:
         """
         Read HTCondor stdout files.
 
-        :param: HTCondor stdout file
+        :param file: HTCondor stdout file
         :return: content
         """
-        return self.read_file(file, self.ext_out)
+        return self.read_file(file)
 
     def get_job_spec_id(self, file: str) -> str:
         """
@@ -151,8 +111,10 @@ class HTCAnalyze:
         :param ext_log:
         :return: file prefix
         """
-        if self.ext_log.__ne__("") \
-                and file[-len(self.ext_log):].__eq__(self.ext_log):
+        if (
+                self.ext_log.__ne__("") and
+                file[-len(self.ext_log):].__eq__(self.ext_log)
+        ):
             job_spec_id = file[:-len(self.ext_log)]
         else:
             job_spec_id = os.path.splitext(file)[0]
@@ -181,18 +143,18 @@ class HTCAnalyze:
         Consider that the return values can be None or empty dictionaries
         """
         job_details = JobDetails()
-        resources = list()
+        resources = []
         submission_date = None
         execution_date = None
         termination_date = None
-        ram_history = list()
-        occurred_errors = list()
+        ram_history = []
+        occurred_errors = []
 
         has_terminated = False
         invalid_file = False
 
         jel = JobEventLog(file)
-        events = list()
+        events = []
 
         try:
             # Read all currently-available events
@@ -281,18 +243,20 @@ class HTCAnalyze:
                 memory_allocated = event.get('Memory', np.nan)
 
                 # create list with resources
-                resources = [Resource("CPU",
-                                      cpu_usage,
-                                      cpu_requested,
-                                      cpu_allocated),
-                             Resource("Disk (KB)",
-                                      disk_usage,
-                                      disk_requested,
-                                      disk_allocated),
-                             Resource("Memory (MB)",
-                                      memory_usage,
-                                      memory_requested,
-                                      memory_allocated)]
+                resources = [
+                    Resource("CPU",
+                             cpu_usage,
+                             cpu_requested,
+                             cpu_allocated),
+                    Resource("Disk (KB)",
+                             disk_usage,
+                             disk_requested,
+                             disk_allocated),
+                    Resource("Memory (MB)",
+                             memory_usage,
+                             memory_requested,
+                             memory_allocated)
+                ]
 
                 normal_termination = event.get('TerminatedNormally')
 
@@ -360,8 +324,8 @@ class HTCAnalyze:
             job_details.state_desc = "Error"
             job_details.state = "error_while_reading"
 
-        error_dict = dict()
-        ram_history_dict = dict()
+        error_dict = {}
+        ram_history_dict = {}
 
         # convert errors into a dictionary
         if occurred_errors:
@@ -400,7 +364,7 @@ class HTCAnalyze:
         if not log_files:
             raise_value_error("No files to analyze")
 
-        result_list = list()
+        result_list = []
 
         # create progressbar, do not redirect output
         with Progress(transient=True, redirect_stdout=False,
@@ -410,7 +374,7 @@ class HTCAnalyze:
 
             for file in log_files:
                 progress.update(task, advance=1)
-                result_dict = dict()
+                result_dict = {}
 
                 logging.debug(f"Analysing the HTCondor log file: {file}")
                 msg = f"[green]Job analysis of: {file}[/green]"
@@ -420,9 +384,9 @@ class HTCAnalyze:
                     ram_history, occurred_errors = self.log_to_dict(file)
 
                 if job_details.executing_on and self.rdns_lookup:
-                    ip = job_details.executing_on
+                    ip_address = job_details.executing_on
                     job_details.executing_on = (
-                        node_cache.get_host_by_addr_cached(ip)
+                        node_cache.get_host_by_addr_cached(ip_address)
                     )
 
                 result_dict["execution-details"] = job_details.to_dict()
@@ -506,8 +470,8 @@ class HTCAnalyze:
             raise_value_error("No files for the analyzed-summary")
 
         # fill this dict with information by the execution type of the jobs
-        all_files = dict()
-        occurrence_dict = dict()
+        all_files = {}
+        occurrence_dict = {}
 
         for file in track(log_files, transient=True,
                           description="Summarizing..."):
@@ -563,11 +527,10 @@ class HTCAnalyze:
 
                 # add errors
                 if occurred_errors:
-                    for key in occurred_errors.keys():
+                    for key, val in occurred_errors.items():
                         # extend if already existent
                         if key in all_files[cur_state]["errors"].keys():
-                            all_files[cur_state]["errors"][key].extend(
-                                occurred_errors[key])
+                            all_files[cur_state]["errors"][key].extend(val)
                         else:
                             all_files[cur_state]["errors"] = occurred_errors
 
@@ -602,10 +565,10 @@ class HTCAnalyze:
                     rprint("[red]Situation not handled yet[/red]")
 
         # Now put everything together
-        result_list = list()
-        for cur_state in all_files:
-            state_info = all_files[cur_state]
-            result_dict = dict()
+        result_list = []
+        for cur_state, val in all_files.items():
+            state_info = val
+            result_dict = {}
             f_state = format_job_state(cur_state)
 
             # differentiate between terminated and running processes
