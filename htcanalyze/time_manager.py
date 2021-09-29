@@ -16,11 +16,12 @@ class TimeManager:
 
     """
 
-    def __init__(self,
-                 submission_date: date_time = None,
-                 execution_date: date_time = None,
-                 termination_date: date_time = None
-                 ):
+    def __init__(
+            self,
+            submission_date: date_time = None,
+            execution_date: date_time = None,
+            termination_date: date_time = None
+    ):
         self.submission_date = submission_date
         self.execution_date = execution_date
         self.termination_date = termination_date
@@ -99,8 +100,8 @@ class TimeManager:
 
         :return: dict
         """
-        time_desc = list()
-        time_vals = list()
+        time_desc = []
+        time_vals = []
 
         # now after collecting all available values try to produce a dict
         # if new year was hitted by one of them, show the year as well
@@ -143,8 +144,8 @@ class TimeManager:
                 "Dates and times": time_desc,
                 "Values": time_vals
             }
-        else:
-            return {}
+        # else:
+        return {}
 
 
 def calc_avg_on_times(time_managers: List[TimeManager]) -> dict:
@@ -194,5 +195,5 @@ def calc_avg_on_times(time_managers: List[TimeManager]) -> dict:
             "Average": format_av_times,
             "Total": times
         }
-    else:
-        return {}
+    # else:
+    return {}

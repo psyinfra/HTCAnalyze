@@ -2,6 +2,7 @@
 
 from typing import List
 from numpy import nan_to_num as ntn
+from htcanalyze.globals import LEVEL_COLORS
 
 
 class Resource:
@@ -12,13 +13,6 @@ class Resource:
     so that nested lists represent a collection of job resources
 
     """
-
-    level_colors = {
-        'error': 'red',
-        'warning': 'yellow',
-        'light_warning': 'yellow2',
-        'normal': 'green'
-    }
 
     def __init__(self,
                  description: str,
@@ -32,6 +26,7 @@ class Resource:
         self.requested = requested
         self.allocated = allocated
         self.warning_level = None
+        self.level_colors = LEVEL_COLORS
 
     def get_color(self) -> str:
         """Convert an alert level to an appropriate color."""
@@ -87,7 +82,7 @@ def create_avg_on_resources(
     :return: list(Resource)
     """
     n_jobs = len(job_resource_list)
-    res_cache = dict()
+    res_cache = {}
 
     # calc total
     for job_resources in job_resource_list:
@@ -136,5 +131,5 @@ def resources_to_dict(resources: List[Resource]) -> dict:
             "Requested": [res.requested for res in resources],
             "Allocated": [res.allocated for res in resources]
         }
-    else:
-        return {}
+    # else:
+    return {}

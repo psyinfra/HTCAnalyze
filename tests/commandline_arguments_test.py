@@ -2,6 +2,7 @@
 
 import sys
 import pytest
+import subprocess
 from htcanalyze import main as ht
 
 
@@ -58,6 +59,18 @@ def _version():
 def test_exit_opts():
     _help()
     _version()
+
+
+def test_version(monkeypatch):
+    version = "1.3.1"
+
+    def mock_check_output(*_, **__):
+        return b"1.0.0\n1.1.0\n1.1.1\n1.1.2\n1.2.0\n1.3.0\n1.3.1\n"
+
+    monkeypatch.setattr(subprocess, 'check_output', mock_check_output)
+    tags = subprocess.check_output("git tag", shell=True)
+    latest_tag = tags.decode('utf-8').split('\n')[-2]
+    assert version in latest_tag
 
 
 def test_wrong_opts_or_args():
@@ -169,21 +182,6 @@ def test_analyzed_summary():
     assert pytest_wrapped_e.value.code == 0
 
     args = "tests/test_logs/valid_logs".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-
-def test_filter_mode():
-
-    args = "tests/test_logs/valid_logs --filter err".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        ht.run(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
-
-    args = "--filter err -f tests/test_logs/valid_logs/gpu_usage.log".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         ht.run(args)
     assert pytest_wrapped_e.type == SystemExit
