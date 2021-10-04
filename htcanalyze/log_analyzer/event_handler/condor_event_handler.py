@@ -151,23 +151,26 @@ class CondorEventHandler:
     ):
 
         # get all resources, replace by np.nan if value is None
-        cpu_usage = event.get('CpusUsage', np.nan)
-        cpu_requested = event.get('RequestCpus', np.nan)
-        cpu_allocated = event.get('Cpus', np.nan)
+        cpus_usage = event.get('CpusUsage', np.nan)
+        cpus_requested = event.get('RequestCpus', np.nan)
+        cpus_allocated = event.get('Cpus', np.nan)
         disk_usage = event.get('DiskUsage', np.nan)
         disk_requested = event.get('RequestDisk', np.nan)
         disk_allocated = event.get("Disk", np.nan)
         memory_usage = event.get('MemoryUsage', np.nan)
         memory_requested = event.get('RequestMemory', np.nan)
         memory_allocated = event.get('Memory', np.nan)
+        gpus_usage = event.get("GpusUsage", np.nan)
+        gpus_requested = event.get("RequestGpus", np.nan)
+        gpus_allocated = event.get('Gpus', np.nan)
 
         # create list with resources
-        resources = [
+        resources = LogResources(
             Resource(
                 "CPU",
-                cpu_usage,
-                cpu_requested,
-                cpu_allocated
+                cpus_usage,
+                cpus_requested,
+                cpus_allocated
             ),
             Resource(
                 "Disk (KB)",
@@ -180,8 +183,15 @@ class CondorEventHandler:
                 memory_usage,
                 memory_requested,
                 memory_allocated
+            ),
+            Resource(
+                "Gpus (Average)",
+                gpus_usage,
+                gpus_requested,
+                gpus_allocated
+
             )
-        ]
+        )
 
         normal_termination = event.get('TerminatedNormally')
 
