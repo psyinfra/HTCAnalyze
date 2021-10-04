@@ -18,11 +18,13 @@ class LogValidator:
     because the htcondor module takes too much time.
     """
 
-    def __init__(self,
-                 ext_log="",
-                 ext_err=".err",
-                 ext_out=".out",
-                 recursive=False):
+    def __init__(
+            self,
+            ext_log="",
+            ext_err=".err",
+            ext_out=".out",
+            recursive=False
+    ):
         """Initialize."""
         self.ext_log = ext_log
         self.ext_err = ext_err

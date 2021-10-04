@@ -13,15 +13,13 @@ class CondorLog:
             self,
             file: str,
             job_details: JobDetails,
-            resources: LogResources,
-            errors: ErrorEvents,
+            error_events: ErrorEvents,
             ram_history: RamHistory
     ):
         self.file = file
         self.job_spec_id = self.get_job_spec_id(file)
         self.job_details = job_details
-        self.resources = resources
-        self.errors = errors
+        self.error_events = error_events
         self.ram_history = ram_history
 
     @staticmethod

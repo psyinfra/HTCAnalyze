@@ -1,5 +1,5 @@
 
-from htcanalyze.host_nodes import node_cache
+from event_handler.host_nodes import node_cache
 
 
 def test_node_cache(monkeypatch):

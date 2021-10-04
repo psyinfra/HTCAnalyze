@@ -19,22 +19,17 @@ class SETEvents:
         self.execution_event = execution_event
         self.termination_event = termination_event
 
-        self.submitter_address = (
-            submission_event.submitter_address if submission_event else None
-        )
-
-        self.host_address = (
-            execution_event.host_address if execution_event else None
-        )
-
-        self.return_value = (
-            termination_event.return_value if termination_event else None
-        )
-
     @property
     def submission_date(self):
         return (
             self.submission_event.time_stamp
+            if self.submission_event else None
+        )
+
+    @property
+    def submitter_address(self):
+        return (
+            self.submission_event.submitter_address
             if self.submission_event else None
         )
 
@@ -46,9 +41,37 @@ class SETEvents:
         )
 
     @property
+    def host_address(self):
+        return (
+            self.execution_event.host_address
+            if self.execution_event else None
+        )
+
+    @property
     def termination_date(self):
         return (
             self.termination_event.time_stamp
+            if self.termination_event else None
+        )
+
+    @property
+    def termination_state(self):
+        return (
+            self.termination_event.termination_state
+            if self.termination_event else None
+        )
+
+    @property
+    def return_value(self):
+        return (
+            self.termination_event.return_value
+            if self.termination_event else None
+        )
+
+    @property
+    def resources(self):
+        return (
+            self.termination_event.resources
             if self.termination_event else None
         )
 

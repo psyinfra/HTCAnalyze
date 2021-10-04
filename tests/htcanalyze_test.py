@@ -67,7 +67,7 @@ def test_htcan_init(htcan):
 
 
 def test_log_to_dict(htcan):
-    """Tests the log_to_dict function of HTCAnalyze class.
+    """Tests the get_condor_log function of HTCAnalyze class.
 
     Only the following files are tested:
 
@@ -80,7 +80,7 @@ def test_log_to_dict(htcan):
     file = "tests/test_logs/valid_logs/normal_log.log"
     today = datetime.datetime.today()
     (job_details, resources, time_manager,
-     ram_history_dict, error_dict) = htcan.log_to_dict(file)
+     ram_history_dict, error_dict) = htcan.get_condor_log(file)
 
     assert job_details.state_desc == "Termination State"
     assert job_details.state == 'normal'
@@ -128,7 +128,7 @@ def test_log_to_dict(htcan):
 
     file = "tests/test_logs/valid_logs/aborted_with_errors.log"
     (job_details, resources, time_manager,
-     ram_history_dict, error_dict) = htcan.log_to_dict(file)
+     ram_history_dict, error_dict) = htcan.get_condor_log(file)
 
     assert job_details.state_desc == "Process was"
     assert job_details.state == "aborted"

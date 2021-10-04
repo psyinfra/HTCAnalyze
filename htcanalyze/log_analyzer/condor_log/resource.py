@@ -21,11 +21,13 @@ class Resource:
 
     """
 
-    def __init__(self,
-                 description: str,
-                 usage: float,
-                 requested: float,
-                 allocated: float):
+    def __init__(
+            self,
+            description: str,
+            usage: float,
+            requested: float,
+            allocated: float
+    ):
         # except description, naming in __init__ arguments should be
         #   consistent with names in the resources dictionary
         self.description = description

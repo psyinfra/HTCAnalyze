@@ -12,6 +12,8 @@ class JobState(Enum):
     WAITING = 2
     RUNNING = 3
     ERROR_WHILE_READING = 4
+    INVALID_HOST_ADDRESS = 9
+    INVALID_USER_ADDRESS = 10
     ABORTED = 5
     JOB_HELD = 6
     SHADOW_EXCEPTION = 7
@@ -35,6 +37,7 @@ class DateTimeWrapper(date_time):
             day=time_stamp.day,
             hour=time_stamp.hour,
             minute=time_stamp.minute,
+            second=time_stamp.second,
             microsecond=time_stamp.microsecond,
             tzinfo=time_stamp.tzinfo,
             fold=time_stamp.fold
@@ -57,7 +60,7 @@ class JobEvent:
             time_stamp=None
     ):
         self.event_number = event_number
-        self.time_stamp = DateTimeWrapper(time_stamp)
+        self.time_stamp = DateTimeWrapper(time_stamp) if time_stamp else None
 
     def __repr__(self):
         return json.dumps(
@@ -139,9 +142,18 @@ class JobTerminationEvent(JobEvent):
 class ErrorEvent(JobEvent):
 
     class ErrorCode(Enum):
-        ABORTED = JobState.ABORTED
-        JOB_HELD = JobState.JOB_HELD
-        SHADOW_EXCEPTION = JobState.SHADOW_EXCEPTION
+        ABORTED = JobState.ABORTED.value
+        JOB_HELD = JobState.JOB_HELD.value
+        SHADOW_EXCEPTION = JobState.SHADOW_EXCEPTION.value
+        INVALID_HOST_ADDRESS = JobState.INVALID_HOST_ADDRESS.value
+        INVALID_USER_ADDRESS = JobState.INVALID_USER_ADDRESS.value
+
+        @property
+        def __dict__(self):
+            return {
+                "name": self.name,
+                "value": self.value
+            }
 
     def __init__(
             self,
@@ -151,7 +163,7 @@ class ErrorEvent(JobEvent):
             reason
     ):
         super(ErrorEvent, self).__init__(event_number, time_stamp)
-        assert error_code == ErrorEvent.ErrorCode
+        assert error_code.name in ErrorEvent.ErrorCode.__members__.keys()
         self.error_code = error_code
         self.reason = reason
 
@@ -167,7 +179,7 @@ class JobAbortedEvent(ErrorEvent, JobTerminationEvent):
         super(JobAbortedEvent, self).__init__(
             event_number,
             time_stamp,
-            JobState.ABORTED,
+            ErrorEvent.ErrorCode.ABORTED,
             reason
         )
         self.termination_state = JobState.ABORTED

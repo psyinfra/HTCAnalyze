@@ -6,7 +6,7 @@ from numpy import nan
 from typing import List
 
 # import Resource class
-import htcanalyze.resource as htcan_res
+import condor_log.resource as htcan_res
 Resource = htcan_res.Resource
 
 

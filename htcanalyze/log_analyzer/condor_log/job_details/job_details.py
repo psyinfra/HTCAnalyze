@@ -24,6 +24,10 @@ class JobDetails:
         self.time_manager = TimeManager(set_events)
         self.state_manager = state_manager
 
+    @property
+    def resources(self):
+        return self.set_events.resources
+
     def __repr__(self):
         return json.dumps(
             self.__dict__,

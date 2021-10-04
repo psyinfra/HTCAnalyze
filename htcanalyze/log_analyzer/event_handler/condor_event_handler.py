@@ -59,12 +59,11 @@ class CondorEventHandler:
             )
         # else ERROR
         reason = "Can't read user address"
-        error_code = "INVALID_USER_ADDRESS"
         self.state_manager.state = JobState.ERROR_WHILE_READING
         return ErrorEvent(
             self._event_number,
             None,
-            error_code,
+            ErrorEvent.ErrorCode.INVALID_USER_ADDRESS,
             reason
         )
 
@@ -92,7 +91,7 @@ class CondorEventHandler:
             return ErrorEvent(
                 self._event_number,
                 None,
-                error_code,
+                ErrorEvent.ErrorCode.INVALID_HOST_ADDRESS,
                 reason
             )
 
@@ -170,7 +169,7 @@ class CondorEventHandler:
         self.state_manager.state = JobState.ABORTED
         return JobAbortedEvent(
             self._event_number,
-            self._time_stamp.date.strftime("%m/%d %H:%M:%S"),
+            self._time_stamp,
             reason
         )
 
@@ -194,7 +193,7 @@ class CondorEventHandler:
         reason = event.get('HoldReason')
         return JobHeldEvent(
             self._event_number,
-            self._time_stamp.strftime("%m/%d %H:%M:%S"),
+            self._time_stamp,
             reason
         )
 
@@ -204,7 +203,7 @@ class CondorEventHandler:
         reason = event.get('Message')
         return ShadowExceptionEvent(
             self._event_number,
-            self._time_stamp.strftime("%m/%d %H:%M:%S"),
+            self._time_stamp,
             reason
         )
 
@@ -224,13 +223,13 @@ def get_events(file, sec: int = 0) -> List[HTCJobEvent]:
         logging.exception(err)
         if err.args[0] == "ULOG_RD_ERROR":
             reason = (
-                "Error while reading log file. "
-                "File was manipulated or contains gpu usage."
+                f"Error while reading log file: {file}"
+                f"File was manipulated or contains gpu usage."
             )
 
         else:
             reason = f"Not able to open the file: {file}"
-        raise ReadLogException(reason)
+        # raise ReadLogException(reason)
 
     return events
 
@@ -257,13 +256,14 @@ def get_condor_log(
     termination_event = None
     image_size_events = []
     occurred_errors = []
+    events = []
     event_handler = CondorEventHandler()
 
     try:
         events = get_events(file)
     except ReadLogException as err:
         logging.debug(err)
-        rprint()
+        rprint(f"[red]{err}[/red]")
 
     job_events = []
 
@@ -334,14 +334,12 @@ def get_condor_log(
         set_events,
         event_handler.state_manager
     )
-    resources = termination_event.resources
     error_events = ErrorEvents(occurred_errors)
     ram_history = RamHistory(image_size_events)
 
     return CondorLog(
         file,
         job_details,
-        resources,
         error_events,
         ram_history
     )

@@ -23,7 +23,6 @@ class RamHistory:
     def plot_ram(self, show_legend=False) -> str:
         ram = [ram.size_update for ram in self.image_size_events]
         dates = [ram.time_stamp for ram in self.image_size_events]
-
         if len(ram) == 0:
             return ""  # No memory usage detected
 
@@ -31,7 +30,7 @@ class RamHistory:
             return (
                 f"Single memory update found:\n"
                 f"Memory usage on the {dates[0]} "
-                f"was updatet to {ram[0]} MB"
+                f"was updatet to {ram[0]} MB\n"
             )
         elif len(ram) > 1:
 

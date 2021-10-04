@@ -21,7 +21,7 @@ from configargparse import ArgumentParser, HelpFormatter
 from rich import print as rprint
 
 # own classes
-from htcanalyze.display import print_results, check_for_redirection
+from htcanalyze.view import print_results, check_for_redirection
 from htcanalyze import setup_logging_tool
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
 from .log_analyzer.logvalidator import LogValidator
@@ -369,8 +369,8 @@ def run(commandline_args):
 
         # do not show legend, if output is redirected
         show_legend = not redirecting_stdout
+
         htcanalyze = HTCAnalyze(
-            show_list=param_dict["show_list"],
             rdns_lookup=param_dict["rdns_lookup"],
             tolerated_usage=param_dict["tolerated_usage"],
             bad_usage=param_dict["bad_usage"],
@@ -404,7 +404,9 @@ def run(commandline_args):
             sys.exit(NO_VALID_FILES)
 
         print_results(
-            htcanalyze, log_files=valid_files, **param_dict
+            htcanalyze,
+            log_files=valid_files,
+            **param_dict
         )
 
         end = date_time.now()

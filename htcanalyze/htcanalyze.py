@@ -25,14 +25,11 @@ class HTCAnalyze:
 
     def __init__(
             self,
-            show_list=None,
             rdns_lookup=None,
             tolerated_usage=None,
             bad_usage=None,
             show_legend=True
     ):
-
-        self.show_list = [] if show_list is None else show_list
 
         self.rdns_cache = {}
         self.rdns_lookup = False if rdns_lookup is None else rdns_lookup
@@ -42,31 +39,6 @@ class HTCAnalyze:
         self.bad_usage = 0.25 if bad_usage is None else bad_usage
 
         self.show_legend = show_legend  # relevant for histogram
-
-    @staticmethod
-    def read_file(file: str):
-        """
-        Read a file.
-
-        :param: file
-        :return: content
-        """
-        output_string = ""
-        try:
-
-            if os.path.getsize(file) == 0:
-                return output_string
-
-            with open(file, "r", encoding='utf-8') as output_content:
-                output_string = output_content.read()
-        except NameError as err:
-            logging.exception(err)
-        except FileNotFoundError:
-            rprint(f"[yellow]There is no file: {file}")
-        except TypeError as err:
-            logging.exception(err)
-
-        return output_string
 
     def analyze_logs(self, log_files: List[str]) -> List[CondorLog]:
         """

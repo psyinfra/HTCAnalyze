@@ -1,6 +1,6 @@
 
 import datetime
-from htcanalyze.time_manager import TimeManager
+from condor_log.job_details.time_manager import TimeManager
 
 strp_format = "%Y-%m-%dT%H:%M:%S"
 strf_format = "%m/%d %H:%M:%S"
