@@ -24,14 +24,6 @@ HTCANALYZE_ERROR = 2
 TYPE_ERROR = 3
 KEYBOARD_INTERRUPT = 4
 
-# --- Resource Globals --- #
-
-LEVEL_COLORS = {
-    'error': 'red',
-    'warning': 'yellow',
-    'light_warning': 'yellow2',
-    'normal': 'green'
-}
 
 # --- Display Globals --- #
 
@@ -39,15 +31,3 @@ LEVEL_COLORS = {
 # of errors. If there are more than just return a number
 MAX_ERROR_LIMIT = 10
 
-# --- JobDetails Globals --- #
-
-STATE_COLORS = {
-    'abnormal': 'red',
-    'aborted': 'red',
-    'error_while_reading': 'red',
-    'normal': 'green',
-    'waiting': 'blue',
-    'executing': 'blue',
-    'strange': 'red',
-    'unknown': 'yellow'
-}

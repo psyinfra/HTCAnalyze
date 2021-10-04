@@ -1,17 +1,9 @@
 
+import json
 from enum import Enum
+from datetime import datetime as date_time
 
 from .host_nodes import node_cache
-
-
-class ReadLogException(Exception):
-    """Exception raised for failed login.
-    :param error_code: Error code
-    :param message: Error description message
-    """
-
-    def __init__(self, message):
-        super().__init__(message)
 
 
 class JobState(Enum):
@@ -25,6 +17,37 @@ class JobState(Enum):
     SHADOW_EXCEPTION = 7
     UNKNOWN = 8
 
+    @property
+    def __dict__(self):
+        return {
+            "name": self.name,
+            "value": self.value
+        }
+
+
+class DateTimeWrapper(date_time):
+
+    def __new__(cls, time_stamp):
+        new = date_time.__new__(
+            cls,
+            year=time_stamp.year,
+            month=time_stamp.month,
+            day=time_stamp.day,
+            hour=time_stamp.hour,
+            minute=time_stamp.minute,
+            microsecond=time_stamp.microsecond,
+            tzinfo=time_stamp.tzinfo,
+            fold=time_stamp.fold
+        )
+        return new
+
+    @property
+    def __dict__(self):
+        return str(self)
+
+    def __repr__(self):
+        return str(self)
+
 
 class JobEvent:
 
@@ -34,7 +57,14 @@ class JobEvent:
             time_stamp=None
     ):
         self.event_number = event_number
-        self.time_stamp = time_stamp
+        self.time_stamp = DateTimeWrapper(time_stamp)
+
+    def __repr__(self):
+        return json.dumps(
+            self.__dict__,
+            indent=2,
+            default=lambda x: x.__dict__
+        )
 
 
 class JobSubmissionEvent(JobEvent):
@@ -43,10 +73,18 @@ class JobSubmissionEvent(JobEvent):
             self,
             event_number=None,
             time_stamp=None,
-            submitted_by=None
+            submitter_address=None
     ):
         super(JobSubmissionEvent, self).__init__(event_number, time_stamp)
-        self.submitted_by = submitted_by
+        self.submitter_address = submitter_address
+
+    @property
+    def __dict__(self):
+        return {
+            "event_number": self.event_number,
+            "time_stamp": str(self.time_stamp),
+            "submitter_address": self.submitter_address
+        }
 
 
 class JobExecutionEvent(JobEvent):
@@ -55,13 +93,13 @@ class JobExecutionEvent(JobEvent):
             self,
             event_number=None,
             time_stamp=None,
-            executing_on=None,
+            host_address=None,
             rdns_lookup=False
     ):
         super(JobExecutionEvent, self).__init__(event_number, time_stamp)
-        self.executing_on = (
-            node_cache.get_host_by_addr_cached(executing_on)
-            if rdns_lookup else executing_on
+        self.host_address = (
+            node_cache.get_host_by_addr_cached(host_address)
+            if rdns_lookup else host_address
         )
 
 
@@ -164,6 +202,4 @@ class ShadowExceptionEvent(ErrorEvent):
             time_stamp,
             ErrorEvent.ErrorCode.SHADOW_EXCEPTION,
             reason
-
         )
-

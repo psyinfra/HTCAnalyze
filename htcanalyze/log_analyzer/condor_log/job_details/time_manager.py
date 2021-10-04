@@ -1,6 +1,7 @@
 """Manage times of HTCondor job logs."""
-from datetime import datetime as date_time, timedelta
+import json
 from typing import List
+from datetime import datetime as date_time, timedelta
 
 
 class TimeManager:
@@ -16,15 +17,11 @@ class TimeManager:
 
     """
 
-    def __init__(
-            self,
-            submission_date: date_time = None,
-            execution_date: date_time = None,
-            termination_date: date_time = None
-    ):
-        self.submission_date = submission_date
-        self.execution_date = execution_date
-        self.termination_date = termination_date
+    def __init__(self, set_events):
+
+        self.submission_date = set_events.submission_date
+        self.execution_date = set_events.execution_date
+        self.termination_date = set_events.termination_date
         self.waiting_time = timedelta()
         self.execution_time = timedelta()
         self.total_runtime = timedelta()
@@ -146,6 +143,21 @@ class TimeManager:
             }
         # else:
         return {}
+
+    @property
+    def __dict__(self):
+        return {
+            "submission_date": str(self.submission_date),
+            "execution_date": str(self.execution_date),
+            "termination_date": str(self.termination_date),
+            "waiting_time": str(self.waiting_time),
+            "execution_time": str(self.execution_time),
+            "total_runtime": str(self.total_runtime),
+            "running_over_newyear": str(self.running_over_newyear)
+        }
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
 
 
 def calc_avg_on_times(time_managers: List[TimeManager]) -> dict:

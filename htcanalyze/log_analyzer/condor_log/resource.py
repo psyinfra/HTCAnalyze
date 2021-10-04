@@ -1,8 +1,15 @@
 """Class to define HTCondor Joblog resources."""
 
+import json
 from typing import List
 from numpy import nan_to_num as ntn
-from htcanalyze.globals import LEVEL_COLORS
+
+LEVEL_COLORS = {
+    'error': 'red',
+    'warning': 'yellow',
+    'light_warning': 'yellow2',
+    'normal': 'green'
+}
 
 
 class Resource:
@@ -26,11 +33,10 @@ class Resource:
         self.requested = requested
         self.allocated = allocated
         self.warning_level = None
-        self.level_colors = LEVEL_COLORS
 
     def get_color(self) -> str:
         """Convert an alert level to an appropriate color."""
-        return self.level_colors.get(self.warning_level, "default")
+        return LEVEL_COLORS.get(self.warning_level, "default")
 
     def to_dict(self) -> dict:
         """Return this class as a dict."""
@@ -72,21 +78,51 @@ class Resource:
             self.warning_level = 'normal'
 
 
+class LogResources:
+    def __init__(
+            self,
+            cpu_resource: Resource,
+            disc_resource: Resource,
+            memory_resource: Resource,
+            gpu_resource: Resource = None
+    ):
+        self.cpu_resource = cpu_resource
+        self.disc_resource = disc_resource
+        self.memory_resource = memory_resource
+        self.gpu_resource = gpu_resource
+
+    @property
+    def resources(self):
+        return [
+            self.cpu_resource,
+            self.disc_resource,
+            self.memory_resource,
+            self.gpu_resource
+        ]
+
+    def __repr__(self):
+        return json.dumps(
+            self.__dict__,
+            indent=2,
+            default=lambda x: x.__dict__
+        )
+
+
 def create_avg_on_resources(
-        job_resource_list: List[List[Resource]]
+        log_resource_list: List[LogResources]
 ) -> List[Resource]:
     """
     Create a new List of Resources in Average.
 
-    :param job_resource_list: list(list(Resource))
+    :param log_resource_list: list(list(Resource))
     :return: list(Resource)
     """
-    n_jobs = len(job_resource_list)
+    n_jobs = len(log_resource_list)
     res_cache = {}
 
     # calc total
-    for job_resources in job_resource_list:
-        for resource in job_resources:
+    for log_resources in log_resource_list:
+        for resource in log_resources.resources:
             desc = resource.description  # description shortcut
             # add resource
             if res_cache.get(desc):
@@ -95,10 +131,12 @@ def create_avg_on_resources(
                 res_cache[desc].allocated += ntn(resource.allocated)
             # create first entry
             else:
-                res_cache[desc] = Resource(desc,
-                                           ntn(resource.usage),
-                                           ntn(resource.requested),
-                                           ntn(resource.allocated))
+                res_cache[desc] = Resource(
+                    desc,
+                    ntn(resource.usage),
+                    ntn(resource.requested),
+                    ntn(resource.allocated)
+                )
 
     avg_res_list = list(res_cache.values())
 

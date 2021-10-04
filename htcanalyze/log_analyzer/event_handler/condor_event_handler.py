@@ -1,18 +1,25 @@
-import logging
 import re
-
-from typing import List
-from datetime import datetime as date_time
-from htcondor import JobEventLog, JobEventType as jet
-from rich import print as rprint
+import logging
 import numpy as np
+from typing import List
 
-from .job_details import JobDetails
-from .resource import Resource
-from .time_manager import TimeManager
+from rich import print as rprint
+from htcondor import JobEventLog, JobEventType as jet, JobEvent as HTCJobEvent
+
+from .condor_set_events import SETEvents
 from .state_manager import StateManager
-from .ram_history import RamHistory
-from .events import *
+from .condor_job_events import *
+from htcanalyze.log_analyzer.condor_log import CondorLog, JobDetails, \
+    LogResources, Resource, RamHistory, ErrorEvents
+
+
+class ReadLogException(Exception):
+    """Exception raised for failed login.
+    :param message: Error description message
+    """
+
+    def __init__(self, message):
+        super().__init__(message)
 
 
 def event_decorator(func):
@@ -27,54 +34,6 @@ def event_decorator(func):
     return wrapper
 
 
-class CondorLog:
-
-    _state = None
-
-    class State(Enum):
-        WAITING = 0
-        RUNNING = 1
-        TERMINATED = 2
-        ERROR = 3
-
-    def __init__(
-            self,
-            job_details: JobDetails,
-            resources: List[Resource],
-            time_manager: TimeManager,
-            errors: List[ErrorEvent],
-            ram_history: RamHistory
-    ):
-        self.job_details = job_details
-        self.resources = resources
-        self.time_manager = time_manager
-        self.errors = errors
-        self.ram_history = ram_history
-        self._state = self._get_state()
-
-    def _get_state(self) -> State:
-        if self.time_manager.termination_date:
-            return CondorLog.State.TERMINATED
-        elif self.time_manager.execution_date:
-            return CondorLog.State.RUNNING
-        elif self.time_manager.submission_date:
-            return CondorLog.State.WAITING
-        else:
-            return CondorLog.State.ERROR
-
-    def get_state_color(self):
-        """Return the color for the given state."""
-        return self.state_colors.get(self.state)
-
-    @property
-    def state(self):
-        return self._state
-
-    @state.setter
-    def __setstate__(self, state):
-        self._state = state
-
-
 class CondorEventHandler:
     _event_number = None
     _time_stamp = None
@@ -83,10 +42,7 @@ class CondorEventHandler:
         self.state_manager = StateManager()
 
     @event_decorator
-    def get_submission_event(
-            self,
-            event
-    ) -> JobEvent:
+    def get_submission_event(self, event) -> JobEvent:
         assert event.type == jet.SUBMIT
 
         match_from_host = re.match(
@@ -113,11 +69,7 @@ class CondorEventHandler:
         )
 
     @event_decorator
-    def get_execution_event(
-            self,
-            event,
-            rdns_lookup=False
-    ) -> JobEvent:
+    def get_execution_event(self, event, rdns_lookup=False) -> JobEvent:
         assert event.type == jet.EXECUTE
         match_to_host = re.match(
             r"<(.+):[0-9]+\?(.*)>",
@@ -145,10 +97,7 @@ class CondorEventHandler:
             )
 
     @event_decorator
-    def get_job_terminated_event(
-            self,
-            event
-    ):
+    def get_job_terminated_event(self, event) -> JobEvent:
 
         # get all resources, replace by np.nan if value is None
         cpus_usage = event.get('CpusUsage', np.nan)
@@ -167,7 +116,7 @@ class CondorEventHandler:
         # create list with resources
         resources = LogResources(
             Resource(
-                "CPU",
+                "Cpus",
                 cpus_usage,
                 cpus_requested,
                 cpus_allocated
@@ -215,10 +164,7 @@ class CondorEventHandler:
         )
 
     @event_decorator
-    def get_job_aborted_event(
-            self,
-            event
-    ) -> JobEvent:
+    def get_job_aborted_event(self, event) -> JobEvent:
         assert event.type == jet.JOB_ABORTED
         reason = event.get('Reason')
         self.state_manager.state = JobState.ABORTED
@@ -229,10 +175,7 @@ class CondorEventHandler:
         )
 
     @event_decorator
-    def get_image_size_event(
-            self,
-            event
-    ) -> JobEvent:
+    def get_image_size_event(self, event) -> JobEvent:
         assert event.type == jet.IMAGE_SIZE
         size_update = event.get('Size')
         memory_usage = event.get('MemoryUsage')
@@ -246,10 +189,7 @@ class CondorEventHandler:
         )
 
     @event_decorator
-    def get_job_held_event(
-            self,
-            event
-    ) -> JobEvent:
+    def get_job_held_event(self, event) -> JobEvent:
         assert event.type == jet.JOB_HELD
         reason = event.get('HoldReason')
         return JobHeldEvent(
@@ -259,10 +199,7 @@ class CondorEventHandler:
         )
 
     @event_decorator
-    def get_shadow_exception_event(
-            self,
-            event
-    ) -> JobEvent:
+    def get_shadow_exception_event(self, event) -> JobEvent:
         assert event.type == jet.SHADOW_EXCEPTION
         reason = event.get('Message')
         return ShadowExceptionEvent(
@@ -271,140 +208,140 @@ class CondorEventHandler:
             reason
         )
 
-    def get_events(self, file, sec: int = 0) -> List[JobEventLog]:
 
-        jel = JobEventLog(file)
-        events = []
+def get_events(file, sec: int = 0) -> List[HTCJobEvent]:
 
-        try:
-            # Read all currently-available events
-            # waiting for 'sec' seconds for the next event.
-            for event in jel.events(sec):
-                events.append(event)
+    jel = JobEventLog(file)
+    events = []
 
-        except OSError as err:
-            logging.exception(err)
-            if err.args[0] == "ULOG_RD_ERROR":
-                reason = (
-                    "Error while reading log file. "
-                    "File was manipulated or contains gpu usage."
-                )
+    try:
+        # Read all currently-available events
+        # waiting for 'sec' seconds for the next event.
+        for event in jel.events(sec):
+            events.append(event)
 
-            else:
-                reason = f"Not able to open the file: {file}"
-            raise ReadLogException(reason)
+    except OSError as err:
+        logging.exception(err)
+        if err.args[0] == "ULOG_RD_ERROR":
+            reason = (
+                "Error while reading log file. "
+                "File was manipulated or contains gpu usage."
+            )
 
-        return events
+        else:
+            reason = f"Not able to open the file: {file}"
+        raise ReadLogException(reason)
 
-    def get_condor_log(
-            self,
-            file: str,
-            rdns_lookup=False
-    ) -> CondorLog:
-        """
-        Read the log file with the htcondor module.
+    return events
 
-        Return five dicts holding information about:
-        execution node, used resources, times, used ram history and errors
 
-        :type file: str
-        :param file: HTCondor log file
-        :param sec: seconds to wait for new events
-        :return: job_details, resources, time_manager, ram_history, errors
+def get_condor_log(
+        file: str,
+        rdns_lookup=False
+) -> CondorLog:
+    """
+    Read the log file with the htcondor module.
 
-        Consider that the return values can be None or empty dictionaries
-        """
-        resources = []
-        submission_event = None
-        execution_event = None
-        termination_event = None
-        image_size_events = []
-        occurred_errors = []
+    Return five dicts holding information about:
+    execution node, used resources, times, used ram history and errors
 
-        try:
-            events = self.get_events(file)
-        except ReadLogException as err:
-            logging.debug(err)
-            rprint()
+    :type file: str
+    :param file: HTCondor log file
+    :param rdns_lookup: reverse dns lookup for ip-adresses
+    :return: job_details, resources, time_manager, ram_history, errors
 
-        job_events = []
+    Consider that the return values can be None or empty dictionaries
+    """
+    submission_event = None
+    execution_event = None
+    termination_event = None
+    image_size_events = []
+    occurred_errors = []
+    event_handler = CondorEventHandler()
 
-        for event in events:
+    try:
+        events = get_events(file)
+    except ReadLogException as err:
+        logging.debug(err)
+        rprint()
 
-            if event.type == jet.SUBMIT:
-                job_event = self.get_submission_event(event)
-                if isinstance(job_event, JobSubmissionEvent):
-                    submission_event = job_event
+    job_events = []
 
-            elif event.type == jet.EXECUTE:
-                job_event = self.get_execution_event(
-                    event,
-                    rdns_lookup=rdns_lookup
-                )
-                if isinstance(job_event, JobExecutionEvent):
-                    execution_event = job_event
+    for event in events:
 
-            elif event.type == jet.IMAGE_SIZE:
-                job_event = self.get_image_size_event(event)
-                image_size_events.append(job_event)
+        if event.type == jet.SUBMIT:
+            job_event = event_handler.get_submission_event(event)
+            if isinstance(job_event, JobSubmissionEvent):
+                submission_event = job_event
 
-            # update resource dict and termination date
-            elif event.type == jet.JOB_TERMINATED:
-                job_event = self.get_job_terminated_event(event)
+        elif event.type == jet.EXECUTE:
+            job_event = event_handler.get_execution_event(
+                event,
+                rdns_lookup=rdns_lookup
+            )
+            if isinstance(job_event, JobExecutionEvent):
+                execution_event = job_event
+
+        elif event.type == jet.IMAGE_SIZE:
+            job_event = event_handler.get_image_size_event(event)
+            image_size_events.append(job_event)
+
+        # update resource dict and termination date
+        elif event.type == jet.JOB_TERMINATED:
+            job_event = event_handler.get_job_terminated_event(event)
+            termination_event = job_event
+
+        # update error dict and termination date
+        elif event.type == jet.JOB_ABORTED:
+            job_event = event_handler.get_job_aborted_event(event)
+            termination_event = job_event
+            occurred_errors.append(job_event)
+
+        # update error dict
+        elif event.type == jet.JOB_HELD:
+            job_event = event_handler.get_job_held_event(event)
+            occurred_errors.append(job_event)
+
+        # update error dict
+        elif event.type == jet.SHADOW_EXCEPTION:
+            job_event = event_handler.get_shadow_exception_event(event)
+            occurred_errors.append(job_event)
+
+        else:
+            job_event = None
+            rprint(
+                f"[yellow]Event type: {event.type} "
+                f"not handled yet[/yellow]"
+            )
+
+        if isinstance(job_event, ErrorEvent):
+            if isinstance(job_event, JobTerminationEvent):
                 termination_event = job_event
+            rprint(
+                f"[red]{job_event.error_code}: {job_event.reason}[/red]"
+            )
 
-            # update error dict and termination date
-            elif event.type == jet.JOB_ABORTED:
-                job_event = self.get_job_aborted_event(event)
-                termination_event = job_event
-                occurred_errors.append(job_event)
+        job_events.append(job_event)
 
-            # update error dict
-            elif event.type == jet.JOB_HELD:
-                job_event = self.get_job_held_event(event)
-                occurred_errors.append(job_event)
+    # End of the file
 
-            # update error dict
-            elif event.type == jet.SHADOW_EXCEPTION:
-                job_event = self.get_shadow_exception_event(event)
-                occurred_errors.append(job_event)
+    set_events = SETEvents(
+        submission_event,
+        execution_event,
+        termination_event,
+    )
+    job_details = JobDetails(
+        set_events,
+        event_handler.state_manager
+    )
+    resources = termination_event.resources
+    error_events = ErrorEvents(occurred_errors)
+    ram_history = RamHistory(image_size_events)
 
-            else:
-                job_event = None
-                rprint(
-                    f"[yellow]Event type: {event.type} "
-                    f"not handled yet[/yellow]"
-                )
-
-            if isinstance(job_event, ErrorEvent):
-                if job_event.is_termination_event:
-                    termination_event = job_event
-                rprint(
-                    f"[red]{job_event.error_name}: {job_event.reason}[/red]"
-                )
-
-            job_events.append(job_event)
-
-        # End of the file
-
-        time_manager = TimeManager(
-            submission_event,
-            execution_event,
-            termination_event
-        )
-
-        job_details = JobDetails(
-            submission_event,
-            execution_event,
-            termination_event
-        )
-
-        ram_history = RamHistory(image_size_events)
-
-        return CondorLog(
-            job_details,
-            resources,
-            time_manager,
-            occurred_errors,
-            ram_history
-        )
+    return CondorLog(
+        file,
+        job_details,
+        resources,
+        error_events,
+        ram_history
+    )

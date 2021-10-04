@@ -24,7 +24,7 @@ from rich import print as rprint
 from htcanalyze.display import print_results, check_for_redirection
 from htcanalyze import setup_logging_tool
 from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
-from htcanalyze.logvalidator import LogValidator
+from .log_analyzer.logvalidator import LogValidator
 from htcanalyze.globals import ALLOWED_IGNORE_VALUES, \
     ALLOWED_SHOW_VALUES, CONFIG_PATHS, \
     NORMAL_EXECUTION, NO_VALID_FILES, \
@@ -360,17 +360,16 @@ def run(commandline_args):
 
         param_dict = manage_params(commandline_args)
 
-        setup_logging_tool(param_dict["generate_log_file"],
-                           param_dict["verbose"])
+        setup_logging_tool(
+            param_dict["generate_log_file"],
+            param_dict["verbose"]
+        )
 
         logging.debug("-------Start of htcanalyze script-------")
 
         # do not show legend, if output is redirected
         show_legend = not redirecting_stdout
         htcanalyze = HTCAnalyze(
-            ext_log=param_dict["ext_log"],
-            ext_out=param_dict["ext_out"],
-            ext_err=param_dict["ext_err"],
             show_list=param_dict["show_list"],
             rdns_lookup=param_dict["rdns_lookup"],
             tolerated_usage=param_dict["tolerated_usage"],
@@ -386,10 +385,12 @@ def run(commandline_args):
         if redirecting_stdout:
             logging.debug("Output is getting redirected")
 
-        validator = LogValidator(ext_log=param_dict["ext_log"],
-                                 ext_out=param_dict["ext_out"],
-                                 ext_err=param_dict["ext_err"],
-                                 recursive=param_dict["recursive"])
+        validator = LogValidator(
+            ext_log=param_dict["ext_log"],
+            ext_out=param_dict["ext_out"],
+            ext_err=param_dict["ext_err"],
+            recursive=param_dict["recursive"]
+        )
 
         valid_files = validator.common_validation(param_dict["files"])
 
@@ -402,7 +403,9 @@ def run(commandline_args):
             logging.debug("-------End of htcanalyze script-------")
             sys.exit(NO_VALID_FILES)
 
-        print_results(htcanalyze, log_files=valid_files, **param_dict)
+        print_results(
+            htcanalyze, log_files=valid_files, **param_dict
+        )
 
         end = date_time.now()
 
