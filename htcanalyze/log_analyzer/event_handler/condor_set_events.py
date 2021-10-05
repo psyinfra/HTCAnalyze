@@ -6,7 +6,7 @@ from .condor_job_events import JobSubmissionEvent, JobExecutionEvent, \
 
 class SETEvents:
     """
-    Submission, Execution and Termination Events, (SET-Events)
+    Submission, Execution and Termination Events (SET-Events)
     """
 
     def __init__(
@@ -73,6 +73,13 @@ class SETEvents:
         return (
             self.termination_event.resources
             if self.termination_event else None
+        )
+
+    def is_empty(self):
+        return not (
+            self.submission_event or
+            self.execution_event or
+            self.termination_event
         )
 
     def __repr__(self):
