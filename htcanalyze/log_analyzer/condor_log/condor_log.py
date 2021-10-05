@@ -2,7 +2,6 @@ import os
 import json
 
 from .job_details.job_details import JobDetails
-from .resource import LogResources
 from .error_events import ErrorEvents
 from .ram_history import RamHistory
 
@@ -27,6 +26,10 @@ class CondorLog:
         """Get job specification id from a HTCondor file."""
         base = os.path.basename(file)
         return os.path.splitext(base)[0]
+
+    @property
+    def resources(self):
+        return self.job_details.resources
 
     def __repr__(self):
         return json.dumps(
