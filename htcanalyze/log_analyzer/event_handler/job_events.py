@@ -3,7 +3,7 @@ import json
 from enum import Enum
 from datetime import datetime as date_time
 
-from .host_nodes import node_cache
+from .host_nodes import NodeCache
 
 
 class JobState(Enum):
@@ -101,7 +101,7 @@ class JobExecutionEvent(JobEvent):
     ):
         super(JobExecutionEvent, self).__init__(event_number, time_stamp)
         self.host_address = (
-            node_cache.get_host_by_addr_cached(host_address)
+            NodeCache().get_host_by_addr_cached(host_address)
             if rdns_lookup else host_address
         )
 
