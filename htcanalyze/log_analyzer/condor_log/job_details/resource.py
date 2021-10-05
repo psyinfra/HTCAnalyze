@@ -45,13 +45,15 @@ class Resource:
         return {k: v for k, v in self.__dict__.items()
                 if not k == "level_colors"}
 
+    def get_usage_colored(self):
+        return f"[{self.get_color()}]{self.usage}[/{self.get_color()}]"
+
     def __repr__(self):
         """Own style of representing this class."""
-        return f"({self.description}, " \
-            f"{self.usage}, " \
-            f"{self.requested}, " \
-            f"{self.allocated}, " \
-            f"{self.warning_level})"
+        return (
+            f"({self.description}, {self.usage}, {self.requested}, " 
+            f"{self.allocated}, {self.warning_level})"
+        )
 
     def __str__(self):
         """Create a string representation of this class."""
