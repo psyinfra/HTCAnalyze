@@ -1,5 +1,5 @@
 from enum import Enum
-from .condor_job_events import JobState
+from .job_events import JobState
 
 
 class StateColors(Enum):
