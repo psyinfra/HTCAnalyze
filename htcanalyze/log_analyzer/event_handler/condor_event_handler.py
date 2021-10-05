@@ -1,3 +1,6 @@
+"""Condor Event Handler."""
+
+import os
 import re
 import logging
 import numpy as np
@@ -208,30 +211,26 @@ class CondorEventHandler:
         )
 
 
-def get_events(file, sec: int = 0) -> List[HTCJobEvent]:
+def get_events(file, sec: int = 0) -> iter(List[HTCJobEvent]):
 
     jel = JobEventLog(file)
-    events = []
 
     try:
         # Read all currently-available events
         # waiting for 'sec' seconds for the next event.
-        for event in jel.events(sec):
-            events.append(event)
+        events = jel.events(sec)
+        for event in events:
+            yield event
 
     except OSError as err:
         logging.exception(err)
+        file_name = os.path.basename(file)
         if err.args[0] == "ULOG_RD_ERROR":
-            reason = (
-                f"Error while reading log file: {file}"
-                f"File was manipulated or contains gpu usage."
-            )
-
+            reason = f"File was manipulated or contains Gpu usage: {file_name}"
         else:
-            reason = f"Not able to open the file: {file}"
-        # raise ReadLogException(reason)
+            reason = f"Not able to open the file: {file_name}"
 
-    return events
+        raise ReadLogException(reason)
 
 
 def get_condor_log(
@@ -260,12 +259,19 @@ def get_condor_log(
     event_handler = CondorEventHandler()
 
     try:
-        events = get_events(file)
+        for event in get_events(file):
+            events.append(event)
     except ReadLogException as err:
         logging.debug(err)
         rprint(f"[red]{err}[/red]")
-
-    job_events = []
+        occurred_errors.append(
+            ErrorEvent(
+                None,
+                None,
+                JobState.ERROR_WHILE_READING,
+                reason=str(err)
+            )
+        )
 
     for event in events:
 
@@ -294,18 +300,14 @@ def get_condor_log(
         # update error dict and termination date
         elif event.type == jet.JOB_ABORTED:
             job_event = event_handler.get_job_aborted_event(event)
-            termination_event = job_event
-            occurred_errors.append(job_event)
 
         # update error dict
         elif event.type == jet.JOB_HELD:
             job_event = event_handler.get_job_held_event(event)
-            occurred_errors.append(job_event)
 
         # update error dict
         elif event.type == jet.SHADOW_EXCEPTION:
             job_event = event_handler.get_shadow_exception_event(event)
-            occurred_errors.append(job_event)
 
         else:
             job_event = None
@@ -315,13 +317,9 @@ def get_condor_log(
             )
 
         if isinstance(job_event, ErrorEvent):
+            occurred_errors.append(job_event)
             if isinstance(job_event, JobTerminationEvent):
                 termination_event = job_event
-            rprint(
-                f"[red]{job_event.error_code}: {job_event.reason}[/red]"
-            )
-
-        job_events.append(job_event)
 
     # End of the file
 
