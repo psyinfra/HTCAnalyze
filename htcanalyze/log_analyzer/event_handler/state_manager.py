@@ -7,6 +7,7 @@ class StateColors(Enum):
     BAD_TERMINATION = 'red'
     RUNNING = 'blue'
     UNKNOWN_BEHAVIOUR = 'yellow'
+    DEFAULT = 'default'
 
 
 class StateManager:
@@ -37,6 +38,8 @@ class StateManager:
             return StateColors.RUNNING.value
         elif self._state == JobState.UNKNOWN:
             return StateColors.UNKNOWN_BEHAVIOUR.value
+        else:
+            return StateColors.DEFAULT.value
 
     @property
     def __dict__(self):
