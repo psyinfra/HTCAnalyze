@@ -6,9 +6,15 @@ from datetime import timedelta
 
 class NodeCache:
     """Cache to save reverse DNS lookups."""
+    _instance = None
 
-    def __init__(self):
-        self.rdns_cache = {}
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(NodeCache, cls).__new__(
+                cls, *args, **kwargs
+            )
+            cls._instance.rdns_cache = {}
+        return cls._instance
 
     def get_host_by_addr_cached(self, ip_address):
         """
@@ -39,10 +45,6 @@ class NodeCache:
                 return ip_address
 
 
-# global instance to cache reverse dns lookup
-node_cache = NodeCache()
-
-
 class SingleNode:
     """Single Node saving runtime on a node specified by ip or description."""
 
@@ -67,7 +69,7 @@ class HostNodes:
         """
         key = node.ip_or_desc
         if self.rdns_lookup:
-            key = node_cache.get_host_by_addr_cached(key)
+            key = NodeCache().get_host_by_addr_cached(key)
 
         try:
             self.nodes[key]['n_jobs'] += 1
