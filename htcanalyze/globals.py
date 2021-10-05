@@ -24,10 +24,9 @@ HTCANALYZE_ERROR = 2
 TYPE_ERROR = 3
 KEYBOARD_INTERRUPT = 4
 
-
-# --- Display Globals --- #
+TOLERATED_USAGE = 0.1
+BAD_USAGE = 0.25
 
 # Errors can mess up the output, hence it's useful to reduce the number
 # of errors. If there are more than just return a number
 MAX_ERROR_LIMIT = 10
-
