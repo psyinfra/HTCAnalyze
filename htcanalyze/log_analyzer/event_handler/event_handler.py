@@ -226,7 +226,7 @@ def get_events(file, sec: int = 0) -> iter(List[HTCJobEvent]):
         logging.exception(err)
         file_name = os.path.basename(file)
         if err.args[0] == "ULOG_RD_ERROR":
-            reason = f"File was manipulated or contains Gpu usage: {file_name}"
+            reason = f"File was manipulated or contains gpu data: {file_name}"
         else:
             reason = f"Not able to open the file: {file_name}"
 
