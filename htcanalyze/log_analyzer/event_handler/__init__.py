@@ -1,4 +1,4 @@
 
-from .condor_set_events import SETEvents
-from .condor_job_events import *
-from .condor_event_handler import CondorEventHandler
+from .set_events import SETEvents
+from .job_events import *
+from .event_handler import EventHandler
