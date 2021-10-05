@@ -2,13 +2,15 @@
 
 import os
 import sys
+from abc import ABC
 import logging
 from typing import List
 
 from rich import print as rprint
 from rich.table import Table, box
+from rich.progress import Progress, track
 from htcanalyze.htcanalyze import HTCAnalyze, CondorLog
-from htcanalyze.globals import NORMAL_EXECUTION
+from htcanalyze.globals import NORMAL_EXECUTION, BAD_USAGE, TOLERATED_USAGE
 
 
 def check_for_redirection() -> (bool, bool, list):
@@ -48,36 +50,44 @@ def read_file(file: str):
     return output_string
 
 
-class View:
-    pass
+class View(ABC):
+
+    def __init__(
+            self,
+            bad_usage=BAD_USAGE,
+            tolerated_usage=TOLERATED_USAGE
+    ):
+        self.bad_usage = bad_usage
+        self.tolerated_usage = tolerated_usage
 
 
 class SingleLogfileView(View):
 
     def __init__(
             self,
-            ext_log="",
+            bad_usage,
+            tolerated_usage,
             ext_out=".out",
-            ext_err=".err",
-            show_legend=False
+            ext_err=".err"
     ):
-        self.ext_log = ext_log
+        super(SingleLogfileView, self).__init__(bad_usage, tolerated_usage)
         self.ext_out = ext_out
         self.ext_err = ext_err
 
-    @staticmethod
-    def print_job_details(job_details):
+    def print_job_details(self, job_details, print_times=True):
+        if job_details.set_events.is_empty():
+            return
 
         job_details_table = Table(
             *["Description", "Value"],
-            title="Job Details",
+            # title="Job Details",
             show_header=False,
             header_style="bold magenta",
             box=box.ASCII
         )
         job_details_table.add_row(
             "State",
-            job_details.state_manager.state.name
+            str(job_details.state_manager)
         )
         job_details_table.add_row(
             "Submitter Address",
@@ -94,11 +104,14 @@ class SingleLogfileView(View):
 
         rprint(job_details_table)
 
+        if print_times:
+            self.print_times(job_details.time_manager)
+
     @staticmethod
     def print_times(time_manager):
         time_table = Table(
             *["Description", "Timestamp", "Duration"],
-            title="Job Dates and Times",
+            # title="Job Dates and Times",
             show_header=True,
             header_style="bold magenta",
             box=box.ASCII
@@ -110,20 +123,23 @@ class SingleLogfileView(View):
         )
         time_table.add_row(
             "Execution",
-            str(time_manager.submission_date),
+            str(time_manager.execution_date),
             str(time_manager.execution_time),
         )
         time_table.add_row(
             "Termination",
-            str(time_manager.submission_date),
+            str(time_manager.termination_date),
             str(time_manager.total_runtime)
-
         )
 
         rprint(time_table)
 
     @staticmethod
-    def print_resources(resources):
+    def print_resources(
+            resources,
+            bad_usage=BAD_USAGE,
+            tolerated_usage=TOLERATED_USAGE
+    ):
         if not resources:
             return
 
@@ -135,9 +151,13 @@ class SingleLogfileView(View):
             box=box.ASCII
         )
         for resource in resources.resources:
+            resource.chg_lvl_by_threholds(
+                bad_usage=bad_usage,
+                tolerated_usage=tolerated_usage
+            )
             resource_table.add_row(
                 resource.description,
-                str(resource.usage),
+                resource.get_usage_colored(),
                 str(resource.requested),
                 str(resource.allocated)
             )
@@ -160,10 +180,15 @@ class SingleLogfileView(View):
             header_style="bold magenta",
             box=box.ASCII
         )
+
         for error in error_events.error_events:
+            time_stamp = (
+                error.time_stamp.strftime("%m/%d %H:%M:%S")
+                if error.time_stamp else None
+            )
             error_table.add_row(
                 str(error.event_number),
-                error.time_stamp.strftime("%m/%d %H:%M:%S"),
+                time_stamp,
                 error.error_code.name,
                 error.reason
             )
@@ -179,14 +204,17 @@ class SingleLogfileView(View):
     ) -> str:
 
         rprint(
-            f"[blue]Job Analysis of {os.path.basename(condor_log.file)}[/blue]"
+            f"[blue]Job Analysis of [/blue]"
+            f"[cyan]{os.path.basename(condor_log.file)}[/cyan]"
         )
 
         self.print_job_details(condor_log.job_details)
 
-        self.print_times(condor_log.job_details.time_manager)
-
-        self.print_resources(condor_log.job_details.resources)
+        self.print_resources(
+            condor_log.job_details.resources,
+            self.bad_usage,
+            self.tolerated_usage
+        )
 
         self.print_ram_history(
             condor_log.ram_history,
@@ -201,27 +229,55 @@ class SingleLogfileView(View):
         if show_err:
             print(read_file(condor_log.job_spec_id + self.ext_err))
 
-        print("+-+"*30)
+
+class SummarizedView(View):
+    pass
 
 
 def print_results(
         htcanalyze: HTCAnalyze,
         log_files: List[str],
-        one_by_one: bool,
-        ignore_list=list,
+        mode='summarize',
+        bad_usage=BAD_USAGE,
+        tolerated_usage=TOLERATED_USAGE,
+        show_legend=True,
         **__
 ):
     if not log_files:
         print("No files to process")
         sys.exit(NORMAL_EXECUTION)
 
-    if one_by_one or len(log_files) == 1:
-        analyzed_logs = htcanalyze.analyze_logs(log_files)
-        view = SingleLogfileView()
-        for log in analyzed_logs:
-            view.print_condor_log(log)
+    # create progressbar, do not redirect output
+    with Progress(
+            transient=True,
+            redirect_stdout=False,
+            redirect_stderr=False
+    ) as progress:
+
+        task = progress.add_task("Analysing files...", total=len(log_files))
+
+        condor_logs = htcanalyze.analyze(log_files)
+        analyzed_logs = []
+        for condor_log in condor_logs:
+            progress.update(task, advance=1)
+            analyzed_logs.append(condor_log)
+
+    if mode == 'analyze' or len(log_files) == 1:
+        view = SingleLogfileView(
+            bad_usage=bad_usage,
+            tolerated_usage=tolerated_usage
+        )
+        for i, log in enumerate(analyzed_logs):
+            view.print_condor_log(
+                log,
+                show_out=False,
+                show_err=False,
+                show_legend=show_legend
+            )
+            if i < len(analyzed_logs)-1:
+                print("~"*80)
 
     else:
-        results = htcanalyze.summarize(log_files)
+        summarized_logs = htcanalyze.summarize(log_files)
 
     sys.exit(NORMAL_EXECUTION)
