@@ -1,6 +1,6 @@
 import json
 
-from .condor_job_events import JobSubmissionEvent, JobExecutionEvent, \
+from .job_events import JobSubmissionEvent, JobExecutionEvent, \
     JobTerminationEvent
 
 

@@ -9,9 +9,9 @@ from typing import List
 from rich import print as rprint
 from htcondor import JobEventLog, JobEventType as jet, JobEvent as HTCJobEvent
 
-from .condor_set_events import SETEvents
+from .set_events import SETEvents
 from .state_manager import StateManager
-from .condor_job_events import *
+from .job_events import *
 from htcanalyze.log_analyzer.condor_log import CondorLog, JobDetails, \
     LogResources, Resource, RamHistory, ErrorEvents
 
@@ -37,7 +37,7 @@ def event_decorator(func):
     return wrapper
 
 
-class CondorEventHandler:
+class EventHandler:
     _event_number = None
     _time_stamp = None
 
@@ -256,7 +256,7 @@ def get_condor_log(
     image_size_events = []
     occurred_errors = []
     events = []
-    event_handler = CondorEventHandler()
+    event_handler = EventHandler()
 
     try:
         for event in get_events(file):
