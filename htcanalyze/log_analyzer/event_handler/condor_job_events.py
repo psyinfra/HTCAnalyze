@@ -145,6 +145,7 @@ class ErrorEvent(JobEvent):
         ABORTED = JobState.ABORTED.value
         JOB_HELD = JobState.JOB_HELD.value
         SHADOW_EXCEPTION = JobState.SHADOW_EXCEPTION.value
+        ERROR_WHILE_READING = JobState.ERROR_WHILE_READING.value
         INVALID_HOST_ADDRESS = JobState.INVALID_HOST_ADDRESS.value
         INVALID_USER_ADDRESS = JobState.INVALID_USER_ADDRESS.value
 
