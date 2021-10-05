@@ -1,7 +1,7 @@
 """Global parameters."""
 
 import sys
-from htcanalyze import get_package_name
+from . import get_package_name
 
 # --- Main Globals --- #
 # config paths to watch in the following order
