@@ -1,13 +1,6 @@
 """module to summarize and analyze HTCondor log files."""
 
-import logging
-import os
-
 from typing import List
-from enum import Enum
-from rich import print as rprint
-
-
 # import own module
 from .log_analyzer import CondorLog, get_condor_log, SummarizedCondorLogs
 
