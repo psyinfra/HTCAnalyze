@@ -22,9 +22,9 @@ class TimeManager:
         self.submission_date = set_events.submission_date
         self.execution_date = set_events.execution_date
         self.termination_date = set_events.termination_date
-        self.waiting_time = timedelta()
-        self.execution_time = timedelta()
-        self.total_runtime = timedelta()
+        self.waiting_time = None
+        self.execution_time = None
+        self.total_runtime = None
 
         self.running_over_newyear = False
 
