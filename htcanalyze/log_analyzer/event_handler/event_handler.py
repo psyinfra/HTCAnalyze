@@ -257,6 +257,7 @@ def get_condor_log(
     occurred_errors = []
     events = []
     event_handler = EventHandler()
+    error_while_reading = False
 
     try:
         for event in get_events(file):
@@ -264,6 +265,7 @@ def get_condor_log(
     except ReadLogException as err:
         logging.debug(err)
         rprint(f"[red]{err}[/red]")
+        error_while_reading = True
         occurred_errors.append(
             ErrorEvent(
                 None,
@@ -322,6 +324,9 @@ def get_condor_log(
                 termination_event = job_event
 
     # End of the file
+
+    if error_while_reading:
+        event_handler.state_manager.state = JobState.ERROR_WHILE_READING
 
     set_events = SETEvents(
         submission_event,
