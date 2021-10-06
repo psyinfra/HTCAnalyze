@@ -23,11 +23,11 @@ class HTCAnalyze:
     def __init__(
             self,
             # mode: MODE,
-            rdns_lookup=None
+            rdns_lookup=False
     ):
         # self.mode = mode
         self.rdns_cache = {}
-        self.rdns_lookup = False if rdns_lookup is None else rdns_lookup
+        self.rdns_lookup = rdns_lookup
 
     def analyze(self, log_files: List[str]) -> List[CondorLog]:
         """
@@ -41,7 +41,7 @@ class HTCAnalyze:
             raise_value_error("No files to analyze")
 
         for file in log_files:
-            condor_log = get_condor_log(file)
+            condor_log = get_condor_log(file, self.rdns_lookup)
             yield condor_log
 
     def summarize(self, condor_logs: List[CondorLog]) -> SummarizedCondorLogs:
@@ -67,4 +67,3 @@ def raise_type_error(message: str) -> TypeError:
     :return:
     """
     raise TypeError(message)
-
