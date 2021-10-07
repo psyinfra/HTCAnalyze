@@ -1,6 +1,7 @@
 """Class to define HTCondor Joblog resources."""
 
 import json
+import math
 from typing import List
 from numpy import nan_to_num as ntn
 
@@ -35,6 +36,13 @@ class Resource:
         self.requested = requested
         self.allocated = allocated
         self.warning_level = None
+
+    def is_empty(self):
+        return (
+            math.isnan(self.usage) and
+            math.isnan(self.requested) and
+            math.isnan(self.allocated)
+        )
 
     def get_color(self) -> str:
         """Convert an alert level to an appropriate color."""
