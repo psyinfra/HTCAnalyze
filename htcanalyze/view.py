@@ -152,16 +152,17 @@ class SingleLogfileView(View):
             box=box.ASCII
         )
         for resource in resources.resources:
-            resource.chg_lvl_by_threholds(
-                bad_usage=bad_usage,
-                tolerated_usage=tolerated_usage
-            )
-            resource_table.add_row(
-                resource.description,
-                resource.get_usage_colored(),
-                str(resource.requested),
-                str(resource.allocated)
-            )
+            if not resource.is_empty():
+                resource.chg_lvl_by_threholds(
+                    bad_usage=bad_usage,
+                    tolerated_usage=tolerated_usage
+                )
+                resource_table.add_row(
+                    resource.description,
+                    resource.get_usage_colored(),
+                    str(resource.requested),
+                    str(resource.allocated)
+                )
 
         rprint(resource_table)
 
