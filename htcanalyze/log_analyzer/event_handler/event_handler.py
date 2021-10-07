@@ -206,27 +206,27 @@ class EventHandler:
             reason
         )
 
+    def get_events(self, file, sec: int = 0) -> iter(List[HTCJobEvent]):
 
-def get_events(file, sec: int = 0) -> iter(List[HTCJobEvent]):
+        jel = JobEventLog(file)
 
-    jel = JobEventLog(file)
+        try:
+            # Read all currently-available events
+            # waiting for 'sec' seconds for the next event.
+            events = jel.events(sec)
+            for event in events:
+                yield event
 
-    try:
-        # Read all currently-available events
-        # waiting for 'sec' seconds for the next event.
-        events = jel.events(sec)
-        for event in events:
-            yield event
+        except OSError as err:
+            logging.exception(err)
+            file_name = os.path.basename(file)
+            if err.args[0] == "ULOG_RD_ERROR":
+                reason = f"File was manipulated or contains gpu data: {file_name}"
+            else:
+                reason = f"Not able to open the file: {file_name}"
 
-    except OSError as err:
-        logging.exception(err)
-        file_name = os.path.basename(file)
-        if err.args[0] == "ULOG_RD_ERROR":
-            reason = f"File was manipulated or contains gpu data: {file_name}"
-        else:
-            reason = f"Not able to open the file: {file_name}"
-
-        raise ReadLogException(reason)
+            self.state_manager.state = JobState.ERROR_WHILE_READING
+            raise ReadLogException(reason)
 
 
 def get_condor_log(
