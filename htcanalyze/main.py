@@ -11,9 +11,8 @@ Exit Codes:
     Keyboard interruption: 4
 """
 
-import argparse
 import logging
-import sys
+import argparse
 import subprocess
 
 from datetime import datetime as date_time
@@ -21,14 +20,10 @@ from configargparse import ArgumentParser, HelpFormatter
 from rich import print as rprint
 
 # own classes
-from htcanalyze.view import print_results, check_for_redirection
-from htcanalyze import setup_logging_tool
-from htcanalyze.htcanalyze import HTCAnalyze, raise_value_error
+from .view import print_results, check_for_redirection
 from .log_analyzer.logvalidator import LogValidator
-from htcanalyze.globals import ALLOWED_IGNORE_VALUES, \
-    ALLOWED_SHOW_VALUES, CONFIG_PATHS, \
-    NORMAL_EXECUTION, NO_VALID_FILES, \
-    HTCANALYZE_ERROR, TYPE_ERROR, KEYBOARD_INTERRUPT
+from .globals import *
+from . import setup_logging_tool
 
 
 def version():
@@ -153,9 +148,9 @@ def setup_commandline_parser(
                              "if no file is specified,"
                              " default: htcanalyze.log")
 
-    parser.add_argument("--one-by-one",
+    parser.add_argument("--analyze",
                         action="store_true",
-                        default=None,
+                        default=False,
                         help="Analyze given files one by one")
 
     parser.add_argument("--ext-log",
@@ -196,17 +191,23 @@ def setup_commandline_parser(
                         help="Resolve the ip-address of an execution nodes"
                              " to their dns entry")
 
-    parser.add_argument("--tolerated-usage",
-                        type=float,
-                        help="Threshold to warn the user, "
-                             "when a given percentage is exceeded "
-                             "between used and requested resources")
+    parser.add_argument(
+        "--tolerated-usage",
+        type=float,
+        help="Threshold to warn the user, "
+             "when a given percentage is exceeded "
+             "between used and requested resources",
+        default=TOLERATED_USAGE
+    )
 
-    parser.add_argument("--bad-usage",
-                        type=float,
-                        help="Threshold to signal overuse/waste of resources, "
-                             "when a given percentage is exceeded "
-                             "between used and requested resources")
+    parser.add_argument(
+        "--bad-usage",
+        type=float,
+        help="Threshold to signal overuse/waste of resources, "
+             "when a given percentage is exceeded "
+             "between used and requested resources",
+        default=BAD_USAGE
+    )
     parser.add_argument("-c", "--config",
                         is_config_file=True,
                         help="ONE path to config file")
@@ -310,11 +311,11 @@ def manage_params(args: list) -> dict:
     cmd_dict["show_list"] = new_show_list
 
     # error handling
-    try:
-        if cmd_dict["show_list"] and not cmd_dict["one_by_one"]:
-            raise_value_error("--show only allowed with analyze mode")
-    except ValueError as err:
-        rprint(f"[red]htcanalyze: error: {err}[/red]")
+    if cmd_dict["show_list"] and not cmd_dict["analyze"]:
+        rprint(
+            "[red]htcanalyze: error: "
+            "--show only allowed with analyze mode[/red]"
+        )
         sys.exit(HTCANALYZE_ERROR)
 
     # delete unnecessary information
@@ -325,6 +326,11 @@ def manage_params(args: list) -> dict:
         cmd_dict['ext_log'] = ""
     elif not cmd_dict['ext_log'].startswith('.'):
         cmd_dict['ext_log'] = f".{cmd_dict['ext_log']}"
+
+    if cmd_dict['analyze'] is True:
+        cmd_dict['mode'] = 'analyze'
+    else:
+        cmd_dict['mode'] = 'summarize'
 
     if cmd_dict['ext_err'] is None:
         cmd_dict['ext_err'] = ".err"
@@ -367,16 +373,6 @@ def run(commandline_args):
 
         logging.debug("-------Start of htcanalyze script-------")
 
-        # do not show legend, if output is redirected
-        show_legend = not redirecting_stdout
-
-        htcanalyze = HTCAnalyze(
-            rdns_lookup=param_dict["rdns_lookup"],
-            tolerated_usage=param_dict["tolerated_usage"],
-            bad_usage=param_dict["bad_usage"],
-            show_legend=show_legend
-        )
-
         if param_dict["verbose"]:
             logging.info('Verbose mode turned on')
 
@@ -403,9 +399,12 @@ def run(commandline_args):
             logging.debug("-------End of htcanalyze script-------")
             sys.exit(NO_VALID_FILES)
 
+        # do not show legend, if output is redirected
+        show_legend = not redirecting_stdout
+
         print_results(
-            htcanalyze,
             log_files=valid_files,
+            show_legend=show_legend,
             **param_dict
         )
 
