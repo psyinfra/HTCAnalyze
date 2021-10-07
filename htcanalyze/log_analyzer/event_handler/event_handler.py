@@ -6,14 +6,11 @@ import logging
 import numpy as np
 from typing import List
 
-from rich import print as rprint
 from htcondor import JobEventLog, JobEventType as jet, JobEvent as HTCJobEvent
 
-from .set_events import SETEvents
 from .state_manager import StateManager
 from .job_events import *
-from htcanalyze.log_analyzer.condor_log import CondorLog, JobDetails, \
-    LogResources, Resource, RamHistory, ErrorEvents
+from htcanalyze.log_analyzer.condor_log import LogResources, Resource
 
 
 class ReadLogException(Exception):
@@ -66,7 +63,7 @@ class EventHandler:
         return ErrorEvent(
             self._event_number,
             None,
-            ErrorEvent.ErrorCode.INVALID_USER_ADDRESS,
+            ErrorState.INVALID_USER_ADDRESS,
             reason
         )
 
@@ -89,12 +86,11 @@ class EventHandler:
         # ERROR
         else:
             reason = "Can't read host address"
-            error_code = "INVALID_HOST_ADDRESS"
             self.state_manager.state = JobState.ERROR_WHILE_READING
             return ErrorEvent(
                 self._event_number,
                 None,
-                ErrorEvent.ErrorCode.INVALID_HOST_ADDRESS,
+                ErrorState.INVALID_HOST_ADDRESS,
                 reason
             )
 
@@ -151,10 +147,10 @@ class EventHandler:
             state = JobState.NORMAL_TERMINATION
 
             return_value = event.get('ReturnValue')
-        # mostly due to signal/exit code 11
         else:
             state = JobState.ABNORMAL_TERMINATION
             return_value = event.get('TerminatedBySignal')
+            # Todo: include description when possible
 
         self.state_manager.state = state
         return JobTerminationEvent(
