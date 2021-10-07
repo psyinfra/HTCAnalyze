@@ -27,7 +27,8 @@ class Resource:
             description: str,
             usage: float,
             requested: float,
-            allocated: float
+            allocated: float,
+            assigned: str = ""
     ):
         # except description, naming in __init__ arguments should be
         #   consistent with names in the resources dictionary
@@ -35,6 +36,7 @@ class Resource:
         self.usage = usage
         self.requested = requested
         self.allocated = allocated
+        self.assigned = assigned  # only for gpu
         self.warning_level = None
 
     def is_empty(self):
