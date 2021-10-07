@@ -1,30 +1,9 @@
 
 import json
-from enum import Enum
 from datetime import datetime as date_time
 
 from .host_nodes import NodeCache
-
-
-class JobState(Enum):
-    NORMAL_TERMINATION = 0
-    ABNORMAL_TERMINATION = 1
-    WAITING = 2
-    RUNNING = 3
-    ERROR_WHILE_READING = 4
-    INVALID_HOST_ADDRESS = 9
-    INVALID_USER_ADDRESS = 10
-    ABORTED = 5
-    JOB_HELD = 6
-    SHADOW_EXCEPTION = 7
-    UNKNOWN = 8
-
-    @property
-    def __dict__(self):
-        return {
-            "name": self.name,
-            "value": self.value
-        }
+from .state_manager import JobState, ErrorState
 
 
 class DateTimeWrapper(date_time):
@@ -141,30 +120,15 @@ class JobTerminationEvent(JobEvent):
 
 class ErrorEvent(JobEvent):
 
-    class ErrorCode(Enum):
-        ABORTED = JobState.ABORTED.value
-        JOB_HELD = JobState.JOB_HELD.value
-        SHADOW_EXCEPTION = JobState.SHADOW_EXCEPTION.value
-        ERROR_WHILE_READING = JobState.ERROR_WHILE_READING.value
-        INVALID_HOST_ADDRESS = JobState.INVALID_HOST_ADDRESS.value
-        INVALID_USER_ADDRESS = JobState.INVALID_USER_ADDRESS.value
-
-        @property
-        def __dict__(self):
-            return {
-                "name": self.name,
-                "value": self.value
-            }
-
     def __init__(
             self,
             event_number,
             time_stamp,
-            error_code: ErrorCode,
+            error_code: ErrorState,
             reason
     ):
         super(ErrorEvent, self).__init__(event_number, time_stamp)
-        assert error_code.name in ErrorEvent.ErrorCode.__members__.keys()
+        assert error_code.name in ErrorState.__members__.keys()
         self.error_code = error_code
         self.reason = reason
 
@@ -180,7 +144,7 @@ class JobAbortedEvent(ErrorEvent, JobTerminationEvent):
         super(JobAbortedEvent, self).__init__(
             event_number,
             time_stamp,
-            ErrorEvent.ErrorCode.ABORTED,
+            ErrorState.ABORTED,
             reason
         )
         self.termination_state = JobState.ABORTED
@@ -197,7 +161,7 @@ class JobHeldEvent(ErrorEvent):
         super(JobHeldEvent, self).__init__(
             event_number,
             time_stamp,
-            ErrorEvent.ErrorCode.JOB_HELD,
+            ErrorState.JOB_HELD,
             reason
         )
 
@@ -213,6 +177,6 @@ class ShadowExceptionEvent(ErrorEvent):
         super(ShadowExceptionEvent, self).__init__(
             event_number,
             time_stamp,
-            ErrorEvent.ErrorCode.SHADOW_EXCEPTION,
+            ErrorState.SHADOW_EXCEPTION,
             reason
         )

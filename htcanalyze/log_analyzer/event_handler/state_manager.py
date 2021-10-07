@@ -1,5 +1,59 @@
+"""State Manager Module."""
+
 from enum import Enum
-from .job_events import JobState
+
+
+class State(Enum):
+    NORMAL_TERMINATION = 0
+    ABNORMAL_TERMINATION = 1
+    WAITING = 2
+    RUNNING = 3
+    ERROR_WHILE_READING = 4
+    ABORTED = 5
+    JOB_HELD = 6
+    SHADOW_EXCEPTION = 7
+    UNKNOWN = 8
+    INVALID_HOST_ADDRESS = 9
+    INVALID_USER_ADDRESS = 10
+
+    @property
+    def __dict__(self):
+        return {
+            "name": self.name,
+            "value": self.value
+        }
+
+
+class JobState(Enum):
+    NORMAL_TERMINATION = State.NORMAL_TERMINATION.value
+    ABNORMAL_TERMINATION = State.ABNORMAL_TERMINATION.value
+    WAITING = State.WAITING.value
+    RUNNING = State.RUNNING.value
+    ERROR_WHILE_READING = State.ERROR_WHILE_READING.value
+    ABORTED = State.ABORTED.value
+
+    @property
+    def __dict__(self):
+        return {
+            "name": self.name,
+            "value": self.value
+        }
+
+
+class ErrorState(Enum):
+    ABORTED = State.ABORTED.value
+    JOB_HELD = State.JOB_HELD.value
+    SHADOW_EXCEPTION = State.SHADOW_EXCEPTION.value
+    ERROR_WHILE_READING = State.ERROR_WHILE_READING.value
+    INVALID_HOST_ADDRESS = State.INVALID_HOST_ADDRESS.value
+    INVALID_USER_ADDRESS = State.INVALID_USER_ADDRESS.value
+
+    @property
+    def __dict__(self):
+        return {
+            "name": self.name,
+            "value": self.value
+        }
 
 
 class StateColors(Enum):
@@ -50,6 +104,3 @@ class StateManager:
     def __repr__(self):
         color = self.get_state_color()
         return f"[{color}]{self.state.name}[/{color}]"
-
-
-
