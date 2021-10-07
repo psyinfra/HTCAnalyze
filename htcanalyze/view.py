@@ -8,9 +8,10 @@ from typing import List
 
 from rich import print as rprint
 from rich.table import Table, box
-from rich.progress import Progress, track
-from htcanalyze.htcanalyze import HTCAnalyze, CondorLog
-from htcanalyze.globals import NORMAL_EXECUTION, BAD_USAGE, TOLERATED_USAGE
+from rich.progress import Progress
+from .log_analyzer import HTCAnalyzer, CondorLog
+from .log_summarizer import HTCSummarizer
+from .globals import NORMAL_EXECUTION, BAD_USAGE, TOLERATED_USAGE
 
 
 def check_for_redirection() -> (bool, bool, list):
@@ -235,12 +236,14 @@ class SummarizedView(View):
 
 
 def print_results(
-        htcanalyze: HTCAnalyze,
         log_files: List[str],
         mode='summarize',
+        rdns_lookup=False,
         bad_usage=BAD_USAGE,
         tolerated_usage=TOLERATED_USAGE,
         show_legend=True,
+        show_err=False,
+        show_out=False,
         **__
 ):
     if not log_files:
@@ -256,7 +259,8 @@ def print_results(
 
         task = progress.add_task("Analysing files...", total=len(log_files))
 
-        condor_logs = htcanalyze.analyze(log_files)
+        htc_analyze = HTCAnalyzer(rdns_lookup=rdns_lookup)
+        condor_logs = htc_analyze.analyze(log_files)
         analyzed_logs = []
         for condor_log in condor_logs:
             progress.update(task, advance=1)
@@ -270,14 +274,15 @@ def print_results(
         for i, log in enumerate(analyzed_logs):
             view.print_condor_log(
                 log,
-                show_out=False,
-                show_err=False,
+                show_out=show_out,
+                show_err=show_err,
                 show_legend=show_legend
             )
             if i < len(analyzed_logs)-1:
                 print("~"*80)
 
     else:
-        summarized_logs = htcanalyze.summarize(log_files)
+        htc_state_summarize = HTCSummarizer(analyzed_logs)
+        summarized_logs = htc_state_summarize.summarize()
 
     sys.exit(NORMAL_EXECUTION)
