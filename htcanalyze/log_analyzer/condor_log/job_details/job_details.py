@@ -28,6 +28,14 @@ class JobDetails:
     def resources(self):
         return self.set_events.resources
 
+    @property
+    def host_address(self):
+        return self.set_events.host_address
+
+    @property
+    def submitter_address(self):
+        return self.set_events.submitter_address
+
     def __repr__(self):
         return json.dumps(
             self.__dict__,
