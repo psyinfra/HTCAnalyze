@@ -162,6 +162,18 @@ class TimeManager:
         )
 
     @property
+    def waiting_time(self):
+        return self.job_times.waiting_time
+
+    @property
+    def execution_time(self):
+        return self.job_times.execution_time
+
+    @property
+    def total_runtime(self):
+        return self.job_times.total_runtime
+
+    @property
     def __dict__(self):
         return {
             "submission_date": str(self.submission_date),
