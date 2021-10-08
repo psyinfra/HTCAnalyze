@@ -2,7 +2,7 @@
 import json
 from datetime import datetime as date_time
 
-from .host_nodes import NodeCache
+from .node_cache import NodeCache
 from .state_manager import JobState, ErrorState
 
 
