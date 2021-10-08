@@ -1,7 +1,6 @@
 """Manage times of HTCondor job logs."""
 
 import json
-from typing import List
 from datetime import datetime as date_time, timedelta
 
 
@@ -162,124 +161,18 @@ class TimeManager:
             total_runtime
         )
 
-    def create_time_dict(self) -> dict:
-        """
-        Return a fancy representation as a dict.
-
-        The feature here, is that the year only gets represented
-        if a job was running over new year.
-
-        :return: dict
-        """
-        time_desc = []
-        time_vals = []
-
-        # now after collecting all available values try to produce a dict
-        # if new year was hitted by one of them, show the year as well
-        if self.running_over_newyear:
-            if self.submission_date:
-                time_desc.append("Submission date")
-                time_vals.append(self.submission_date)
-            if self.execution_date:
-                time_desc.append("Execution date")
-                time_vals.append(self.execution_date)
-            if self.termination_date:
-                time_desc.append("Termination date")
-                time_vals.append(self.termination_date)
-        else:
-            if self.submission_date:
-                time_desc.append("Submission date")
-                time_vals.append(
-                    self.submission_date.strftime("%m/%d %H:%M:%S"))
-            if self.execution_date:
-                time_desc.append("Execution date")
-                time_vals.append(
-                    self.execution_date.strftime("%m/%d %H:%M:%S"))
-            if self.termination_date:
-                time_desc.append("Termination date")
-                time_vals.append(
-                    self.termination_date.strftime("%m/%d %H:%M:%S"))
-
-        if self.waiting_time:
-            time_desc.append("Waiting time")
-            time_vals.append(self.waiting_time)
-        if self.job_times.execution_time:
-            time_desc.append("Execution runtime")
-            time_vals.append(self.job_times.execution_time)
-        if self.total_runtime:
-            time_desc.append("Total runtime")
-            time_vals.append(self.total_runtime)
-
-        if time_desc:
-            return {
-                "Dates and times": time_desc,
-                "Values": time_vals
-            }
-        # else:
-        return {}
-
     @property
     def __dict__(self):
         return {
             "submission_date": str(self.submission_date),
             "execution_date": str(self.execution_date),
             "termination_date": str(self.termination_date),
-            "waiting_time": str(self.job_times.waiting_time),
-            "execution_time": str(self.job_times.execution_time),
-            "total_runtime": str(self.job_times.total_runtime),
+            "waiting_time": str(self.waiting_time),
+            "execution_time": str(self.execution_time),
+            "total_runtime": str(self.total_runtime),
             "running_over_newyear": str(self.running_over_newyear)
         }
 
     def __repr__(self):
         return json.dumps(self.__dict__)
 
-
-def calc_avg_on_times(time_managers: List[TimeManager]) -> dict:
-    """
-    Calculate the average of a list with time managers.
-
-    Only the the different time differences get added
-    and divided by the number of time managers.
-
-    :param time_managers: list of TimeManager's
-    :return: dict with total and average time differences
-    """
-    # all values empty
-    waiting_for = timedelta()
-    executing_for = timedelta()
-    total_running_time = timedelta()
-    for manager in time_managers:
-        waiting_for += manager.job_times.waiting_time
-        executing_for += manager.job_times.execution_time
-        total_running_time += manager.job_times.total_runtime
-
-    n_times = len(time_managers)
-
-    time_headers = []
-    times = []
-    av_times = []
-    if waiting_for:
-        time_headers.append("Waiting time")
-        times.append(waiting_for)
-        av_times.append(waiting_for/n_times)
-    if executing_for:
-        time_headers.append("Execution time")
-        times.append(executing_for)
-        av_times.append(executing_for/n_times)
-    if total_running_time:
-        time_headers.append("Total")
-        times.append(total_running_time)
-        av_times.append(total_running_time/n_times)
-
-    format_av_times = [
-        timedelta(days=time.days, seconds=time.seconds)
-        for time in av_times]
-
-    if times:
-        return {
-            "Times": time_headers,
-            "Average": format_av_times,
-            "Total": times
-        }
-    # else:
-    return {}
