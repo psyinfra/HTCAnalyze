@@ -13,7 +13,7 @@ LEVEL_COLORS = {
 }
 
 
-class Resource:
+class LogResource:
     """
     Class of one single HTCondor-JobLog resource.
 
@@ -24,27 +24,41 @@ class Resource:
 
     def __init__(
             self,
-            description: str,
             usage: float,
             requested: float,
             allocated: float,
-            assigned: str = ""
+            description: str = None,
     ):
-        # except description, naming in __init__ arguments should be
-        #   consistent with names in the resources dictionary
-        self.description = description
         self.usage = usage
         self.requested = requested
         self.allocated = allocated
-        self.assigned = assigned  # only for gpu
+        self.description = description
         self.warning_level = None
+
+    def __add__(self, other):
+        assert isinstance(self, other)
+        return LogResource(
+            float(ntn(self.usage) + ntn(other.usage)),
+            float(ntn(self.requested) + ntn(other.requested)),
+            float(ntn(self.allocated) + ntn(other.allocated))
+        )
+
+    def __truediv__(self, other):
+        return LogResource(
+            float(ntn(self.usage) / other),
+            float(ntn(self.requested) / other),
+            float(ntn(self.allocated) / other)
+        )
 
     def is_empty(self):
         return (
-            math.isnan(self.usage) and
-            math.isnan(self.requested) and
-            math.isnan(self.allocated)
+                math.isnan(self.usage) and
+                math.isnan(self.requested) and
+                math.isnan(self.allocated)
         )
+
+    def __radd__(self, other):
+        return self if other == 0 or other.is_empty() else self + other
 
     def get_color(self) -> str:
         """Convert an alert level to an appropriate color."""
@@ -60,14 +74,11 @@ class Resource:
 
     def __repr__(self):
         """Own style of representing this class."""
-        return (
-            f"({self.description}, {self.usage}, {self.requested}, " 
-            f"{self.allocated}, {self.warning_level})"
-        )
+        return json.dumps(self.__dict__)
 
     def __str__(self):
         """Create a string representation of this class."""
-        s_res = f"Resource: {self.description}\n" \
+        s_res = f"LogResource: {self.description}\n" \
             f"Usage: [{self.get_color()}]{self.usage}[/{self.get_color()}], " \
             f"Requested: {self.requested}, " \
             f"Allocated: {self.allocated}"
@@ -92,13 +103,64 @@ class Resource:
             self.warning_level = 'normal'
 
 
+class CPULogResource(LogResource):
+    def __init__(
+            self,
+            usage: float,
+            requested: float,
+            allocated: float
+    ):
+        super(CPULogResource, self).__init__(
+            usage, requested, allocated, "Cpus"
+        )
+
+
+class DiskLogResource(LogResource):
+    def __init__(
+            self,
+            usage: float,
+            requested: float,
+            allocated: float
+    ):
+        super(DiskLogResource, self).__init__(
+            usage, requested, allocated, "Disk (KB)"
+        )
+
+
+class MemoryLogResource(LogResource):
+    def __init__(
+            self,
+            usage: float,
+            requested: float,
+            allocated: float
+    ):
+        super(MemoryLogResource, self).__init__(
+            usage, requested, allocated, "Memory (MB)"
+        )
+
+
+class GPULogResource(LogResource):
+
+    def __init__(
+            self,
+            usage: float,
+            requested: float,
+            allocated: float,
+            assigned: str = ""
+    ):
+        super(GPULogResource, self).__init__(
+            usage, requested, allocated, "Gpus (Average)"
+        )
+        self.assigned = assigned
+
+
 class LogResources:
     def __init__(
             self,
-            cpu_resource: Resource,
-            disc_resource: Resource,
-            memory_resource: Resource,
-            gpu_resource: Resource = None
+            cpu_resource: CPULogResource,
+            disc_resource: DiskLogResource,
+            memory_resource: MemoryLogResource,
+            gpu_resource: GPULogResource = None
     ):
         self.cpu_resource = cpu_resource
         self.disc_resource = disc_resource
@@ -114,6 +176,25 @@ class LogResources:
             self.gpu_resource
         ]
 
+    def __add__(self, other):
+        return LogResources(
+            self.cpu_resource + other.cpu_resource,
+            self.disc_resource + other.disc_resource,
+            self.memory_resource + other.memory_resource,
+            self.gpu_resource + other.gpu_resource
+        )
+
+    def __truediv__(self, other):
+        return LogResources(
+            self.cpu_resource / other,
+            self.disc_resource / other,
+            self.memory_resource / other,
+            self.gpu_resource / other
+        )
+
+    def __radd__(self, other):
+        return self if other == 0 else self + other
+
     def __repr__(self):
         return json.dumps(
             self.__dict__,
@@ -124,12 +205,12 @@ class LogResources:
 
 def create_avg_on_resources(
         log_resource_list: List[LogResources]
-) -> List[Resource]:
+) -> List[LogResource]:
     """
     Create a new List of Resources in Average.
 
-    :param log_resource_list: list(list(Resource))
-    :return: list(Resource)
+    :param log_resource_list: list(list(LogResource))
+    :return: list(LogResource)
     """
     n_jobs = len(log_resource_list)
     res_cache = {}
@@ -145,7 +226,7 @@ def create_avg_on_resources(
                 res_cache[desc].allocated += ntn(resource.allocated)
             # create first entry
             else:
-                res_cache[desc] = Resource(
+                res_cache[desc] = LogResource(
                     desc,
                     ntn(resource.usage),
                     ntn(resource.requested),
@@ -164,17 +245,17 @@ def create_avg_on_resources(
     return avg_res_list
 
 
-def dict_to_resources(resources: dict) -> List[Resource]:
-    """Convert a dict of lists to a list of Resource objects."""
+def dict_to_resources(resources: dict) -> List[LogResource]:
+    """Convert a dict of lists to a list of LogResource objects."""
     resources = {k.lower(): v for k, v in resources.items()}
     resources["description"] = resources.pop("resources")
     resources = [dict(zip(resources, v)) for v in zip(*resources.values())]
-    resources = [Resource(**resource) for resource in resources]
+    resources = [LogResource(**resource) for resource in resources]
     return resources
 
 
-def resources_to_dict(resources: List[Resource]) -> dict:
-    """Convert a list of Resource back to this dict scheme."""
+def resources_to_dict(resources: List[LogResource]) -> dict:
+    """Convert a list of LogResource back to this dict scheme."""
     if resources:
         return {
             "Resources": [res.description for res in resources],

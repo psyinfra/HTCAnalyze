@@ -10,7 +10,8 @@ from htcondor import JobEventLog, JobEventType as jet, JobEvent as HTCJobEvent
 
 from .state_manager import StateManager
 from .job_events import *
-from htcanalyze.log_analyzer.condor_log import LogResources, Resource
+from htcanalyze.log_analyzer.condor_log import LogResources, \
+    CPULogResource, DiskLogResource, MemoryLogResource, GPULogResource
 
 
 class ReadLogException(Exception):
@@ -113,26 +114,22 @@ class EventHandler:
 
         # create list with resources
         resources = LogResources(
-            Resource(
-                "Cpus",
+            CPULogResource(
                 cpus_usage,
                 cpus_requested,
                 cpus_allocated
             ),
-            Resource(
-                "Disk (KB)",
+            DiskLogResource(
                 disk_usage,
                 disk_requested,
                 disk_allocated
             ),
-            Resource(
-                "Memory (MB)",
+            MemoryLogResource(
                 memory_usage,
                 memory_requested,
                 memory_allocated
             ),
-            Resource(
-                "Gpus (Average)",
+            GPULogResource(
                 gpus_usage,
                 gpus_requested,
                 gpus_allocated
@@ -221,7 +218,9 @@ class EventHandler:
             logging.exception(err)
             file_name = os.path.basename(file)
             if err.args[0] == "ULOG_RD_ERROR":
-                reason = f"File was manipulated or contains gpu data: {file_name}"
+                reason = (
+                    f"File was manipulated or contains gpu data: {file_name}"
+                )
             else:
                 reason = f"Not able to open the file: {file_name}"
 
@@ -255,9 +254,7 @@ class EventHandler:
 
             # update error dict
         elif event.type == jet.SHADOW_EXCEPTION:
-            job_event = (
-                self.get_shadow_exception_event(event)
-            )
+            job_event = self.get_shadow_exception_event(event)
 
         else:
             job_event = None

@@ -1,4 +1,4 @@
 
 from .time_manager import TimeManager
-from .resource import Resource, LogResources
+from .logresource import *
 from .job_details import JobDetails
