@@ -36,15 +36,17 @@ class LogResource:
         self.warning_level = None
 
     def __add__(self, other):
-        assert isinstance(self, other)
-        return LogResource(
+        if other == 0:
+            return self
+        assert type(self) == type(other)
+        return self.__class__(
             float(ntn(self.usage) + ntn(other.usage)),
             float(ntn(self.requested) + ntn(other.requested)),
             float(ntn(self.allocated) + ntn(other.allocated))
         )
 
     def __truediv__(self, other):
-        return LogResource(
+        return self.__class__(
             float(ntn(self.usage) / other),
             float(ntn(self.requested) / other),
             float(ntn(self.allocated) / other)
