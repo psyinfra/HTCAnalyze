@@ -1,15 +1,4 @@
-
-from .summarizer import Summarizer, CondorLogSummarizer, StateSummarizer
-
-
-class TimeSummarizer(Summarizer):
-
-    def __init__(self, time_managers, ignore_empty=False):
-        self.time_managers = time_managers
-        self.ignore_empty = ignore_empty
-
-    def summarize(self):
-        pass
+from .summarizer import CondorLogSummarizer, StateSummarizer
 
 
 class HTCSummarizer(CondorLogSummarizer):
@@ -35,6 +24,7 @@ class HTCSummarizer(CondorLogSummarizer):
             for state, condor_logs in state_dict.items()
         ]
         for summarizer in state_summarizers:
+            print(type(summarizer))
             summarizer.summarize()  # Todo
 
         return self.condor_logs
