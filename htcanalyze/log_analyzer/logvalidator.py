@@ -81,7 +81,8 @@ class LogValidator:
             advance = progress_details[3]
             progress.console.print(
                 f"[light_coral]Search: {directory} "
-                f"for valid log files[/light_coral]")
+                f"for valid log files[/light_coral]"
+            )
         for file in file_dir:
             if progress_details is not None:
                 progress.update(task, total=total, advance=advance)
@@ -175,7 +176,8 @@ class LogValidator:
                     else:
                         progress.console.print(
                             f"[yellow]The given file {working_file_path} "
-                            f"is not a valid HTCondor log file[/yellow]")
+                            f"is not a valid HTCondor log file[/yellow]"
+                        )
 
                 else:
                     logging.error(f"The given file: {arg} does not exist")

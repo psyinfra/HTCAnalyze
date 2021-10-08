@@ -6,7 +6,11 @@ from .summarizer import Summarizer
 
 class LogResourceSummarizer(Summarizer):
 
-    def __init__(self, m_log_resources: List[LogResources] = None, ignore_empty=False):
+    def __init__(
+            self,
+            m_log_resources: List[LogResources] = None,
+            ignore_empty=False
+    ):
         self.m_log_resources = m_log_resources if m_log_resources else []
         self.ignore_empty = ignore_empty  # todo
 

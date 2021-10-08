@@ -6,7 +6,7 @@ from htcanalyze.log_analyzer.condor_log import CondorLog, JobTimes, LogResources
 from .condor_log_summarizer import CondorLogSummarizer
 from .time_summarizer import TimeSummarizer
 from .log_resource_summarizer import LogResourceSummarizer
-from .node_summarizer import NodeSummarizer, SingleNode
+from .node_summarizer import NodeSummarizer, SingleNodeJob
 
 
 class SummarizedCondorLogs:
@@ -15,7 +15,7 @@ class SummarizedCondorLogs:
             self,
             avg_times: JobTimes,
             avg_resources: LogResources,
-            nodes: List[SingleNode]
+            nodes: List[SingleNodeJob]
     ):
         self.avg_times = avg_times
         self.avg_resources = avg_resources

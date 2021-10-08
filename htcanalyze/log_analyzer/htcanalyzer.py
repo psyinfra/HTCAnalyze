@@ -131,5 +131,3 @@ class HTCAnalyzer:
             error_events,
             ram_history
         )
-
-
