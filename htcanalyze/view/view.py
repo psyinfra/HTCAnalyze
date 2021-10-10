@@ -1,6 +1,11 @@
-from abc import ABC
 
 import os
+import logging
+from abc import ABC
+
+from rich import print as rprint
+from rich.table import Table, box
+
 from htcanalyze.globals import BAD_USAGE, TOLERATED_USAGE
 
 
@@ -13,6 +18,38 @@ class View(ABC):
     ):
         self.bad_usage = bad_usage
         self.tolerated_usage = tolerated_usage
+
+    def print_resources(
+            self,
+            resources,
+            title="Job Resources",
+            precision=3
+    ):
+        if not resources:
+            return
+
+        resource_table = Table(
+            *["Partitionable Resources", "Usage ", "Request", "Allocated"],
+            title=title,
+            show_header=True,
+            header_style="bold magenta",
+            box=box.ASCII
+        )
+
+        for resource in resources.resources:
+            if not resource.is_empty():
+                color = resource.get_color_by_threshold(
+                    bad_usage=self.bad_usage,
+                    tolerated_usage=self.tolerated_usage
+                )
+                resource_table.add_row(
+                    resource.description,
+                    f"[{color}]{round(resource.usage, precision)}[/{color}]",
+                    str(round(resource.requested, precision)),
+                    str(round(resource.allocated, precision))
+                )
+
+        rprint(resource_table)
 
 
 def read_file(file: str):

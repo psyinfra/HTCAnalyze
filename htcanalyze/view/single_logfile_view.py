@@ -53,35 +53,6 @@ class SingleLogfileView(View):
         if print_times:
             self.print_times(job_details.time_manager)
 
-    def print_resources(
-            self,
-            resources
-    ):
-        if not resources:
-            return
-
-        resource_table = Table(
-            *["Partitionable Resources", "Usage ", "Request", "Allocated"],
-            title="Job Resources",
-            show_header=True,
-            header_style="bold magenta",
-            box=box.ASCII
-        )
-        for resource in resources.resources:
-            if not resource.is_empty():
-                resource.chg_lvl_by_threholds(
-                    bad_usage=self.bad_usage,
-                    tolerated_usage=self.tolerated_usage
-                )
-                resource_table.add_row(
-                    resource.description,
-                    resource.get_usage_colored(),
-                    str(resource.requested),
-                    str(resource.allocated)
-                )
-
-        rprint(resource_table)
-
     @staticmethod
     def print_times(time_manager):
         time_table = Table(
