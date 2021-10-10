@@ -33,7 +33,6 @@ class LogResource:
         self.requested = requested
         self.allocated = allocated
         self.description = description
-        self.warning_level = None
 
     def __add__(self, other):
         if other == 0:
@@ -62,17 +61,10 @@ class LogResource:
     def __radd__(self, other):
         return self if other == 0 or other.is_empty() else self + other
 
-    def get_color(self) -> str:
-        """Convert an alert level to an appropriate color."""
-        return LEVEL_COLORS.get(self.warning_level, "default")
-
     def to_dict(self) -> dict:
         """Return this class as a dict."""
         return {k: v for k, v in self.__dict__.items()
                 if not k == "level_colors"}
-
-    def get_usage_colored(self):
-        return f"[{self.get_color()}]{self.usage}[/{self.get_color()}]"
 
     def __repr__(self):
         """Own style of representing this class."""
@@ -86,23 +78,30 @@ class LogResource:
             f"Allocated: {self.allocated}"
         return s_res
 
-    def chg_lvl_by_threholds(self, bad_usage, tolerated_usage):
+    @staticmethod
+    def get_color(warning_level) -> str:
+        """Convert an alert level to an appropriate color."""
+        return LEVEL_COLORS.get(warning_level, "default")
+
+    def get_color_by_threshold(self, bad_usage, tolerated_usage):
         """Set warning level depending on thresholds."""
         if self.requested != 0:
             deviation = self.usage / self.requested
 
             if str(self.usage) == 'nan':
-                self.warning_level = 'light_warning'
+                warning_level = 'light_warning'
             elif not 1 - bad_usage <= deviation <= 1 + bad_usage:
-                self.warning_level = 'error'
+                warning_level = 'error'
             elif not 1 - tolerated_usage <= deviation <= 1 + tolerated_usage:
-                self.warning_level = 'warning'
+                warning_level = 'warning'
             else:
-                self.warning_level = 'normal'
+                warning_level = 'normal'
         elif self.usage > 0:  # Usage without any request ? NOT GOOD
-            self.warning_level = 'error'
+            warning_level = 'error'
         else:
-            self.warning_level = 'normal'
+            warning_level = 'normal'
+
+        return self.get_color(warning_level)
 
 
 class CPULogResource(LogResource):
