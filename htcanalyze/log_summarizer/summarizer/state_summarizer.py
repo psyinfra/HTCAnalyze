@@ -48,10 +48,7 @@ class AbnormalStateSummarizer(CondorLogSummarizer):
         super(AbnormalStateSummarizer, self).__init__(condor_logs)
 
     def summarize(self):
-        for condor_log in self.condor_logs:
-            state_manager = condor_log.job_details.state_manager
-            assert state_manager.state == JobState.ABNORMAL_TERMINATION
-            # Todo
+        pass
 
 
 class WaitingStateSummarizer(CondorLogSummarizer):
@@ -60,10 +57,7 @@ class WaitingStateSummarizer(CondorLogSummarizer):
         super(WaitingStateSummarizer, self).__init__(condor_logs)
 
     def summarize(self):
-        for condor_log in self.condor_logs:
-            state_manager = condor_log.job_details.state_manager
-            assert state_manager.state == JobState.WAITING
-            # Todo
+        pass
 
 
 class RunningStateSummarizer(CondorLogSummarizer):
@@ -72,10 +66,7 @@ class RunningStateSummarizer(CondorLogSummarizer):
         super(RunningStateSummarizer, self).__init__(condor_logs)
 
     def summarize(self):
-        for condor_log in self.condor_logs:
-            state_manager = condor_log.job_details.state_manager
-            assert state_manager.state == JobState.RUNNING
-            # Todo
+        pass
 
 
 class AbortedStateSummarizer(CondorLogSummarizer):
@@ -84,10 +75,7 @@ class AbortedStateSummarizer(CondorLogSummarizer):
         super(AbortedStateSummarizer, self).__init__(condor_logs)
 
     def summarize(self):
-        for condor_log in self.condor_logs:
-            state_manager = condor_log.job_details.state_manager
-            assert state_manager.state == JobState.ABORTED
-            # Todo
+        pass
 
 
 class ErrorWhileReadingStateSummarizer(CondorLogSummarizer):
@@ -95,10 +83,7 @@ class ErrorWhileReadingStateSummarizer(CondorLogSummarizer):
         super(ErrorWhileReadingStateSummarizer, self).__init__(condor_logs)
 
     def summarize(self):
-        for condor_log in self.condor_logs:
-            state_manager = condor_log.job_details.state_manager
-            assert state_manager.state == JobState.ERROR_WHILE_READING
-            # Todo
+        pass
 
 
 class StateSummarizer(CondorLogSummarizer):
@@ -120,6 +105,8 @@ class StateSummarizer(CondorLogSummarizer):
             raise ValueError(f"Unknown state: {state}")
             # new = object.__new__(cls)
             # new.condor_logs = condor_logs
+
+        new.state = state
 
         return new
 
