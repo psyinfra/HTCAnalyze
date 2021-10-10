@@ -15,28 +15,27 @@ class NormalStateSummarizer(CondorLogSummarizer):
     def __init__(self, condor_logs: List[CondorLog]):
         super(NormalStateSummarizer, self).__init__(condor_logs)
 
-    def summarize(self):
+    def summarize(self) -> SummarizedCondorLogs:
         resource_summarizer = LogResourceSummarizer(
             [cl.job_details.resources for cl in self.condor_logs],
             ignore_empty=False  # Todo
         )
         avg_resources = resource_summarizer.summarize()
-        print(avg_resources)
 
         time_summarizer = TimeSummarizer(
             [cl.job_details.time_manager for cl in self.condor_logs],
             ignore_empty=False  # Todo
         )
         avg_times = time_summarizer.summarize()
-        print(avg_times)
 
         node_summarizer = NodeSummarizer(
             [cl.job_details for cl in self.condor_logs]
         )
         nodes = node_summarizer.summarize()
-        print(nodes)
 
         return SummarizedCondorLogs(
+            self.state,
+            self.n_jobs,
             avg_times,
             avg_resources,
             nodes
