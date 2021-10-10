@@ -24,6 +24,13 @@ class SingleNodeJob:
 
 
 class SummarizedNodeJobs(SingleNodeJob):
+    """
+    Create a summarized job representation of jobs executed on a single node.
+
+    :param address: Address of the node
+    :param job_times: average job times
+    :param n_jobs: Number of jobs executed on the node
+    """
     def __init__(
             self,
             address: str = None,
@@ -35,8 +42,14 @@ class SummarizedNodeJobs(SingleNodeJob):
 
 
 class NodeJobCollection:
+    """
+    Create a Node-job collection of jobs executed on the same node.
+
+    :param address: Address of the Node
+    """
 
     def __init__(self, address: str):
+
         self.address = address
         self.nodes: List[SingleNodeJob] = []
 
@@ -54,6 +67,10 @@ class NodeJobCollection:
 
 
 class NodeManager:
+    """
+    Manage nodes by adding nodes to NodeJobCollections
+    matching on the node addresses.
+    """
 
     def __init__(self):
         self.nodes_dict = {}
@@ -72,7 +89,13 @@ class NodeManager:
 
 class NodeSummarizer(Summarizer):
 
+    """
+    Summarize node jobs using a NodeManager.
+
+    :param job_details: List of JobDetails
+    """
     def __init__(self, job_details: List[JobDetails]):
+
         self.nodes = [
             SingleNodeJob(
                 jd.host_address,
