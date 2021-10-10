@@ -2,28 +2,39 @@
 Handle config setup and commandline arguments.
 
 Create visible output by using htcanalyze.
-
-Exit Codes:
-    Normal Termination: 0
-    No given files: 1
-    Wrong Options or Arguments: 2
-    TypeError: 3
-    Keyboard interruption: 4
 """
 
+import os
 import logging
 import argparse
 import subprocess
 
+from typing import List
 from datetime import datetime as date_time
 from configargparse import ArgumentParser, HelpFormatter
 from rich import print as rprint
+from rich.progress import Progress
 
 # own classes
-from .view import print_results, check_for_redirection
 from .log_analyzer.logvalidator import LogValidator
+from .log_analyzer import HTCAnalyzer
+from .log_summarizer import HTCSummarizer
+from .view.single_logfile_view import SingleLogfileView
+from .view.summarized_logfile_view import SummarizedView
 from .globals import *
 from . import setup_logging_tool
+
+
+def check_for_redirection() -> (bool, bool, list):
+    """Check if reading from stdin or redirecting stdout."""
+    redirecting_stdout = not sys.stdout.isatty()
+    reading_stdin = not sys.stdin.isatty()
+    stdin_input = None
+
+    if reading_stdin:
+        stdin_input = sys.stdin.readlines()
+
+    return redirecting_stdout, reading_stdin, stdin_input
 
 
 def version():
@@ -343,6 +354,59 @@ def manage_params(args: list) -> dict:
         cmd_dict['ext_out'] = f".{cmd_dict['ext_out']}"
 
     return cmd_dict
+
+
+def print_results(
+        log_files: List[str],
+        mode='summarize',
+        rdns_lookup=False,
+        bad_usage=BAD_USAGE,
+        tolerated_usage=TOLERATED_USAGE,
+        show_legend=True,
+        show_err=False,
+        show_out=False,
+        **__
+):
+    if not log_files:
+        print("No files to process")
+        sys.exit(NORMAL_EXECUTION)
+
+    # create progressbar, do not redirect output
+    with Progress(
+            transient=True,
+            redirect_stdout=False,
+            redirect_stderr=False
+    ) as progress:
+
+        task = progress.add_task("Analysing files...", total=len(log_files))
+
+        htc_analyze = HTCAnalyzer(rdns_lookup=rdns_lookup)
+        condor_logs = htc_analyze.analyze(log_files)
+        analyzed_logs = []
+        for condor_log in condor_logs:
+            progress.update(task, advance=1)
+            analyzed_logs.append(condor_log)
+
+    if mode == 'analyze' or len(log_files) == 1:
+        view = SingleLogfileView(
+            bad_usage=bad_usage,
+            tolerated_usage=tolerated_usage
+        )
+        for i, log in enumerate(analyzed_logs):
+            view.print_condor_log(
+                log,
+                show_out=show_out,
+                show_err=show_err,
+                show_legend=show_legend
+            )
+            if i < len(analyzed_logs)-1:
+                print("~"*80)
+
+    else:
+        htc_state_summarize = HTCSummarizer(analyzed_logs)
+        summarized_logs = htc_state_summarize.summarize()
+
+    sys.exit(NORMAL_EXECUTION)
 
 
 def run(commandline_args):
