@@ -1,7 +1,8 @@
 from typing import List
 
-from condor_log import JobTimes, LogResources
-from summarizer.node_summarizer import SummarizedNodeJobs
+from htcanalyze.log_analyzer.condor_log import CondorLog, \
+    JobTimes, LogResources
+from .node_summarizer import SummarizedNodeJobs
 
 
 class SummarizedCondorLogs:
