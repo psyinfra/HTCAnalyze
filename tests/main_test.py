@@ -37,7 +37,7 @@ def test_manage_params():
     assert res_dict["ext_out"] == ".output"
     assert res_dict["ext_err"] == ".error"
 
-    args = "--one-by-one --show htc-err htc-out --ignore execution-details " \
+    args = "--anal --show htc-err htc-out --ignore execution-details " \
            "times errors host-nodes used-resources requested-resources " \
            "allocated-resources all-resources ram-history".split()
     res_dict = ht.manage_params(args)
