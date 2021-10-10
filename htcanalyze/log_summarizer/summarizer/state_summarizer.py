@@ -2,24 +2,12 @@ from abc import abstractmethod
 from typing import List
 
 from htcanalyze.log_analyzer.event_handler import JobState
-from htcanalyze.log_analyzer.condor_log import CondorLog, JobTimes, LogResources
+from htcanalyze.log_analyzer.condor_log import CondorLog
 from .condor_log_summarizer import CondorLogSummarizer
+from .summarized_condor_logs import SummarizedCondorLogs
 from .time_summarizer import TimeSummarizer
 from .log_resource_summarizer import LogResourceSummarizer
-from .node_summarizer import NodeSummarizer, SingleNodeJob
-
-
-class SummarizedCondorLogs:
-
-    def __init__(
-            self,
-            avg_times: JobTimes,
-            avg_resources: LogResources,
-            nodes: List[SingleNodeJob]
-    ):
-        self.avg_times = avg_times
-        self.avg_resources = avg_resources
-        self.nodes = nodes
+from .node_summarizer import NodeSummarizer
 
 
 class NormalStateSummarizer(CondorLogSummarizer):
