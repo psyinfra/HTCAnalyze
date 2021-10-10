@@ -1,5 +1,7 @@
 import os
 
+from typing import List
+
 from rich.table import Table, box
 from rich import print as rprint
 
@@ -31,18 +33,23 @@ class SingleLogfileView(View):
             header_style="bold magenta",
             box=box.ASCII
         )
+
+        color = job_details.state.get_jobstate_color()
         job_details_table.add_row(
             "State",
-            str(job_details.state_manager)
+            f"[{color}]{job_details.state.name}[/{color}]"
         )
+
         job_details_table.add_row(
             "Submitter Address",
             job_details.set_events.submitter_address
         )
+
         job_details_table.add_row(
             "Host Address",
             job_details.set_events.host_address
         )
+
         job_details_table.add_row(
             "Return Value",
             str(job_details.set_events.return_value)

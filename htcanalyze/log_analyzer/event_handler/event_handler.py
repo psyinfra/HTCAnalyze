@@ -8,7 +8,7 @@ from typing import List
 
 from htcondor import JobEventLog, JobEventType as jet, JobEvent as HTCJobEvent
 
-from .state_manager import StateManager
+from .states import JobState
 from .job_events import *
 from htcanalyze.log_analyzer.condor_log import LogResources, \
     CPULogResource, DiskLogResource, MemoryLogResource, GPULogResource
@@ -40,7 +40,7 @@ class EventHandler:
     _time_stamp = None
 
     def __init__(self):
-        self.state_manager = StateManager()
+        self.state: JobState = None
 
     @event_decorator
     def get_submission_event(self, event) -> JobEvent:
@@ -52,7 +52,7 @@ class EventHandler:
         )
         if match_from_host:
             submitted_host = match_from_host[1]
-            self.state_manager.state = JobState.WAITING
+            self.state = JobState.WAITING
             return JobSubmissionEvent(
                 self._event_number,
                 self._time_stamp,
@@ -60,7 +60,7 @@ class EventHandler:
             )
         # else ERROR
         reason = "Can't read user address"
-        self.state_manager.state = JobState.ERROR_WHILE_READING
+        self.state = JobState.ERROR_WHILE_READING
         return ErrorEvent(
             self._event_number,
             None,
@@ -77,7 +77,7 @@ class EventHandler:
         )
         if match_to_host:
             execution_host = match_to_host[1]
-            self.state_manager.state = JobState.RUNNING
+            self.state = JobState.RUNNING
             return JobExecutionEvent(
                 self._event_number,
                 self._time_stamp,
@@ -87,7 +87,7 @@ class EventHandler:
         # ERROR
         else:
             reason = "Can't read host address"
-            self.state_manager.state = JobState.ERROR_WHILE_READING
+            self.state = JobState.ERROR_WHILE_READING
             return ErrorEvent(
                 self._event_number,
                 None,
@@ -149,7 +149,7 @@ class EventHandler:
             return_value = event.get('TerminatedBySignal')
             # Todo: include description when possible
 
-        self.state_manager.state = state
+        self.state = state
         return JobTerminationEvent(
             self._event_number,
             self._time_stamp,
@@ -162,7 +162,7 @@ class EventHandler:
     def get_job_aborted_event(self, event) -> JobEvent:
         assert event.type == jet.JOB_ABORTED
         reason = event.get('Reason')
-        self.state_manager.state = JobState.ABORTED
+        self.state = JobState.ABORTED
         return JobAbortedEvent(
             self._event_number,
             self._time_stamp,
@@ -224,7 +224,7 @@ class EventHandler:
             else:
                 reason = f"Not able to open the file: {file_name}"
 
-            self.state_manager.state = JobState.ERROR_WHILE_READING
+            self.state = JobState.ERROR_WHILE_READING
             raise ReadLogException(reason)
 
     def get_job_event(self, event, rdns_lookup=False) -> JobEvent:

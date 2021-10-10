@@ -7,8 +7,9 @@ from rich import print as rprint
 # import own module
 from .condor_log import CondorLog, ErrorEvents, RamHistory
 from .event_handler import EventHandler, ReadLogException, ErrorEvent, \
-    SETEvents, JobExecutionEvent, JobSubmissionEvent, JobTerminationEvent, ImageSizeEvent
-from .event_handler.state_manager import JobState, ErrorState
+    SETEvents, JobExecutionEvent, JobSubmissionEvent, \
+    JobTerminationEvent, ImageSizeEvent
+from .event_handler.states import JobState, ErrorState
 from .condor_log import JobDetails
 
 
@@ -120,7 +121,7 @@ class HTCAnalyzer:
         )
         job_details = JobDetails(
             set_events,
-            condor_event_handler.state_manager
+            condor_event_handler.state
         )
         error_events = ErrorEvents(occurred_errors)
         ram_history = RamHistory(image_size_events)

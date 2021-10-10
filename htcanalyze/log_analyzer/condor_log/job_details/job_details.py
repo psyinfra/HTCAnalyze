@@ -17,12 +17,12 @@ class JobDetails:
     def __init__(
             self,
             set_events,
-            state_manager
+            state
 
     ):
         self.set_events = set_events
         self.time_manager = TimeManager(set_events)
-        self.state_manager = state_manager
+        self.state = state
 
     @property
     def resources(self):

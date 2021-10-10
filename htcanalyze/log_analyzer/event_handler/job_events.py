@@ -3,7 +3,7 @@ import json
 from datetime import datetime as date_time
 
 from .node_cache import NodeCache
-from .state_manager import JobState, ErrorState
+from .states import JobState, ErrorState
 
 
 class DateTimeWrapper(date_time):
