@@ -147,3 +147,20 @@ class SingleLogfileView(View):
 
         if show_err:
             print(read_file(condor_log.job_spec_id + self.ext_err))
+
+    def print_condor_logs(
+            self,
+            condor_logs: List[CondorLog],
+            show_out=False,
+            show_err=False,
+            show_legend=True
+    ):
+        for i, log in enumerate(condor_logs):
+            self.print_condor_log(
+                log,
+                show_out=show_out,
+                show_err=show_err,
+                show_legend=show_legend
+            )
+            if i < len(condor_logs)-1:
+                print("~"*80)

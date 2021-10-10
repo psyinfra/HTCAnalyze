@@ -20,7 +20,7 @@ from .log_analyzer.logvalidator import LogValidator
 from .log_analyzer import HTCAnalyzer
 from .log_summarizer import HTCSummarizer
 from .view.single_logfile_view import SingleLogfileView
-from .view.summarized_logfile_view import SummarizedView
+from .view.summarized_logfile_view import SummarizedLogfileView
 from .globals import *
 from . import setup_logging_tool
 
@@ -392,19 +392,13 @@ def print_results(
             bad_usage=bad_usage,
             tolerated_usage=tolerated_usage
         )
-        for i, log in enumerate(analyzed_logs):
-            view.print_condor_log(
-                log,
-                show_out=show_out,
-                show_err=show_err,
-                show_legend=show_legend
-            )
-            if i < len(analyzed_logs)-1:
-                print("~"*80)
+        view.print_condor_logs(analyzed_logs)
 
     else:
-        htc_state_summarize = HTCSummarizer(analyzed_logs)
-        summarized_logs = htc_state_summarize.summarize()
+        view = SummarizedLogfileView()
+        htc_state_summarizer = HTCSummarizer(analyzed_logs)
+        summarized_condor_logs = htc_state_summarizer.summarize()
+        view.print_summarized_condor_logs(summarized_condor_logs)
 
     sys.exit(NORMAL_EXECUTION)
 
