@@ -2,15 +2,15 @@
 
 import json
 import math
-from typing import List
+from enum import Enum
 from numpy import nan_to_num as ntn
 
-LEVEL_COLORS = {
-    'error': 'red',
-    'warning': 'yellow',
-    'light_warning': 'yellow2',
-    'normal': 'green'
-}
+
+class LevelColors(Enum):
+    ERROR = 'red'
+    WARNING = 'yellow'
+    LIGHT_WARNING = 'yellow2'
+    NORMAL = 'green'
 
 
 class LogResource:
@@ -79,9 +79,9 @@ class LogResource:
         return s_res
 
     @staticmethod
-    def get_color(warning_level) -> str:
-        """Convert an alert level to an appropriate color."""
-        return LEVEL_COLORS.get(warning_level, "default")
+    def get_color(warning_level: LevelColors) -> str:
+        """Get color by warning level."""
+        return warning_level.value
 
     def get_warning_lvl_by_threshold(self, bad_usage, tolerated_usage):
         """Set warning level depending on thresholds."""
@@ -89,17 +89,17 @@ class LogResource:
             deviation = self.usage / self.requested
 
             if str(self.usage) == 'nan':
-                warning_level = 'light_warning'
+                warning_level = LevelColors.LIGHT_WARNING
             elif not 1 - bad_usage <= deviation <= 1 + bad_usage:
-                warning_level = 'error'
+                warning_level = LevelColors.ERROR
             elif not 1 - tolerated_usage <= deviation <= 1 + tolerated_usage:
-                warning_level = 'warning'
+                warning_level = LevelColors.WARNING
             else:
-                warning_level = 'normal'
+                warning_level = LevelColors.NORMAL
         elif self.usage > 0:  # Usage without any request ? NOT GOOD
-            warning_level = 'error'
+            warning_level = LevelColors.ERROR
         else:
-            warning_level = 'normal'
+            warning_level = LevelColors.NORMAL
 
         return warning_level
 
