@@ -29,7 +29,7 @@ class SingleLogfileView(View):
         job_details_table = Table(
             *["Description", "Value"],
             # title="Job Details",
-            width=self.window_width,
+            expand=True,
             show_header=False,
             header_style="bold magenta",
             box=box.ASCII
@@ -65,7 +65,7 @@ class SingleLogfileView(View):
         time_table = Table(
             *["Description", "Timestamp", "Duration"],
             # title="Job Dates and Times",
-            width=self.window_width,
+            expand=True,
             show_header=True,
             header_style="bold magenta",
             box=box.ASCII
@@ -100,6 +100,7 @@ class SingleLogfileView(View):
         error_table = Table(
             *["Event Number", "Time Stamp", "Error Code", "Reason"],
             title="Error Events",
+            expand=True,
             show_header=True,
             header_style="bold magenta",
             box=box.ASCII

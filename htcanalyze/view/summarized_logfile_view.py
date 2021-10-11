@@ -26,7 +26,7 @@ class SummarizedLogfileView(View):
         time_table = Table(
             *["Description", "Duration"],
             # title="Job Dates and Times",
-            width=self.window_width,
+            expand=True,
             show_header=True,
             header_style="bold magenta",
             box=box.ASCII
@@ -67,7 +67,7 @@ class SummarizedLogfileView(View):
         node_table = Table(
             *headers,
             # title="Job Dates and Times",
-            width=self.window_width,
+            expand=True,
             show_header=True,
             header_style="bold magenta",
             box=box.ASCII
@@ -118,7 +118,7 @@ class SummarizedLogfileView(View):
         jobs_table = Table(
             *["State", "Jobs"],
             # title="Job Dates and Times",
-            width=self.window_width,
+            expand=True,
             show_header=True,
             header_style="bold magenta",
             box=box.ASCII

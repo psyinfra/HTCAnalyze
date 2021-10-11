@@ -32,7 +32,7 @@ class View(ABC):
 
         resource_table = Table(
             *["Partitionable Resources", "Usage ", "Request", "Allocated"],
-            width=self.window_width,
+            expand=True,
             title=title,
             show_header=True,
             header_style="bold magenta",
