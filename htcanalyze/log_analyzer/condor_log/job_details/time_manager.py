@@ -11,8 +11,7 @@ class TimeDeltaWrapper(timedelta):
             return timedelta.__new__(
                 cls,
                 days=time_delta.days,
-                seconds=time_delta.seconds,
-                microseconds=time_delta.microseconds
+                seconds=time_delta.seconds
             )
         return timedelta.__new__(cls)
 
