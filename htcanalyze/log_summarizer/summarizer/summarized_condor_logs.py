@@ -29,3 +29,6 @@ class SummarizedCondorLogs:
             indent=2,
             default=lambda x: x.__dict__
         )
+
+    def __lt__(self, other):
+        return self.n_jobs < other.n_jobs

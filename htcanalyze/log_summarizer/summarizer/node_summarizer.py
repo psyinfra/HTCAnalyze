@@ -40,6 +40,9 @@ class SummarizedNodeJobs(SingleNodeJob):
         super(SummarizedNodeJobs, self).__init__(address, job_times)
         self.n_jobs = n_jobs
 
+    def __lt__(self, other):
+        return self.n_jobs < other.n_jobs
+
 
 class NodeJobCollection:
     """
