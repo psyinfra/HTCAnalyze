@@ -83,7 +83,7 @@ class LogResource:
         """Convert an alert level to an appropriate color."""
         return LEVEL_COLORS.get(warning_level, "default")
 
-    def get_color_by_threshold(self, bad_usage, tolerated_usage):
+    def get_warning_lvl_by_threshold(self, bad_usage, tolerated_usage):
         """Set warning level depending on thresholds."""
         if self.requested != 0:
             deviation = self.usage / self.requested
@@ -101,6 +101,14 @@ class LogResource:
         else:
             warning_level = 'normal'
 
+        return warning_level
+
+    def get_color_by_threshold(self, bad_usage, tolerated_usage):
+
+        warning_level = self.get_warning_lvl_by_threshold(
+            bad_usage,
+            tolerated_usage
+        )
         return self.get_color(warning_level)
 
 
@@ -202,68 +210,3 @@ class LogResources:
             indent=2,
             default=lambda x: x.__dict__
         )
-
-
-def create_avg_on_resources(
-        log_resource_list: List[LogResources]
-) -> List[LogResource]:
-    """
-    Create a new List of Resources in Average.
-
-    :param log_resource_list: list(list(LogResource))
-    :return: list(LogResource)
-    """
-    n_jobs = len(log_resource_list)
-    res_cache = {}
-
-    # calc total
-    for log_resources in log_resource_list:
-        for resource in log_resources.resources:
-            desc = resource.description  # description shortcut
-            # add resource
-            if res_cache.get(desc):
-                res_cache[desc].usage += ntn(resource.usage)
-                res_cache[desc].requested += ntn(resource.requested)
-                res_cache[desc].allocated += ntn(resource.allocated)
-            # create first entry
-            else:
-                res_cache[desc] = LogResource(
-                    desc,
-                    ntn(resource.usage),
-                    ntn(resource.requested),
-                    ntn(resource.allocated)
-                )
-
-    avg_res_list = list(res_cache.values())
-
-    # calc avg
-    for resource in avg_res_list:
-        resource.description = "Average " + resource.description
-        resource.usage = round(resource.usage / n_jobs, 3)
-        resource.requested = round(resource.requested / n_jobs, 2)
-        resource.allocated = round(resource.allocated / n_jobs, 2)
-
-    return avg_res_list
-
-
-def dict_to_resources(resources: dict) -> List[LogResource]:
-    """Convert a dict of lists to a list of LogResource objects."""
-    resources = {k.lower(): v for k, v in resources.items()}
-    resources["description"] = resources.pop("resources")
-    resources = [dict(zip(resources, v)) for v in zip(*resources.values())]
-    resources = [LogResource(**resource) for resource in resources]
-    return resources
-
-
-def resources_to_dict(resources: List[LogResource]) -> dict:
-    """Convert a list of LogResource back to this dict scheme."""
-    if resources:
-        return {
-            "Resources": [res.description for res in resources],
-            "Usage": [f"[{res.get_color()}]{res.usage}[/{res.get_color()}]"
-                      for res in resources],
-            "Requested": [res.requested for res in resources],
-            "Allocated": [res.allocated for res in resources]
-        }
-    # else:
-    return {}
