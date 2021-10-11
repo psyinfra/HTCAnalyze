@@ -6,7 +6,7 @@ from rich.table import Table, box
 from rich import print as rprint
 
 from htcanalyze.log_analyzer import CondorLog
-from .view import View, read_file
+from .view import View
 
 
 class SingleLogfileView(View):
@@ -143,10 +143,10 @@ class SingleLogfileView(View):
         self.print_error_events(condor_log.error_events)
 
         if show_out:
-            print(read_file(condor_log.job_spec_id + self.ext_out))
+            print(self.read_file(condor_log.job_spec_id + self.ext_out))
 
         if show_err:
-            print(read_file(condor_log.job_spec_id + self.ext_err))
+            print(self.read_file(condor_log.job_spec_id + self.ext_err))
 
     def print_condor_logs(
             self,

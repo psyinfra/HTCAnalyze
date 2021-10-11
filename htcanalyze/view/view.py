@@ -3,7 +3,7 @@ import os
 import logging
 from abc import ABC
 
-from rich import print as rprint
+from rich.console import Console
 from rich.table import Table, box
 
 from htcanalyze.globals import BAD_USAGE, TOLERATED_USAGE
@@ -16,6 +16,8 @@ class View(ABC):
             bad_usage=BAD_USAGE,
             tolerated_usage=TOLERATED_USAGE
     ):
+        self.console = Console()
+        self.window_width = self.console.size.width
         self.bad_usage = bad_usage
         self.tolerated_usage = tolerated_usage
 
@@ -30,6 +32,7 @@ class View(ABC):
 
         resource_table = Table(
             *["Partitionable Resources", "Usage ", "Request", "Allocated"],
+            width=self.window_width,
             title=title,
             show_header=True,
             header_style="bold magenta",
@@ -49,29 +52,28 @@ class View(ABC):
                     str(round(resource.allocated, precision))
                 )
 
-        rprint(resource_table)
+        self.console.print(resource_table)
 
+    def read_file(self, file: str):
+        """
+        Read a file.
 
-def read_file(file: str):
-    """
-    Read a file.
+        :param: file
+        :return: content
+        """
+        output_string = ""
+        try:
 
-    :param: file
-    :return: content
-    """
-    output_string = ""
-    try:
+            if os.path.getsize(file) == 0:
+                return output_string
 
-        if os.path.getsize(file) == 0:
-            return output_string
+            with open(file, "r", encoding='utf-8') as output_content:
+                output_string = output_content.read()
+        except NameError as err:
+            logging.exception(err)
+        except FileNotFoundError:
+            self.consol.print(f"[yellow]There is no file: {file}")
+        except TypeError as err:
+            logging.exception(err)
 
-        with open(file, "r", encoding='utf-8') as output_content:
-            output_string = output_content.read()
-    except NameError as err:
-        logging.exception(err)
-    except FileNotFoundError:
-        rprint(f"[yellow]There is no file: {file}")
-    except TypeError as err:
-        logging.exception(err)
-
-    return output_string
+        return output_string
