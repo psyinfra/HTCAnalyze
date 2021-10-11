@@ -7,6 +7,7 @@ from abc import ABC
 
 from rich.console import Console
 from rich.table import Table, box
+from rich.text import Text
 
 from htcanalyze.globals import BAD_USAGE, TOLERATED_USAGE
 
@@ -62,6 +63,31 @@ class View(ABC):
                 )
 
         self.console.print(resource_table)
+
+    def print_desc_line(
+            self,
+            desc_str,
+            desc_value,
+            color="default",
+            highlight_char="#",
+            boxing=False
+    ):
+        with_color = f"{desc_str} [{color}]{desc_value}[/{color}]"
+        raw_text = Text.from_markup(with_color)
+
+        fill_up_len = int((self.window_width - len(raw_text)) / 2)
+        fill_up_str = highlight_char*fill_up_len
+        full_state_str = f"{fill_up_str} {raw_text} {fill_up_str}"
+        overhang = len(full_state_str) - self.window_width
+        fill_up_str2 = fill_up_str[:-overhang]
+
+        if boxing:
+            print(highlight_char*self.window_width)
+
+        self.console.print(f"{fill_up_str} {with_color} {fill_up_str2}")
+
+        if boxing:
+            print(highlight_char*self.window_width)
 
     def read_file(self, file: str):
         """

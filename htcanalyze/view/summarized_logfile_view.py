@@ -2,8 +2,6 @@
 from datetime import timedelta
 from typing import List
 
-from rich.text import Text
-
 from .view import View
 from htcanalyze.log_summarizer.summarizer import SummarizedCondorLogs
 
@@ -77,26 +75,26 @@ class SummarizedLogfileView(View):
 
         self.console.print(node_table)
 
-    def print_state(self, state, highlight_char="#", boxing=False):
-        color = state.get_jobstate_color()
-        desc_str = f"Log files with JobState:"
-        # without_color = f"{desc_str} {state.name}"
-        with_color = f"{desc_str} [{color}]{state.name}[/{color}]"
-        raw_text = Text.from_markup(with_color)
-
-        fill_up_len = int((self.window_width - len(raw_text)) / 2)
-        fill_up_str = highlight_char*fill_up_len
-        full_state_str = f"{fill_up_str} {raw_text} {fill_up_str}"
-        overhang = len(full_state_str) - self.window_width
-        fill_up_str2 = fill_up_str[:-overhang]
-
-        if boxing:
-            print(highlight_char*self.window_width)
-
-        self.console.print(f"{fill_up_str} {with_color} {fill_up_str2}")
-
-        if boxing:
-            print(highlight_char*self.window_width)
+    # def print_state(self, state, highlight_char="#", boxing=False):
+    #     color = state.get_jobstate_color()
+    #     desc_str = f"Log files with JobState:"
+    #     # without_color = f"{desc_str} {state.name}"
+    #     with_color = f"{desc_str} [{color}]{state.name}[/{color}]"
+    #     raw_text = Text.from_markup(with_color)
+    #
+    #     fill_up_len = int((self.window_width - len(raw_text)) / 2)
+    #     fill_up_str = highlight_char*fill_up_len
+    #     full_state_str = f"{fill_up_str} {raw_text} {fill_up_str}"
+    #     overhang = len(full_state_str) - self.window_width
+    #     fill_up_str2 = fill_up_str[:-overhang]
+    #
+    #     if boxing:
+    #         print(highlight_char*self.window_width)
+    #
+    #     self.console.print(f"{fill_up_str} {with_color} {fill_up_str2}")
+    #
+    #     if boxing:
+    #         print(highlight_char*self.window_width)
 
     def print_summarized_condor_logs(
             self,
@@ -111,7 +109,7 @@ class SummarizedLogfileView(View):
 
         jobs_table = self.create_table(
             ["State", "Jobs"],
-            # title="Job Dates and Times",
+            title="Number of Jobs per State",
         )
 
         for state_summarized_logs in summarized_condor_logs:
@@ -126,7 +124,12 @@ class SummarizedLogfileView(View):
 
         for state_summarized_logs in summarized_condor_logs:
 
-            self.print_state(state_summarized_logs.state)
+            color = state_summarized_logs.state.get_jobstate_color()
+            self.print_desc_line(
+                "Log files with JobState:",
+                state_summarized_logs.state.name,
+                color=color
+            )
 
             self.print_times(state_summarized_logs.avg_times)
 

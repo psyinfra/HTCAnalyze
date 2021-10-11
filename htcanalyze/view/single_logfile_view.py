@@ -112,9 +112,10 @@ class SingleLogfileView(View):
             show_legend=True
     ) -> str:
 
-        self.console.print(
-            f"[blue]Job Analysis of [/blue]"
-            f"[cyan]{os.path.basename(condor_log.file)}[/cyan]"
+        self.print_desc_line(
+            "Job Analysis of:",
+            os.path.basename(condor_log.file),
+            color="cyan"
         )
 
         self.print_job_details(condor_log.job_details)
