@@ -29,6 +29,7 @@ class SingleLogfileView(View):
         job_details_table = Table(
             *["Description", "Value"],
             # title="Job Details",
+            width=self.window_width,
             show_header=False,
             header_style="bold magenta",
             box=box.ASCII
@@ -60,11 +61,11 @@ class SingleLogfileView(View):
         if print_times:
             self.print_times(job_details.time_manager)
 
-    @staticmethod
-    def print_times(time_manager):
+    def print_times(self, time_manager):
         time_table = Table(
             *["Description", "Timestamp", "Duration"],
             # title="Job Dates and Times",
+            width=self.window_width,
             show_header=True,
             header_style="bold magenta",
             box=box.ASCII
@@ -153,7 +154,8 @@ class SingleLogfileView(View):
             condor_logs: List[CondorLog],
             show_out=False,
             show_err=False,
-            show_legend=True
+            show_legend=True,
+            sep_char="~"
     ):
         for i, log in enumerate(condor_logs):
             self.print_condor_log(
@@ -163,4 +165,4 @@ class SingleLogfileView(View):
                 show_legend=show_legend
             )
             if i < len(condor_logs)-1:
-                print("~"*80)
+                print(sep_char*self.window_width)
