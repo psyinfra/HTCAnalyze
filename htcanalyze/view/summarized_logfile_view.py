@@ -39,6 +39,40 @@ class SummarizedLogfileView(View):
 
         rprint(time_table)
 
+    @staticmethod
+    def print_summarized_node_jobs(
+            summarized_node_jobs,
+            sort_by_n_jobs=True
+    ):
+        headers = [
+            "Node Address",
+            "Number of Jobs",
+            "Avg. Waiting Time",
+            "Avg. Execution Time",
+            "Avg. Runtime (Total)"
+        ]
+        node_table = Table(
+            *headers,
+            # title="Job Dates and Times",
+            show_header=True,
+            header_style="bold magenta",
+            box=box.ASCII
+        )
+
+        if sort_by_n_jobs:
+            summarized_node_jobs = reversed(sorted(summarized_node_jobs))
+
+        for summarized_node in summarized_node_jobs:
+            node_table.add_row(
+                summarized_node.address,
+                str(summarized_node.n_jobs),
+                str(summarized_node.job_times.waiting_time),
+                str(summarized_node.job_times.execution_time),
+                str(summarized_node.job_times.total_runtime)
+            )
+
+        rprint(node_table)
+
     def print_summarized_condor_logs(
             self,
             summarized_condor_logs: List[SummarizedCondorLogs]
@@ -61,7 +95,6 @@ class SummarizedLogfileView(View):
         print("~"*80)
 
         for state_summarized_logs in summarized_condor_logs:
-            print(state_summarized_logs)
             color = state_summarized_logs.state.get_jobstate_color()
             rprint(
                 f"Log files with JobState: "
@@ -75,6 +108,10 @@ class SummarizedLogfileView(View):
 
             self.print_times(
                 state_summarized_logs.avg_times
+            )
+
+            self.print_summarized_node_jobs(
+                state_summarized_logs.summarized_node_jobs
             )
 
             print("~"*80)
