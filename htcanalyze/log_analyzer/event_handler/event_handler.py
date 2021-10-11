@@ -13,6 +13,8 @@ from .job_events import *
 from htcanalyze.log_analyzer.condor_log import LogResources, \
     CPULogResource, DiskLogResource, MemoryLogResource, GPULogResource
 
+STRP_FORMAT = "%Y-%m-%dT%H:%M:%S"
+
 
 class ReadLogException(Exception):
     """Exception raised for failed login.
@@ -28,7 +30,7 @@ def event_decorator(func):
         self._event_number = event.get('EventTypeNumber')
         self._time_stamp = date_time.strptime(
             event.get('EventTime'),
-            "%Y-%m-%dT%H:%M:%S"
+            STRP_FORMAT
         )
         return func(self, event, *args, **kwargs)
 
@@ -40,7 +42,7 @@ class EventHandler:
     _time_stamp = None
 
     def __init__(self):
-        self.state: JobState = None
+        self.state = None
 
     @event_decorator
     def get_submission_event(self, event) -> JobEvent:
