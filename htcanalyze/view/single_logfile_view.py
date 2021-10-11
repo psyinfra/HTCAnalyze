@@ -2,9 +2,6 @@ import os
 
 from typing import List
 
-from rich.table import Table, box
-from rich import print as rprint
-
 from htcanalyze.log_analyzer import CondorLog
 from .view import View
 
@@ -26,13 +23,9 @@ class SingleLogfileView(View):
         if job_details.set_events.is_empty():
             return
 
-        job_details_table = Table(
-            *["Description", "Value"],
-            # title="Job Details",
-            expand=True,
-            show_header=False,
-            header_style="bold magenta",
-            box=box.ASCII
+        job_details_table = self.create_table(
+            ["Description", "Value"],
+            # title="Job Details"
         )
 
         color = job_details.state.get_jobstate_color()
@@ -56,19 +49,15 @@ class SingleLogfileView(View):
             str(job_details.set_events.return_value)
         )
 
-        rprint(job_details_table)
+        self.console.print(job_details_table)
 
         if print_times:
             self.print_times(job_details.time_manager)
 
     def print_times(self, time_manager):
-        time_table = Table(
-            *["Description", "Timestamp", "Duration"],
-            # title="Job Dates and Times",
-            expand=True,
-            show_header=True,
-            header_style="bold magenta",
-            box=box.ASCII
+        time_table = self.create_table(
+            ["Description", "Timestamp", "Duration"],
+            # title="Job Dates and Times"
         )
         time_table.add_row(
             "Submission",
@@ -86,24 +75,19 @@ class SingleLogfileView(View):
             str(time_manager.total_runtime)
         )
 
-        rprint(time_table)
+        self.console.print(time_table)
 
     @staticmethod
     def print_ram_history(ram_history, show_legend=True):
         print(ram_history.plot_ram(show_legend=show_legend))
 
-    @staticmethod
-    def print_error_events(error_events):
+    def print_error_events(self, error_events):
         if not error_events.error_events:
             return
 
-        error_table = Table(
-            *["Event Number", "Time Stamp", "Error Code", "Reason"],
-            title="Error Events",
-            expand=True,
-            show_header=True,
-            header_style="bold magenta",
-            box=box.ASCII
+        error_table = self.create_table(
+            ["Event Number", "Time Stamp", "Error Code", "Reason"],
+            title="Error Events"
         )
 
         for error in error_events.error_events:
@@ -118,7 +102,7 @@ class SingleLogfileView(View):
                 error.reason
             )
 
-        rprint(error_table)
+        self.console.print(error_table)
 
     def print_condor_log(
             self,
@@ -128,7 +112,7 @@ class SingleLogfileView(View):
             show_legend=True
     ) -> str:
 
-        rprint(
+        self.console.print(
             f"[blue]Job Analysis of [/blue]"
             f"[cyan]{os.path.basename(condor_log.file)}[/cyan]"
         )

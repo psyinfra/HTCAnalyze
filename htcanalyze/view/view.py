@@ -1,6 +1,8 @@
 
 import os
 import logging
+
+from typing import List
 from abc import ABC
 
 from rich.console import Console
@@ -21,6 +23,17 @@ class View(ABC):
         self.bad_usage = bad_usage
         self.tolerated_usage = tolerated_usage
 
+    @staticmethod
+    def create_table(headers: List, title=None) -> Table:
+        return Table(
+            *headers,
+            title=title,
+            expand=True,
+            show_header=True,
+            header_style="bold magenta",
+            box=box.ASCII
+        )
+
     def print_resources(
             self,
             resources,
@@ -30,13 +43,9 @@ class View(ABC):
         if not resources:
             return
 
-        resource_table = Table(
-            *["Partitionable Resources", "Usage ", "Request", "Allocated"],
-            expand=True,
-            title=title,
-            show_header=True,
-            header_style="bold magenta",
-            box=box.ASCII
+        resource_table = self.create_table(
+            ["Partitionable Resources", "Usage ", "Request", "Allocated"],
+            title=title
         )
 
         for resource in resources.resources:
@@ -72,7 +81,7 @@ class View(ABC):
         except NameError as err:
             logging.exception(err)
         except FileNotFoundError:
-            self.consol.print(f"[yellow]There is no file: {file}")
+            self.console.print(f"[yellow]There is no file: {file}")
         except TypeError as err:
             logging.exception(err)
 

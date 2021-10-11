@@ -2,7 +2,6 @@
 from datetime import timedelta
 from typing import List
 
-from rich.table import Table, box
 from rich.text import Text
 
 from .view import View
@@ -23,13 +22,9 @@ class SummarizedLogfileView(View):
         if job_times.is_empty():
             return
 
-        time_table = Table(
-            *["Description", "Duration"],
+        time_table = self.create_table(
+            ["Description", "Duration"],
             # title="Job Dates and Times",
-            expand=True,
-            show_header=True,
-            header_style="bold magenta",
-            box=box.ASCII
         )
         if not job_times.waiting_time == timedelta():
             time_table.add_row(
@@ -57,20 +52,15 @@ class SummarizedLogfileView(View):
         if not summarized_node_jobs:
             return
 
-        headers = [
-            "Node Address",
-            "Jobs",
-            "Avg. Waiting Time",
-            "Avg. Execution Time",
-            "Avg. Runtime (Total)"
-        ]
-        node_table = Table(
-            *headers,
+        node_table = self.create_table(
+            [
+                "Node Address",
+                "Jobs",
+                "Avg. Waiting Time",
+                "Avg. Execution Time",
+                "Avg. Runtime (Total)"
+            ],
             # title="Job Dates and Times",
-            expand=True,
-            show_header=True,
-            header_style="bold magenta",
-            box=box.ASCII
         )
 
         if sort_by_n_jobs:
@@ -87,7 +77,7 @@ class SummarizedLogfileView(View):
 
         self.console.print(node_table)
 
-    def print_state(self, state, highlight_char="#"):
+    def print_state(self, state, highlight_char="#", boxing=False):
         color = state.get_jobstate_color()
         desc_str = f"Log files with JobState:"
         # without_color = f"{desc_str} {state.name}"
@@ -100,9 +90,13 @@ class SummarizedLogfileView(View):
         overhang = len(full_state_str) - self.window_width
         fill_up_str2 = fill_up_str[:-overhang]
 
-        print(highlight_char*self.window_width)
+        if boxing:
+            print(highlight_char*self.window_width)
+
         self.console.print(f"{fill_up_str} {with_color} {fill_up_str2}")
-        print(highlight_char*self.window_width)
+
+        if boxing:
+            print(highlight_char*self.window_width)
 
     def print_summarized_condor_logs(
             self,
@@ -115,13 +109,9 @@ class SummarizedLogfileView(View):
                 reversed(sorted(summarized_condor_logs))
             )
 
-        jobs_table = Table(
-            *["State", "Jobs"],
+        jobs_table = self.create_table(
+            ["State", "Jobs"],
             # title="Job Dates and Times",
-            expand=True,
-            show_header=True,
-            header_style="bold magenta",
-            box=box.ASCII
         )
 
         for state_summarized_logs in summarized_condor_logs:
