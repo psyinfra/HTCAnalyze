@@ -61,22 +61,9 @@ class LogResource:
     def __radd__(self, other):
         return self if other == 0 or other.is_empty() else self + other
 
-    def to_dict(self) -> dict:
-        """Return this class as a dict."""
-        return {k: v for k, v in self.__dict__.items()
-                if not k == "level_colors"}
-
     def __repr__(self):
         """Own style of representing this class."""
         return json.dumps(self.__dict__)
-
-    def __str__(self):
-        """Create a string representation of this class."""
-        s_res = f"LogResource: {self.description}\n" \
-            f"Usage: [{self.get_color()}]{self.usage}[/{self.get_color()}], " \
-            f"Requested: {self.requested}, " \
-            f"Allocated: {self.allocated}"
-        return s_res
 
     @staticmethod
     def get_color(warning_level: LevelColors) -> str:
