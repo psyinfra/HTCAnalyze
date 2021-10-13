@@ -1,10 +1,9 @@
 import json
 from typing import List
 
-from htcanalyze.log_analyzer.condor_log import CondorLog, \
-    JobTimes, LogResources
+from htcanalyze.log_analyzer.condor_log import JobTimes, LogResources
 from htcanalyze.log_analyzer.event_handler import JobState
-from .node_summarizer import SummarizedNodeJobs
+from .summarized_node_jobs import SummarizedNodeJobs
 
 
 class SummarizedCondorLogs:

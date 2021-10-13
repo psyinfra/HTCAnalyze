@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import List
 
 from .view import View
-from htcanalyze.log_summarizer.summarizer import SummarizedCondorLogs
+from htcanalyze.log_summarizer import SummarizedCondorLogs
 
 
 class SummarizedLogfileView(View):
