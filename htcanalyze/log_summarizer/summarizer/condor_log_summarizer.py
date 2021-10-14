@@ -42,14 +42,14 @@ class NormalTerminationStateSummarizer(CondorLogSummarizer):
         node_summarizer = NodeSummarizer(
             [cl.job_details for cl in self.condor_logs]
         )
-        nodes = node_summarizer.summarize()
+        summarized_node_jobs = node_summarizer.summarize()
 
         return SummarizedCondorLogs(
             self.state,
             self.n_jobs,
             avg_times,
             avg_resources,
-            nodes
+            summarized_node_jobs
         )
 
 
