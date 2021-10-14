@@ -1,15 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from . import (
-    Summarizer,
-    TimeSummarizer,
-    LogResourceSummarizer,
-    NodeSummarizer
-)
-from htcanalyze.log_summarizer import (
-    SummarizedCondorLogs
-)
+from . import Summarizer, TimeSummarizer, LogResourceSummarizer, NodeSummarizer
+from htcanalyze.log_summarizer import SummarizedCondorLogs
 from htcanalyze.log_analyzer import CondorLog
 
 
