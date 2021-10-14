@@ -45,6 +45,8 @@ class LogResource:
         )
 
     def __truediv__(self, other):
+        if self.is_empty():
+            return self
         return self.__class__(
             float(ntn(self.usage) / other),
             float(ntn(self.requested) / other),
@@ -56,10 +58,6 @@ class LogResource:
                 math.isnan(self.usage) and
                 math.isnan(self.requested) and
                 math.isnan(self.allocated)
-        ) or (
-            self.usage == 0 and
-            self.requested == 0 and
-            self.allocated == 0
         )
 
     def __radd__(self, other):
