@@ -75,27 +75,6 @@ class SummarizedLogfileView(View):
 
         self.console.print(node_table)
 
-    # def print_state(self, state, highlight_char="#", boxing=False):
-    #     color = state.get_jobstate_color()
-    #     desc_str = f"Log files with JobState:"
-    #     # without_color = f"{desc_str} {state.name}"
-    #     with_color = f"{desc_str} [{color}]{state.name}[/{color}]"
-    #     raw_text = Text.from_markup(with_color)
-    #
-    #     fill_up_len = int((self.window_width - len(raw_text)) / 2)
-    #     fill_up_str = highlight_char*fill_up_len
-    #     full_state_str = f"{fill_up_str} {raw_text} {fill_up_str}"
-    #     overhang = len(full_state_str) - self.window_width
-    #     fill_up_str2 = fill_up_str[:-overhang]
-    #
-    #     if boxing:
-    #         print(highlight_char*self.window_width)
-    #
-    #     self.console.print(f"{fill_up_str} {with_color} {fill_up_str2}")
-    #
-    #     if boxing:
-    #         print(highlight_char*self.window_width)
-
     def print_summarized_condor_logs(
             self,
             summarized_condor_logs: List[SummarizedCondorLogs],
