@@ -1,7 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from . import Summarizer, TimeSummarizer, LogResourceSummarizer, NodeSummarizer
+from . import (
+    Summarizer,
+    TimeSummarizer,
+    LogResourceSummarizer,
+    NodeSummarizer,
+    ErrorEventSummarizer
+)
 from htcanalyze.log_summarizer import SummarizedCondorLogs
 from htcanalyze.log_analyzer import CondorLog
 
@@ -11,6 +17,34 @@ class CondorLogSummarizer(Summarizer, ABC):
     def __init__(self, condor_logs, state=None):
         self.condor_logs = condor_logs
         self.state = state
+        resources, time_managers, nodes, logfiles_error_events = (
+            self._get_data()
+        )
+        self.resource_summarizer = LogResourceSummarizer(
+            resources,
+            ignore_empty=False  # Todo
+        )
+        self.time_summarizer = TimeSummarizer(
+            time_managers,
+            ignore_empty=False  # Todo
+        )
+        self.node_summarizer = NodeSummarizer(nodes)
+        self.error_event_summarizer = ErrorEventSummarizer(
+            logfiles_error_events
+        )
+
+    def _get_data(self):
+        resources = []
+        time_managers = []
+        nodes = []
+        log_files_error_events = []
+        for cl in self.condor_logs:
+            resources.append(cl.job_details.resources)
+            time_managers.append(cl.job_details.time_manager)
+            nodes.append(cl.job_details)
+            log_files_error_events.append(cl.logfile_error_events)
+
+        return resources, time_managers, nodes, log_files_error_events
 
     @abstractmethod
     def summarize(self) -> SummarizedCondorLogs:
@@ -27,29 +61,19 @@ class NormalTerminationStateSummarizer(CondorLogSummarizer):
         super(NormalTerminationStateSummarizer, self).__init__(condor_logs)
 
     def summarize(self) -> SummarizedCondorLogs:
-        resource_summarizer = LogResourceSummarizer(
-            [cl.job_details.resources for cl in self.condor_logs],
-            ignore_empty=False  # Todo
-        )
-        avg_resources = resource_summarizer.summarize()
 
-        time_summarizer = TimeSummarizer(
-            [cl.job_details.time_manager for cl in self.condor_logs],
-            ignore_empty=False  # Todo
-        )
-        avg_times = time_summarizer.summarize()
-
-        node_summarizer = NodeSummarizer(
-            [cl.job_details for cl in self.condor_logs]
-        )
-        summarized_node_jobs = node_summarizer.summarize()
+        avg_resources = self.resource_summarizer.summarize()
+        avg_times = self.time_summarizer.summarize()
+        summarized_node_jobs = self.node_summarizer.summarize()
+        summarized_error_events = self.error_event_summarizer.summarize()
 
         return SummarizedCondorLogs(
             self.state,
             self.n_jobs,
             avg_times,
             avg_resources,
-            summarized_node_jobs
+            summarized_node_jobs,
+            summarized_error_events
         )
 
 
@@ -65,16 +89,13 @@ class WaitingStateSummarizer(CondorLogSummarizer):
         super(WaitingStateSummarizer, self).__init__(condor_logs)
 
     def summarize(self) -> SummarizedCondorLogs:
-        time_summarizer = TimeSummarizer(
-            [cl.job_details.time_manager for cl in self.condor_logs],
-            ignore_empty=False  # Todo
-        )
-        avg_times = time_summarizer.summarize()
-
+        avg_times = self.time_summarizer.summarize()
+        summarized_error_states = self.error_event_summarizer.summarize()
         return SummarizedCondorLogs(
             self.state,
             self.n_jobs,
-            avg_times=avg_times
+            avg_times=avg_times,
+            summarized_error_states=summarized_error_states
         )
 
 
@@ -85,22 +106,15 @@ class RunningStateSummarizer(CondorLogSummarizer):
 
     def summarize(self) -> SummarizedCondorLogs:
 
-        time_summarizer = TimeSummarizer(
-            [cl.job_details.time_manager for cl in self.condor_logs],
-            ignore_empty=False  # Todo
-        )
-        avg_times = time_summarizer.summarize()
-
-        node_summarizer = NodeSummarizer(
-            [cl.job_details for cl in self.condor_logs]
-        )
-        summarized_node_jobs = node_summarizer.summarize()
-
+        avg_times = self.time_summarizer.summarize()
+        summarized_node_jobs = self.node_summarizer.summarize()
+        summarized_error_states = self.error_event_summarizer.summarize()
         return SummarizedCondorLogs(
             self.state,
             self.n_jobs,
             avg_times=avg_times,
-            summarized_node_jobs=summarized_node_jobs
+            summarized_node_jobs=summarized_node_jobs,
+            summarized_error_states=summarized_error_states
         )
 
 
@@ -110,9 +124,13 @@ class AbortedStateSummarizer(CondorLogSummarizer):
         super(AbortedStateSummarizer, self).__init__(condor_logs)
 
     def summarize(self) -> SummarizedCondorLogs:
+        avg_times = self.time_summarizer.summarize()
+        summarized_error_states = self.error_event_summarizer.summarize()
         return SummarizedCondorLogs(
             self.state,
-            self.n_jobs
+            self.n_jobs,
+            avg_times=avg_times,
+            summarized_error_states=summarized_error_states
         )
 
 
@@ -121,7 +139,9 @@ class ErrorWhileReadingStateSummarizer(CondorLogSummarizer):
         super(ErrorWhileReadingStateSummarizer, self).__init__(condor_logs)
 
     def summarize(self) -> SummarizedCondorLogs:
+        summarized_error_states = self.error_event_summarizer.summarize()
         return SummarizedCondorLogs(
             self.state,
-            self.n_jobs
+            self.n_jobs,
+            summarized_error_states=summarized_error_states
         )

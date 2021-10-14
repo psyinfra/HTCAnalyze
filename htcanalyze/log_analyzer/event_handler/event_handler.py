@@ -164,12 +164,26 @@ class EventHandler:
     def get_job_aborted_event(self, event) -> JobEvent:
         assert event.type == jet.JOB_ABORTED
         reason = event.get('Reason')
+        if not self.state:
+            aborted_event = JobAbortedBeforeSubmissionEvent(
+                self._event_number,
+                self._time_stamp,
+                reason
+            )
+        elif self.state == JobState.WAITING:
+            aborted_event = JobAbortedBeforeExecutionEvent(
+                self._event_number,
+                self._time_stamp,
+                reason
+            )
+        else:
+            aborted_event = JobAbortedEvent(
+                self._event_number,
+                self._time_stamp,
+                reason
+            )
         self.state = JobState.ABORTED
-        return JobAbortedEvent(
-            self._event_number,
-            self._time_stamp,
-            reason
-        )
+        return aborted_event
 
     @event_decorator
     def get_image_size_event(self, event) -> JobEvent:

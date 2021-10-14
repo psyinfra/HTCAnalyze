@@ -2,7 +2,7 @@ import os
 import json
 
 from .job_details.job_details import JobDetails
-from .error_events import ErrorEvents
+from .error_events import LogfileErrorEvents
 from .ram_history import RamHistory
 
 
@@ -12,13 +12,13 @@ class CondorLog:
             self,
             file: str,
             job_details: JobDetails,
-            error_events: ErrorEvents,
+            logfile_error_events: LogfileErrorEvents,
             ram_history: RamHistory
     ):
         self.file = file
         self.job_spec_id = self.get_job_spec_id(file)
         self.job_details = job_details
-        self.error_events = error_events
+        self.logfile_error_events = logfile_error_events
         self.ram_history = ram_history
 
     @staticmethod

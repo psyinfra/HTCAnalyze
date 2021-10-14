@@ -2,7 +2,7 @@
 import json
 
 
-class ErrorEvents:
+class LogfileErrorEvents:
 
     def __init__(self, error_events):
         self.error_events = error_events

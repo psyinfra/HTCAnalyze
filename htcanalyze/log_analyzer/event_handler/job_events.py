@@ -124,12 +124,12 @@ class ErrorEvent(JobEvent):
             self,
             event_number,
             time_stamp,
-            error_code: ErrorState,
+            error_state: ErrorState,
             reason
     ):
         super(ErrorEvent, self).__init__(event_number, time_stamp)
-        assert error_code.name in ErrorState.__members__.keys()
-        self.error_code = error_code
+        assert error_state.name in ErrorState.__members__.keys()
+        self.error_state = error_state
         self.reason = reason
 
 
@@ -141,13 +141,33 @@ class JobAbortedEvent(ErrorEvent, JobTerminationEvent):
             time_stamp,
             reason
     ):
-        super(JobAbortedEvent, self).__init__(
+        super().__init__(
             event_number,
             time_stamp,
             ErrorState.ABORTED,
             reason
         )
         self.termination_state = JobState.ABORTED
+
+
+class JobAbortedBeforeSubmissionEvent(JobAbortedEvent):
+
+    def __init__(self, event_number, time_stamp, reason):
+        super().__init__(
+            event_number,
+            time_stamp,
+            reason
+        )
+
+
+class JobAbortedBeforeExecutionEvent(JobAbortedEvent):
+
+    def __init__(self, event_number, time_stamp, reason):
+        super().__init__(
+            event_number,
+            time_stamp,
+            reason
+        )
 
 
 class JobHeldEvent(ErrorEvent):

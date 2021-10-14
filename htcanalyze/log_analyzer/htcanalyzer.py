@@ -5,7 +5,7 @@ from typing import List
 from rich import print as rprint
 
 # import own module
-from .condor_log import CondorLog, ErrorEvents, RamHistory
+from .condor_log import CondorLog, LogfileErrorEvents, RamHistory
 from .event_handler import EventHandler, ReadLogException, ErrorEvent, \
     SETEvents, JobExecutionEvent, JobSubmissionEvent, \
     JobTerminationEvent, ImageSizeEvent
@@ -123,7 +123,7 @@ class HTCAnalyzer:
             set_events,
             condor_event_handler.state
         )
-        error_events = ErrorEvents(occurred_errors)
+        error_events = LogfileErrorEvents(occurred_errors)
         ram_history = RamHistory(image_size_events)
 
         return CondorLog(

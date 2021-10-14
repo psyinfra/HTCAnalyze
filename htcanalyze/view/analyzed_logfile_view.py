@@ -81,8 +81,8 @@ class AnalyzedLogfileView(View):
     def print_ram_history(ram_history, show_legend=True):
         print(ram_history.plot_ram(show_legend=show_legend))
 
-    def print_error_events(self, error_events):
-        if not error_events.error_events:
+    def print_error_events(self, logfile_error_events):
+        if not logfile_error_events.error_events:
             return
 
         error_table = self.create_table(
@@ -90,7 +90,7 @@ class AnalyzedLogfileView(View):
             title="Error Events"
         )
 
-        for error in error_events.error_events:
+        for error in logfile_error_events.error_events:
             time_stamp = (
                 error.time_stamp.strftime("%m/%d %H:%M:%S")
                 if error.time_stamp else None
@@ -98,7 +98,7 @@ class AnalyzedLogfileView(View):
             error_table.add_row(
                 str(error.event_number),
                 time_stamp,
-                error.error_code.name,
+                error.error_state.name,
                 error.reason
             )
 
@@ -127,7 +127,7 @@ class AnalyzedLogfileView(View):
             show_legend=show_legend
         )
 
-        self.print_error_events(condor_log.error_events)
+        self.print_error_events(condor_log.logfile_error_events)
 
         if show_out:
             print(self.read_file(condor_log.job_spec_id + self.ext_out))

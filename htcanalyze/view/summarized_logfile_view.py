@@ -53,7 +53,7 @@ class SummarizedLogfileView(View):
         node_table = self.create_table(
             [
                 "Node Address",
-                "Jobs",
+                "No. of Jobs",
                 "Avg. Waiting Time",
                 "Avg. Execution Time",
                 "Avg. Runtime (Total)"
@@ -62,7 +62,7 @@ class SummarizedLogfileView(View):
         )
 
         if sort_by_n_jobs:
-            summarized_node_jobs = reversed(sorted(summarized_node_jobs))
+            summarized_node_jobs = sorted(summarized_node_jobs, reverse=True)
 
         for summarized_node in summarized_node_jobs:
             node_table.add_row(
@@ -75,6 +75,31 @@ class SummarizedLogfileView(View):
 
         self.console.print(node_table)
 
+    def print_summarized_error_events(
+            self,
+            summarized_error_states,
+            sort_by_n_error_events=True
+    ):
+        if not summarized_error_states:
+            return
+
+        if sort_by_n_error_events:
+            summarized_error_states = sorted(
+                summarized_error_states, reverse=True
+            )
+
+        error_table = self.create_table(
+            ["Error Event", "No. of Occurrences"],
+            title="Occurred Job Error Events"
+        )
+        for summarized_error_state in summarized_error_states:
+            error_table.add_row(
+                summarized_error_state.error_state.name,
+                str(summarized_error_state.n_error_events)
+            )
+
+        self.console.print(error_table)
+
     def print_summarized_condor_logs(
             self,
             summarized_condor_logs: List[SummarizedCondorLogs],
@@ -82,12 +107,12 @@ class SummarizedLogfileView(View):
             sep_char='~'
     ):
         if sort_states_by_n_jobs:
-            summarized_condor_logs = list(
-                reversed(sorted(summarized_condor_logs))
+            summarized_condor_logs = sorted(
+                summarized_condor_logs, reverse=True
             )
 
         jobs_table = self.create_table(
-            ["State", "Jobs"],
+            ["State", "No. of Jobs"],
             title="Number of Jobs per State",
         )
 
@@ -102,6 +127,8 @@ class SummarizedLogfileView(View):
         print(sep_char * self.window_width)
 
         for state_summarized_logs in summarized_condor_logs:
+
+            print()
 
             color = state_summarized_logs.state.get_jobstate_color()
             self.print_desc_line(
@@ -121,4 +148,9 @@ class SummarizedLogfileView(View):
                 state_summarized_logs.summarized_node_jobs
             )
 
+            self.print_summarized_error_events(
+                state_summarized_logs.summarized_error_states
+            )
+
+            print()
             print(sep_char * self.window_width)
