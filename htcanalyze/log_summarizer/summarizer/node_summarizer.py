@@ -61,10 +61,7 @@ class NodeSummarizer(Summarizer):
     def __init__(self, job_details: List[JobDetails]):
 
         self.nodes = [
-            SingleNodeJob(
-                jd.host_address,
-                jd.time_manager.job_times
-            ) for jd in job_details
+            SingleNodeJob(jd.host_address, jd.job_times) for jd in job_details
         ]
         self.node_manager = NodeManager()
         for node in self.nodes:
