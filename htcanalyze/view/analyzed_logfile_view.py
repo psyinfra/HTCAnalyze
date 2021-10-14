@@ -6,7 +6,7 @@ from htcanalyze.log_analyzer import CondorLog
 from .view import View
 
 
-class SingleLogfileView(View):
+class AnalyzedLogfileView(View):
 
     def __init__(
             self,
@@ -15,7 +15,7 @@ class SingleLogfileView(View):
             ext_out=".out",
             ext_err=".err"
     ):
-        super(SingleLogfileView, self).__init__(bad_usage, tolerated_usage)
+        super(AnalyzedLogfileView, self).__init__(bad_usage, tolerated_usage)
         self.ext_out = ext_out
         self.ext_err = ext_err
 

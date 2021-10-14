@@ -19,7 +19,7 @@ from rich.progress import Progress
 from .log_analyzer.logvalidator import LogValidator
 from .log_analyzer import HTCAnalyzer
 from .log_summarizer import HTCSummarizer
-from .view.single_logfile_view import SingleLogfileView
+from .view.analyzed_logfile_view import AnalyzedLogfileView
 from .view.summarized_logfile_view import SummarizedLogfileView
 from .globals import *
 from . import setup_logging_tool
@@ -388,7 +388,7 @@ def print_results(
             analyzed_logs.append(condor_log)
 
     if mode == 'analyze' or len(log_files) == 1:
-        view = SingleLogfileView(
+        view = AnalyzedLogfileView(
             bad_usage=bad_usage,
             tolerated_usage=tolerated_usage
         )
