@@ -36,6 +36,10 @@ class JobDetails:
     def submitter_address(self):
         return self.set_events.submitter_address
 
+    @property
+    def job_times(self):
+        return self.time_manager.job_times
+
     def __repr__(self):
         return json.dumps(
             self.__dict__,
