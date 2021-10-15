@@ -42,7 +42,7 @@ class EventHandler:
     _time_stamp = None
 
     def __init__(self):
-        self.state = None
+        self._state = None
 
     @event_decorator
     def get_submission_event(self, event) -> JobEvent:
@@ -54,7 +54,7 @@ class EventHandler:
         )
         if match_from_host:
             submitted_host = match_from_host[1]
-            self.state = JobState.WAITING
+            self._state = JobState.WAITING
             return JobSubmissionEvent(
                 self._event_number,
                 self._time_stamp,
@@ -62,13 +62,17 @@ class EventHandler:
             )
         # else ERROR
         reason = "Can't read user address"
-        self.state = JobState.ERROR_WHILE_READING
+        self._state = JobState.ERROR_WHILE_READING
         return ErrorEvent(
             self._event_number,
             None,
             ErrorState.INVALID_USER_ADDRESS,
             reason
         )
+
+    @property
+    def state(self):
+        return self._state
 
     @event_decorator
     def get_execution_event(self, event, rdns_lookup=False) -> JobEvent:
@@ -79,7 +83,7 @@ class EventHandler:
         )
         if match_to_host:
             execution_host = match_to_host[1]
-            self.state = JobState.RUNNING
+            self._state = JobState.RUNNING
             return JobExecutionEvent(
                 self._event_number,
                 self._time_stamp,
@@ -89,7 +93,7 @@ class EventHandler:
         # ERROR
         else:
             reason = "Can't read host address"
-            self.state = JobState.ERROR_WHILE_READING
+            self._state = JobState.ERROR_WHILE_READING
             return ErrorEvent(
                 self._event_number,
                 None,
@@ -151,7 +155,7 @@ class EventHandler:
             return_value = event.get('TerminatedBySignal')
             # Todo: include description when possible
 
-        self.state = state
+        self._state = state
         return JobTerminationEvent(
             self._event_number,
             self._time_stamp,
@@ -164,13 +168,13 @@ class EventHandler:
     def get_job_aborted_event(self, event) -> JobEvent:
         assert event.type == jet.JOB_ABORTED
         reason = event.get('Reason')
-        if not self.state:
+        if not self._state:
             aborted_event = JobAbortedBeforeSubmissionEvent(
                 self._event_number,
                 self._time_stamp,
                 reason
             )
-        elif self.state == JobState.WAITING:
+        elif self._state == JobState.WAITING:
             aborted_event = JobAbortedBeforeExecutionEvent(
                 self._event_number,
                 self._time_stamp,
@@ -182,7 +186,7 @@ class EventHandler:
                 self._time_stamp,
                 reason
             )
-        self.state = JobState.ABORTED
+        self._state = JobState.ABORTED
         return aborted_event
 
     @event_decorator
@@ -240,7 +244,7 @@ class EventHandler:
             else:
                 reason = f"Not able to open the file: {file_name}"
 
-            self.state = JobState.ERROR_WHILE_READING
+            self._state = JobState.ERROR_WHILE_READING
             raise ReadLogException(reason)
 
     def get_job_event(self, event, rdns_lookup=False) -> JobEvent:
@@ -273,7 +277,7 @@ class EventHandler:
             job_event = self.get_shadow_exception_event(event)
 
         else:
-            job_event = None
+            raise AttributeError(f"Event type: {event.type} not handled yet")
 
         return job_event
 
