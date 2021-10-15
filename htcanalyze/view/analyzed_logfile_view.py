@@ -110,7 +110,7 @@ class AnalyzedLogfileView(View):
             show_out=False,
             show_err=False,
             show_legend=True
-    ) -> str:
+    ):
 
         self.print_desc_line(
             "Job Analysis of:",
