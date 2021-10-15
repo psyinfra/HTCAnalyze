@@ -1,6 +1,7 @@
 """module to summarize and analyze HTCondor log files."""
 
 import logging
+import os.path
 from typing import List
 from rich import print as rprint
 
@@ -74,31 +75,29 @@ class HTCAnalyzer:
         try:
             for event in condor_event_handler.get_events(file):
 
-                job_event = condor_event_handler.get_job_event(
-                    event,
-                    rdns_lookup
-                )
-
-                if isinstance(job_event, JobSubmissionEvent):
-                    submission_event = job_event
-
-                if isinstance(job_event, JobExecutionEvent):
-                    execution_event = job_event
-
-                if isinstance(job_event, JobTerminationEvent):
-                    termination_event = job_event
-
-                if isinstance(job_event, ImageSizeEvent):
-                    image_size_events.append(job_event)
-
-                if isinstance(job_event, ErrorEvent):
-                    occurred_errors.append(job_event)
-
-                if job_event is None:
-                    rprint(
-                        f"[yellow]Event type: {event.type} "
-                        f"not handled yet[/yellow]"
+                try:
+                    job_event = condor_event_handler.get_job_event(
+                        event,
+                        rdns_lookup
                     )
+
+                    if isinstance(job_event, JobSubmissionEvent):
+                        submission_event = job_event
+
+                    if isinstance(job_event, JobExecutionEvent):
+                        execution_event = job_event
+
+                    if isinstance(job_event, JobTerminationEvent):
+                        termination_event = job_event
+
+                    if isinstance(job_event, ImageSizeEvent):
+                        image_size_events.append(job_event)
+
+                    if isinstance(job_event, ErrorEvent):
+                        occurred_errors.append(job_event)
+
+                except AttributeError as err:
+                    rprint(f"[yellow]{err}[/yellow]")
 
         except ReadLogException as err:
             logging.debug(err)
