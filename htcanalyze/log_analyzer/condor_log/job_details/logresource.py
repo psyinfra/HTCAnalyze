@@ -38,6 +38,8 @@ class LogResource:
         if other == 0:
             return self
         assert type(self) == type(other)
+        if other.is_empty():
+            return self
         return self.__class__(
             float(ntn(self.usage) + ntn(other.usage)),
             float(ntn(self.requested) + ntn(other.requested)),
