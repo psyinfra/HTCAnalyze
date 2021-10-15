@@ -123,7 +123,10 @@ class HTCAnalyzer:
             set_events,
             condor_event_handler.state
         )
-        error_events = LogfileErrorEvents(occurred_errors)
+        error_events = LogfileErrorEvents(
+            occurred_errors,
+            os.path.basename(file)
+        )
         ram_history = RamHistory(image_size_events)
 
         return CondorLog(

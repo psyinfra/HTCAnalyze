@@ -4,7 +4,7 @@ from htcanalyze.log_analyzer.condor_log import JobTimes
 
 
 class SingleNodeJob:
-    """Single Node saving runtime on a node specified by ip or description."""
+    """Single Node saving runtime on a node."""
 
     def __init__(
             self,

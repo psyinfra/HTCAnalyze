@@ -11,12 +11,12 @@ class SummarizedErrorState:
             self,
             error_state: ErrorState,
             error_events: List[ErrorEvent],
-            n_files: int = None
+            files: List = None
     ):
         self.error_state = error_state
         self.error_events = error_events
         self.n_error_events = len(error_events)
-        self.n_files = n_files
+        self.files = files
 
     def __repr__(self):
         return json.dumps(

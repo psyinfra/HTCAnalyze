@@ -8,13 +8,21 @@ from htcanalyze.log_analyzer.event_handler.states import ErrorState
 
 
 class ErrorEventCollection:
+    """
+    Used to collect all ErrorEvent(s) with the same ErrorState.
+
+    :param error_state: ErrorState
+    """
     def __init__(self, error_state: ErrorState):
         self.error_state = error_state
         self.error_events: List[ErrorEvent] = []
+        self.files = []
 
-    def add_error_event(self, error_event: ErrorEvent):
+    def add_error_event(self, error_event: ErrorEvent, file):
         assert error_event.error_state == self.error_state
         self.error_events.append(error_event)
+        if file not in self.files:
+            self.files.append(file)
 
 
 class ErrorEventManager:
@@ -26,10 +34,16 @@ class ErrorEventManager:
         for error_event in log_file_error_events.error_events:
             err_st = error_event.error_state
             try:
-                self.error_dict[err_st].add_error_event(error_event)
+                self.error_dict[err_st].add_error_event(
+                    error_event,
+                    log_file_error_events.file
+                )
             except KeyError:
                 self.error_dict[err_st] = ErrorEventCollection(err_st)
-                self.error_dict[err_st].add_error_event(error_event)
+                self.error_dict[err_st].add_error_event(
+                    error_event,
+                    log_file_error_events.file
+                )
 
     @property
     def error_event_collections(self) -> List[ErrorEventCollection]:
@@ -47,6 +61,10 @@ class ErrorEventSummarizer(Summarizer):
             error_event_manager.add_events(log_file_error_events)
 
         return [
-            SummarizedErrorState(eec.error_state, eec.error_events)
+            SummarizedErrorState(
+                eec.error_state,
+                eec.error_events,
+                eec.files
+            )
             for eec in error_event_manager.error_event_collections
         ]
