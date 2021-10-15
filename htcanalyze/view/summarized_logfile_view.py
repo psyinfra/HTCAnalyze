@@ -78,7 +78,8 @@ class SummarizedLogfileView(View):
     def print_summarized_error_events(
             self,
             summarized_error_states,
-            sort_by_n_error_events=True
+            sort_by_n_error_events=True,
+            file_lim=3
     ):
         if not summarized_error_states:
             return
@@ -88,14 +89,34 @@ class SummarizedLogfileView(View):
                 summarized_error_states, reverse=True
             )
 
+        headers = ["Error Event", "No. of Occurrences"]
+        use_file_lim = True
+        for ses in summarized_error_states:
+            if len(ses.files) > file_lim:
+                use_file_lim = False
+                break
+
+        if use_file_lim:
+            headers.append("Files")
+
+            def file_func(files):
+                return "\n".join(files)
+
+        else:
+            headers.append("No. of Files")
+
+            def file_func(files):
+                return str(len(files))
+
         error_table = self.create_table(
-            ["Error Event", "No. of Occurrences"],
+            headers,
             title="Occurred Job Error Events"
         )
         for summarized_error_state in summarized_error_states:
             error_table.add_row(
                 summarized_error_state.error_state.name,
-                str(summarized_error_state.n_error_events)
+                str(summarized_error_state.n_error_events),
+                file_func(summarized_error_state.files)
             )
 
         self.console.print(error_table)
