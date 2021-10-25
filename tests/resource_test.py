@@ -2,7 +2,7 @@
 from numpy import nan
 
 # import Resource class
-from htcanalyze.log_analyzer.condor_log import (
+from htcanalyze.log_analyzer.condor_log.logresource import (
     CPULogResource,
     DiskLogResource,
     MemoryLogResource,
