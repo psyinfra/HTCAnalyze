@@ -33,3 +33,4 @@ MAX_ERROR_LIMIT = 10
 
 # HTCondor date format
 STRP_FORMAT = "%Y-%m-%dT%H:%M:%S"
+STRF_FORMAT = "%m/%d %H:%M:%S"
