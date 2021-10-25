@@ -2,8 +2,9 @@ import os
 
 from typing import List
 
-from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog
 from .view import View
+from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog
+from htcanalyze.globals import STRF_FORMAT
 
 
 class AnalyzedLogfileView(View):
@@ -59,19 +60,28 @@ class AnalyzedLogfileView(View):
             ["Description", "Timestamp", "Duration"],
             # title="Job Dates and Times"
         )
+        if time_manager.rolled_over_year_boundary:
+            sub_str = str(time_manager.submission_date)
+            exec_str = str(time_manager.execution_date)
+            term_str = str(time_manager.termination_date)
+        else:
+            sub_str = time_manager.submission_date.strftime(STRF_FORMAT)
+            exec_str = time_manager.execution_date.strftime(STRF_FORMAT)
+            term_str = time_manager.termination_date.strftime(STRF_FORMAT)
+
         time_table.add_row(
             "Submission",
-            str(time_manager.submission_date),
+            sub_str,
             str(time_manager.waiting_time)
         )
         time_table.add_row(
             "Execution",
-            str(time_manager.execution_date),
+            exec_str,
             str(time_manager.execution_time),
         )
         time_table.add_row(
             "Termination",
-            str(time_manager.termination_date),
+            term_str,
             str(time_manager.total_runtime)
         )
 
