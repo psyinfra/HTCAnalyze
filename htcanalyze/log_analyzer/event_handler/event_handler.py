@@ -34,8 +34,7 @@ from ..condor_log.logresource import (
     MemoryLogResource,
     GPULogResource
 )
-
-STRP_FORMAT = "%Y-%m-%dT%H:%M:%S"
+from htcanalyze.globals import STRP_FORMAT
 
 
 class ReadLogException(Exception):

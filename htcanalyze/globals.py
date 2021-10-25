@@ -30,3 +30,6 @@ BAD_USAGE = 0.25
 # Errors can mess up the output, hence it's useful to reduce the number
 # of errors. If there are more than just return a number
 MAX_ERROR_LIMIT = 10
+
+# HTCondor date format
+STRP_FORMAT = "%Y-%m-%dT%H:%M:%S"
