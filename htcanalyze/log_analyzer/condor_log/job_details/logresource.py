@@ -35,7 +35,7 @@ class LogResource:
         self.description = description
 
     def __add__(self, other):
-        if other == 0:
+        if other == 0 or other is None:
             return self
         assert type(self) == type(other)
         if other.is_empty():
