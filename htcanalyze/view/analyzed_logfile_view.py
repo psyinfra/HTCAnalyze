@@ -2,7 +2,7 @@ import os
 
 from typing import List
 
-from htcanalyze.log_analyzer import CondorLog
+from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog
 from .view import View
 
 

@@ -1,7 +1,7 @@
 import os
 import json
 
-from .job_details.job_details import JobDetails
+from .job_details import JobDetails
 from .error_events import LogfileErrorEvents
 from .ram_history import RamHistory
 

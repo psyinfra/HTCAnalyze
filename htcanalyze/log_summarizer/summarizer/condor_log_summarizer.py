@@ -1,15 +1,15 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from . import (
-    Summarizer,
-    TimeSummarizer,
-    LogResourceSummarizer,
-    NodeSummarizer,
-    ErrorEventSummarizer
+from .summarizer import Summarizer
+from .log_resource_summarizer import LogResourceSummarizer
+from .time_summarizer import TimeSummarizer
+from .node_summarizer import NodeSummarizer
+from .error_event_summarizer import ErrorEventSummarizer
+from ..summarized_condor_logs.summarized_condor_logs import (
+    SummarizedCondorLogs
 )
-from htcanalyze.log_summarizer import SummarizedCondorLogs
-from htcanalyze.log_analyzer import CondorLog
+from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog
 
 
 class CondorLogSummarizer(Summarizer, ABC):

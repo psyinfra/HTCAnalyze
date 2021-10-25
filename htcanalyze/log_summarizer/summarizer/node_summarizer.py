@@ -1,8 +1,11 @@
 from typing import List
 from .summarizer import Summarizer
-from htcanalyze.log_analyzer.condor_log import JobDetails, JobTimes
-from ..summarized_condor_logs.summarized_node_jobs import SummarizedNodeJobs
-from htcanalyze.log_summarizer.summarized_condor_logs import SingleNodeJob
+from ..summarized_condor_logs.summarized_node_jobs import (
+    SingleNodeJob,
+    SummarizedNodeJobs
+)
+from htcanalyze.log_analyzer.condor_log.job_details import JobDetails
+from htcanalyze.log_analyzer.condor_log.time_manager import JobTimes
 
 
 class NodeJobCollection:

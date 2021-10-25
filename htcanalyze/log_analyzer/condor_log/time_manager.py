@@ -1,7 +1,8 @@
 """Manage times of HTCondor job logs."""
-
 import json
 from datetime import datetime as date_time, timedelta
+
+from ..event_handler.set_events import SETEvents
 
 
 class TimeDeltaWrapper(timedelta):
@@ -82,8 +83,7 @@ class TimeManager:
 
     """
 
-    def __init__(self, set_events):
-
+    def __init__(self, set_events: SETEvents):
         self.submission_date = set_events.submission_date
         self.execution_date = set_events.execution_date
         self.termination_date = set_events.termination_date

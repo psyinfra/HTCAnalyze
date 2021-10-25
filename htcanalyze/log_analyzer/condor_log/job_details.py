@@ -1,9 +1,9 @@
 """Save HTCondor job execution details."""
 import json
 
-# from event_handler.state_manager import StateManager
-# from event_handler.set_events import SETEvents
 from .time_manager import TimeManager
+from ..event_handler.set_events import SETEvents
+from ..event_handler.states import JobState
 
 
 class JobDetails:
@@ -16,8 +16,8 @@ class JobDetails:
 
     def __init__(
             self,
-            set_events,
-            state
+            set_events: SETEvents,
+            state: JobState
 
     ):
         self.set_events = set_events

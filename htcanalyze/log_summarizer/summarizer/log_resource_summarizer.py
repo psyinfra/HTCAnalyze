@@ -1,6 +1,6 @@
 from typing import List
 
-from htcanalyze.log_analyzer.condor_log import LogResources
+from htcanalyze.log_analyzer.condor_log.logresource import LogResources
 from .summarizer import Summarizer
 
 

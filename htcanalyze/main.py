@@ -4,7 +4,6 @@ Handle config setup and commandline arguments.
 Create visible output by using htcanalyze.
 """
 
-import os
 import logging
 import argparse
 import subprocess
@@ -17,8 +16,8 @@ from rich.progress import Progress
 
 # own classes
 from .log_analyzer.logvalidator import LogValidator
-from .log_analyzer import HTCAnalyzer
-from .log_summarizer import HTCSummarizer
+from .log_analyzer.htcanalyzer import HTCAnalyzer
+from .log_summarizer.htcsummarizer import HTCSummarizer
 from .view.analyzed_logfile_view import AnalyzedLogfileView
 from .view.summarized_logfile_view import SummarizedLogfileView
 from .globals import *

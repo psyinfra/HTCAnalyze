@@ -1,6 +1,6 @@
 import json
 
-from htcanalyze.log_analyzer.condor_log import JobTimes
+from htcanalyze.log_analyzer.condor_log.time_manager import JobTimes
 
 
 class SingleNodeJob:

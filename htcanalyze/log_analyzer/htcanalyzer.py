@@ -6,12 +6,19 @@ from typing import List
 from rich import print as rprint
 
 # import own module
-from .condor_log import CondorLog, LogfileErrorEvents, RamHistory
-from .event_handler import EventHandler, ReadLogException, ErrorEvent, \
-    SETEvents, JobExecutionEvent, JobSubmissionEvent, \
+from .condor_log.condor_log import (
+    CondorLog,
+    LogfileErrorEvents,
+    RamHistory,
+    JobDetails
+)
+from .event_handler.event_handler import (
+    EventHandler, ReadLogException, ErrorEvent,
+    JobExecutionEvent, JobSubmissionEvent,
     JobTerminationEvent, ImageSizeEvent
-from .event_handler.states import JobState, ErrorState
-from .condor_log import JobDetails
+)
+from .event_handler.set_events import SETEvents
+from .event_handler.states import ErrorState
 
 
 class HTCAnalyzer:

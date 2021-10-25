@@ -1,7 +1,7 @@
 
 import json
 from typing import List
-from htcanalyze.log_analyzer.event_handler import ErrorEvent
+from htcanalyze.log_analyzer.event_handler.job_events import ErrorEvent
 from htcanalyze.log_analyzer.event_handler.states import ErrorState
 
 

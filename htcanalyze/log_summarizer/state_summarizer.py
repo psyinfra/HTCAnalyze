@@ -1,6 +1,6 @@
 from abc import abstractmethod
-from htcanalyze.log_analyzer.event_handler import JobState
-from .summarizer import (
+from htcanalyze.log_analyzer.event_handler.states import JobState
+from .summarizer.condor_log_summarizer import (
     CondorLogSummarizer,
     NormalTerminationStateSummarizer,
     AbnormalTerminationStateSummarizer,

@@ -1,9 +1,9 @@
 
 from typing import List
 
-from .summarized_condor_logs import SummarizedCondorLogs
 from .state_summarizer import StateSummarizer
-from .summarizer import CondorLogSummarizer
+from .summarized_condor_logs.summarized_condor_logs import SummarizedCondorLogs
+from .summarizer.condor_log_summarizer import CondorLogSummarizer
 
 
 class HTCSummarizer(CondorLogSummarizer):

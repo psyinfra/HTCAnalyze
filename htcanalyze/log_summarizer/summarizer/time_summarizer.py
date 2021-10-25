@@ -1,6 +1,6 @@
 
 from typing import List
-from htcanalyze.log_analyzer.condor_log import TimeManager
+from htcanalyze.log_analyzer.condor_log.time_manager import TimeManager
 from .summarizer import Summarizer
 
 

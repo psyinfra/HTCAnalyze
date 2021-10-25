@@ -1,9 +1,11 @@
 from typing import List
 
 from .summarizer import Summarizer
-from ..summarized_condor_logs import SummarizedErrorState
-from htcanalyze.log_analyzer.condor_log import LogfileErrorEvents
-from htcanalyze.log_analyzer.event_handler import ErrorEvent
+from ..summarized_condor_logs.summarized_error_events import (
+    SummarizedErrorState
+)
+from htcanalyze.log_analyzer.condor_log.error_events import LogfileErrorEvents
+from htcanalyze.log_analyzer.event_handler.job_events import ErrorEvent
 from htcanalyze.log_analyzer.event_handler.states import ErrorState
 
 

@@ -3,8 +3,9 @@ from typing import List
 
 from .summarized_node_jobs import SummarizedNodeJobs
 from .summarized_error_events import SummarizedErrorState
-from htcanalyze.log_analyzer.condor_log import JobTimes, LogResources
-from htcanalyze.log_analyzer.event_handler import JobState
+from htcanalyze.log_analyzer.condor_log.time_manager import JobTimes
+from htcanalyze.log_analyzer.condor_log.logresource import LogResources
+from htcanalyze.log_analyzer.event_handler.states import JobState
 
 
 class SummarizedCondorLogs:
