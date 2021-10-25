@@ -2,6 +2,7 @@
 
 import json
 import math
+from abc import ABC
 from enum import Enum
 from numpy import nan_to_num as ntn
 
@@ -13,7 +14,7 @@ class LevelColors(Enum):
     NORMAL = 'green'
 
 
-class LogResource:
+class LogResource(ABC):
     """
     Class of one single HTCondor-JobLog resource.
 
