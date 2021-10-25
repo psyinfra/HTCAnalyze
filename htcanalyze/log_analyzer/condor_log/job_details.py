@@ -21,7 +21,7 @@ class JobDetails:
 
     ):
         self.set_events = set_events
-        self.time_manager = TimeManager(set_events)
+        self.time_manager = TimeManager.from_set_events(set_events)
         self.state = state
 
     @property
