@@ -83,10 +83,15 @@ class TimeManager:
 
     """
 
-    def __init__(self, set_events: SETEvents):
-        self.submission_date = set_events.submission_date
-        self.execution_date = set_events.execution_date
-        self.termination_date = set_events.termination_date
+    def __init__(
+            self,
+            submission_date: date_time,
+            execution_date: date_time,
+            termination_date: date_time
+    ):
+        self.submission_date = submission_date
+        self.execution_date = execution_date
+        self.termination_date = termination_date
         self.running_over_newyear = False
         self.job_times = self._manage_times()
 
