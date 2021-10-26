@@ -123,83 +123,100 @@ def setup_commandline_parser(
         description="Analyze or summarize HTCondor-Joblogs"
     )
 
-    parser.add_argument("path",
-                        nargs="*",
-                        action="append",
-                        default=[],
-                        help="ANY number of paths to log file(s)")
+    parser.add_argument(
+        "path",
+        nargs="*",
+        action="append",
+        default=[],
+        help="ANY number of paths to log file(s)"
+    )
     # also to add files with different destination,
     # to be used for config file / escaping flags with action=append
-    parser.add_argument("-f", "--files",
-                        nargs=1,
-                        action="append",
-                        dest="more_files",
-                        default=[],
-                        help="ONE path to log file")
-    parser.add_argument("-r", "--recursive",
-                        action="store_true",
-                        default=None,
-                        help="Recursive search through directory hierarchy")
+    parser.add_argument(
+        "-r", "--recursive",
+        action="store_true",
+        default=None,
+        help="Recursive search through directory hierarchy"
+    )
 
-    parser.add_argument("--version",
-                        help="Print out extended execution details",
-                        action="store_true")
+    parser.add_argument(
+        "--version",
+        help="Print out extended execution details",
+        action="store_true"
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        help="Print out extended execution details",
+        action="store_true",
+        default=None
+    )
+    parser.add_argument(
+        "--generate-log-file",
+        nargs="?",
+        const="htcanalyze.log",
+        default=None,
+        help="generates output about the process, "
+             "which is mostly useful for developers, "
+             "if no file is specified, "
+             "default: htcanalyze.log"
+    )
+    parser.add_argument(
+        "--analyze",
+        action="store_true",
+        default=False,
+        help="Analyze given files one by one"
+    )
+    parser.add_argument(
+        "--ext-log",
+        help="Suffix of HTCondor job logs (default: none)",
+        type=str
+    )
+    parser.add_argument(
+        "--ext-out",
+        help="Suffix of job out logs (default: .out)",
+        type=str
+    )
+    parser.add_argument(
+        "--ext-err",
+        help="Suffix of job error logs (default: .err)",
+        type=str
+    )
 
-    parser.add_argument("-v", "--verbose",
-                        help="Print out extended execution details",
-                        action="store_true",
-                        default=None)
-    parser.add_argument("--generate-log-file",
-                        nargs="?",
-                        const="htcanalyze.log",
-                        default=None,
-                        help="generates output about the process,"
-                             " which is mostly useful for developers, "
-                             "if no file is specified,"
-                             " default: htcanalyze.log")
-
-    parser.add_argument("--analyze",
-                        action="store_true",
-                        default=False,
-                        help="Analyze given files one by one")
-
-    parser.add_argument("--ext-log",
-                        help="Suffix of HTCondor job logs (default: none)",
-                        type=str)
-    parser.add_argument("--ext-out",
-                        help="Suffix of job out logs (default: .out)",
-                        type=str)
-    parser.add_argument("--ext-err",
-                        help="Suffix of job error logs (default: .err)",
-                        type=str)
-
-    ignore_metavar = "{" + ALLOWED_IGNORE_VALUES[0] + " ... " \
-                     + ALLOWED_IGNORE_VALUES[-1] + "}"
+    ignore_metavar = (
+            "{" + ALLOWED_IGNORE_VALUES[0] + " ... " +
+            ALLOWED_IGNORE_VALUES[-1] + "}"
+    )
     allowed_ign_vals = ALLOWED_IGNORE_VALUES[:]  # copying
     allowed_ign_vals.append('')  # needed so empty list are valid in config
-    parser.add_argument("--ignore",
-                        nargs="+",
-                        action="append",
-                        choices=allowed_ign_vals,
-                        metavar=ignore_metavar,
-                        dest="ignore_list",
-                        default=[],
-                        help="Ignore a section to not be printed")
+    parser.add_argument(
+        "--ignore",
+        nargs="+",
+        action="append",
+        choices=allowed_ign_vals,
+        metavar=ignore_metavar,
+        dest="ignore_list",
+        default=[],
+        help="Ignore a section to not be printed"
+    )
     allowed_show_vals = ALLOWED_SHOW_VALUES[:]  # copying
     allowed_show_vals.append('')  # needed so empty list are valid in config
-    parser.add_argument("--show",
-                        nargs="+",
-                        action="append",
-                        dest="show_list",
-                        choices=allowed_show_vals,
-                        default=[],
-                        help="Show more details")
+    parser.add_argument(
+        "--show",
+        nargs="+",
+        action="append",
+        dest="show_list",
+        choices=allowed_show_vals,
+        default=[],
+        help="Show more details"
+    )
 
-    parser.add_argument("--rdns-lookup",
-                        action="store_true",
-                        default=None,
-                        help="Resolve the ip-address of an execution nodes"
-                             " to their dns entry")
+    parser.add_argument(
+        "--rdns-lookup",
+        action="store_true",
+        default=None,
+        help="Resolve the ip-address of an execution nodes"
+             " to their dns entry"
+    )
 
     parser.add_argument(
         "--tolerated-usage",
@@ -218,12 +235,16 @@ def setup_commandline_parser(
              "between used and requested resources",
         default=BAD_USAGE
     )
-    parser.add_argument("-c", "--config",
-                        is_config_file=True,
-                        help="ONE path to config file")
-    parser.add_argument("--no-config",
-                        action="store_true",
-                        help="Do not search for config")
+    parser.add_argument(
+        "-c", "--config",
+        is_config_file=True,
+        help="ONE path to config file"
+    )
+    parser.add_argument(
+        "--no-config",
+        action="store_true",
+        help="Do not search for config"
+    )
 
     return parser
 
@@ -258,8 +279,6 @@ def manage_params(args: list) -> dict:
 
     # get files from prio_parsed
     files_list = []
-    for log_file in prio_parsed.more_files:
-        files_list.extend(log_file)
 
     if prio_parsed.config:
         # do not use config files if --no-config flag is set
@@ -281,12 +300,6 @@ def manage_params(args: list) -> dict:
         # extend files list by given paths
         for log_paths in commands_parsed.path:
             files_list.extend(log_paths)
-        # add files, if none are given by terminal
-        if not files_list:
-            for log_paths in cmd_dict["more_files"]:
-                # make sure that empty strings are not getting inserted
-                if len(log_paths) == 1 and log_paths[0] != "":
-                    files_list.extend(log_paths)
 
         # remove empty string from lists, because configargparse
         # inserts empty strings, when list is empty
@@ -305,7 +318,6 @@ def manage_params(args: list) -> dict:
         cmd_dict = vars(commands_parsed).copy()
 
     del cmd_dict["path"]
-    del cmd_dict["more_files"]
     cmd_dict["files"] = files_list
 
     # concat ignore list
@@ -369,32 +381,25 @@ def print_results(
     if not log_files:
         print("No files to process")
         sys.exit(NORMAL_EXECUTION)
-
-    # create progressbar, do not redirect output
-    with Progress(
-            transient=True,
-            redirect_stdout=False,
-            redirect_stderr=False
-    ) as progress:
-
-        task = progress.add_task("Analysing files...", total=len(log_files))
-
-        htc_analyze = HTCAnalyzer(rdns_lookup=rdns_lookup)
-        condor_logs = htc_analyze.analyze(log_files)
-        analyzed_logs = []
-        for condor_log in condor_logs:
-            progress.update(task, advance=1)
-            analyzed_logs.append(condor_log)
+    htc_analyze = HTCAnalyzer(rdns_lookup=rdns_lookup)
+    condor_logs = htc_analyze.analyze(log_files)
 
     if mode == 'analyze' or len(log_files) == 1:
         view = AnalyzedLogfileView(
             bad_usage=bad_usage,
             tolerated_usage=tolerated_usage
         )
-        view.print_condor_logs(analyzed_logs)
+        analyzed_logs = view.track_progress(condor_logs, len(log_files))
+        view.print_condor_logs(
+            analyzed_logs,
+            show_legend=show_legend,
+            show_err=show_err,
+            show_out=show_out
+        )
 
     else:
         view = SummarizedLogfileView()
+        analyzed_logs = view.track_progress(condor_logs, len(log_files))
         htc_state_summarizer = HTCSummarizer(analyzed_logs)
         summarized_condor_logs = htc_state_summarizer.summarize()
         view.print_summarized_condor_logs(summarized_condor_logs)
@@ -461,7 +466,7 @@ def run(commandline_args):
 
         print_results(
             log_files=valid_files,
-            show_legend=show_legend,
+            show_legend=False,
             **param_dict
         )
 
