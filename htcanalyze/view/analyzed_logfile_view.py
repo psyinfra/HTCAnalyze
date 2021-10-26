@@ -65,9 +65,18 @@ class AnalyzedLogfileView(View):
             exec_str = str(time_manager.execution_date)
             term_str = str(time_manager.termination_date)
         else:
-            sub_str = time_manager.submission_date.strftime(STRF_FORMAT)
-            exec_str = time_manager.execution_date.strftime(STRF_FORMAT)
-            term_str = time_manager.termination_date.strftime(STRF_FORMAT)
+            sub_str = (
+                time_manager.submission_date.strftime(STRF_FORMAT) if
+                time_manager.submission_date else str(None)
+            )
+            exec_str = (
+                time_manager.execution_date.strftime(STRF_FORMAT) if
+                time_manager.execution_date else str(None)
+            )
+            term_str = (
+                time_manager.termination_date.strftime(STRF_FORMAT) if
+                time_manager.termination_date else str(None)
+            )
 
         time_table.add_row(
             "Submission",
