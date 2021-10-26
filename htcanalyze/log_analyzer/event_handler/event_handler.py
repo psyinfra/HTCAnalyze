@@ -4,7 +4,7 @@ import os
 import re
 import logging
 import numpy as np
-from typing import List
+from typing import List, Union
 from datetime import datetime as date_time
 
 from htcondor import (
@@ -12,6 +12,7 @@ from htcondor import (
     JobEventType as jet,
     JobEvent as HTCJobEvent
 )
+from .states import *
 from .job_events import (
     JobEvent,
     ErrorEvent,
@@ -23,9 +24,7 @@ from .job_events import (
     JobAbortedBeforeSubmissionEvent,
     JobHeldEvent,
     ImageSizeEvent,
-    ShadowExceptionEvent,
-    JobState,
-    ErrorState
+    ShadowExceptionEvent
 )
 from ..condor_log.logresource import (
     LogResources,
@@ -63,7 +62,7 @@ class EventHandler:
     _time_stamp = None
 
     def __init__(self):
-        self._state = None
+        self._state: Union[JobState, None] = None
 
     @event_decorator
     def get_submission_event(self, event) -> JobEvent:
@@ -75,7 +74,7 @@ class EventHandler:
         )
         if match_from_host:
             submitted_host = match_from_host[1]
-            self._state = JobState.WAITING
+            self._state = WaitingState()
             return JobSubmissionEvent(
                 self._event_number,
                 self._time_stamp,
@@ -83,11 +82,11 @@ class EventHandler:
             )
         # else ERROR
         reason = "Can't read user address"
-        self._state = JobState.ERROR_WHILE_READING
+        self._state = ErrorWhileReadingState()
         return ErrorEvent(
             self._event_number,
             None,
-            ErrorState.INVALID_USER_ADDRESS,
+            InvalidUserAddressState(),
             reason
         )
 
@@ -104,7 +103,7 @@ class EventHandler:
         )
         if match_to_host:
             execution_host = match_to_host[1]
-            self._state = JobState.RUNNING
+            self._state = RunningState()
             return JobExecutionEvent(
                 self._event_number,
                 self._time_stamp,
@@ -114,11 +113,11 @@ class EventHandler:
         # ERROR
         else:
             reason = "Can't read host address"
-            self._state = JobState.ERROR_WHILE_READING
+            self._state = ErrorWhileReadingState()
             return ErrorEvent(
                 self._event_number,
                 None,
-                ErrorState.INVALID_HOST_ADDRESS,
+                InvalidHostAddressState(),
                 reason
             )
 
@@ -168,11 +167,11 @@ class EventHandler:
 
         # differentiate between normal and abnormal termination
         if normal_termination:
-            state = JobState.NORMAL_TERMINATION
+            state = NormalTerminationState()
 
             return_value = event.get('ReturnValue')
         else:
-            state = JobState.ABNORMAL_TERMINATION
+            state = AbnormalTerminationState()
             return_value = event.get('TerminatedBySignal')
             # Todo: include description when possible
 
@@ -195,7 +194,7 @@ class EventHandler:
                 self._time_stamp,
                 reason
             )
-        elif self._state == JobState.WAITING:
+        elif self._state == WaitingState():
             aborted_event = JobAbortedBeforeExecutionEvent(
                 self._event_number,
                 self._time_stamp,
@@ -207,7 +206,7 @@ class EventHandler:
                 self._time_stamp,
                 reason
             )
-        self._state = JobState.ABORTED
+        self._state = AbortedState()
         return aborted_event
 
     @event_decorator
@@ -265,10 +264,14 @@ class EventHandler:
             else:
                 reason = f"Not able to open the file: {file_name}"
 
-            self._state = JobState.ERROR_WHILE_READING
+            self._state = ErrorWhileReadingState()
             raise ReadLogException(reason)
 
-    def get_job_event(self, event, rdns_lookup=False) -> JobEvent:
+    def get_job_event(
+            self,
+            event: HTCJobEvent,
+            rdns_lookup: bool = False
+    ) -> JobEvent:
         if event.type == jet.SUBMIT:
             job_event = self.get_submission_event(event)
 

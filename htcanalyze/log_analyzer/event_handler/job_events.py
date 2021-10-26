@@ -3,7 +3,7 @@ import json
 from datetime import datetime as date_time
 
 from .node_cache import NodeCache
-from .states import JobState, ErrorState
+from .states import *
 
 
 class DateTimeWrapper(date_time):
@@ -128,7 +128,7 @@ class ErrorEvent(JobEvent):
             reason
     ):
         super(ErrorEvent, self).__init__(event_number, time_stamp)
-        assert error_state.name in ErrorState.__members__.keys()
+        assert isinstance(error_state, ErrorState)
         self.error_state = error_state
         self.reason = reason
 
@@ -144,10 +144,10 @@ class JobAbortedEvent(ErrorEvent, JobTerminationEvent):
         super().__init__(
             event_number,
             time_stamp,
-            ErrorState.ABORTED,
+            AbortedState(),
             reason
         )
-        self.termination_state = JobState.ABORTED
+        self.termination_state = AbortedState()
 
 
 class JobAbortedBeforeSubmissionEvent(JobAbortedEvent):
@@ -181,7 +181,7 @@ class JobHeldEvent(ErrorEvent):
         super(JobHeldEvent, self).__init__(
             event_number,
             time_stamp,
-            ErrorState.JOB_HELD,
+            JobHeldState(),
             reason
         )
 
@@ -197,6 +197,6 @@ class ShadowExceptionEvent(ErrorEvent):
         super(ShadowExceptionEvent, self).__init__(
             event_number,
             time_stamp,
-            ErrorState.SHADOW_EXCEPTION,
+            ShadowExceptionState(),
             reason
         )

@@ -29,7 +29,7 @@ class AnalyzedLogfileView(View):
             # title="Job Details"
         )
 
-        color = job_details.state.get_jobstate_color()
+        color = job_details.state.color
         job_details_table.add_row(
             "State",
             f"[{color}]{job_details.state.name}[/{color}]"

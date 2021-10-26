@@ -3,7 +3,22 @@ from abc import ABC
 
 
 class State(ABC):
-    pass
+    _name: str
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+
+    def __eq__(self, other):
+        return isinstance(self, other.__class__)
+
+    def __hash__(self):
+        """Use class name as hash to use states as dictionary keys."""
+        return hash(self.__class__.name)
 
 
 class JobState(State, ABC):
@@ -26,12 +41,14 @@ class NormalTerminationState(TerminationState):
 
     def __init__(self):
         self.color = "green"
+        self.name = "NORMAL_TERMINATION"
 
 
 class AbnormalTerminationState(TerminationState):
 
     def __init__(self):
         self.color = "red"
+        self.name = "ABNORMAL_TERMINATION"
 
 
 class ExecutionState(JobState, ABC):
@@ -41,11 +58,17 @@ class ExecutionState(JobState, ABC):
 
 
 class WaitingState(ExecutionState):
-    pass
+
+    def __init__(self):
+        super().__init__()
+        self.name = "WAITING"
 
 
 class RunningState(ExecutionState):
-    pass
+
+    def __init__(self):
+        super().__init__()
+        self.name = "RUNNING"
 
 
 class ErrorState(State, ABC):
@@ -55,26 +78,42 @@ class ErrorState(State, ABC):
 
 
 class ErrorWhileReadingState(JobState, ErrorState):
-    pass
+
+    def __init__(self):
+        super().__init__()
+        self.name = "ERROR_WHILE_READING"
 
 
 class InvalidHostAddressState(ErrorState):
-    pass
+
+    def __init__(self):
+        super().__init__()
+        self.name = "INVALID_HOST_ADDRESS"
 
 
 class InvalidUserAddressState(ErrorState):
-    pass
+
+    def __init__(self):
+        super().__init__()
+        self.name = "INVALID_USER_ADDRESS"
 
 
 class AbortedState(TerminationState, ErrorState):
-    pass
+
+    def __init__(self):
+        super().__init__()
+        self.name = "ABORTED"
 
 
 class JobHeldState(ErrorState):
-    pass
+
+    def __init__(self):
+        super().__init__()
+        self.name = "JOB_HELD"
 
 
 class ShadowExceptionState(ErrorState):
-    pass
 
-
+    def __init__(self):
+        super().__init__()
+        self.name = "SHADOW_EXCEPTION"

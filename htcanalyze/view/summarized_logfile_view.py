@@ -1,7 +1,6 @@
 
 from datetime import timedelta
 from typing import List
-from rich.progress import track
 
 from .view import View
 from ..log_summarizer.summarized_condor_logs.summarized_condor_logs import (
@@ -139,7 +138,7 @@ class SummarizedLogfileView(View):
             title="Number of Jobs per State",
         )
         for state_summarized_logs in summarized_condor_logs:
-            color = state_summarized_logs.state.get_jobstate_color()
+            color = state_summarized_logs.state.color
             jobs_table.add_row(
                 f"[{color}]{state_summarized_logs.state.name}[/{color}]",
                 str(state_summarized_logs.n_jobs)
@@ -152,7 +151,7 @@ class SummarizedLogfileView(View):
 
             print()
 
-            color = state_summarized_logs.state.get_jobstate_color()
+            color = state_summarized_logs.state.color
             self.print_desc_line(
                 "Log files with JobState:",
                 state_summarized_logs.state.name,

@@ -18,7 +18,7 @@ from .event_handler.event_handler import (
     JobTerminationEvent, ImageSizeEvent
 )
 from .event_handler.set_events import SETEvents
-from .event_handler.states import ErrorState
+from .event_handler.states import ErrorWhileReadingState
 
 
 class HTCAnalyzer:
@@ -113,7 +113,7 @@ class HTCAnalyzer:
                 ErrorEvent(
                     None,
                     None,
-                    ErrorState.ERROR_WHILE_READING,
+                    ErrorWhileReadingState(),
                     reason=str(err)
                 )
             )
