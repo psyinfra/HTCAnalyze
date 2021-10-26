@@ -37,12 +37,12 @@ class AnalyzedLogfileView(View):
 
         job_details_table.add_row(
             "Submitter Address",
-            job_details.set_events.submitter_address
+            str(job_details.set_events.submitter_address)
         )
 
         job_details_table.add_row(
             "Host Address",
-            job_details.set_events.host_address
+            str(job_details.set_events.host_address)
         )
 
         job_details_table.add_row(
@@ -96,8 +96,10 @@ class AnalyzedLogfileView(View):
 
         self.console.print(time_table)
 
-    @staticmethod
-    def print_ram_history(ram_history, show_legend=True):
+    def print_ram_history(self, ram_history, show_legend=True):
+        if not ram_history.image_size_events:
+            return
+        self.console.print("Ram Histogram", justify="center")
         print(ram_history.plot_ram(show_legend=show_legend))
 
     def print_error_events(self, logfile_error_events):
