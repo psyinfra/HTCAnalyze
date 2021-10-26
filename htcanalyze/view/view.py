@@ -29,8 +29,7 @@ class View(ABC):
         with Progress(
                 transient=True,
                 redirect_stdout=False,
-                redirect_stderr=False,
-                console=self.console
+                redirect_stderr=False
         ) as progress:
             task = progress.add_task("Analysing files...", total=n_files)
             for condor_log in condor_logs:
