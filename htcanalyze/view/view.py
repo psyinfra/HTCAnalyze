@@ -24,14 +24,15 @@ class View(ABC):
         self.bad_usage = bad_usage
         self.tolerated_usage = tolerated_usage
 
-    def track_progress(self, condor_logs, n_files):
-        analyzed_logs = []
+    @staticmethod
+    def track_progress(condor_logs, n_files):
         with Progress(
                 transient=True,
                 redirect_stdout=False,
                 redirect_stderr=False
         ) as progress:
             task = progress.add_task("Analysing files...", total=n_files)
+            analyzed_logs = []
             for condor_log in condor_logs:
                 progress.update(task, advance=1)
                 analyzed_logs.append(condor_log)
@@ -75,16 +76,21 @@ class View(ABC):
     def print_resources(
             self,
             resources,
-            title="Job Resources",
+            headers=None,
             precision=3
     ):
         if not resources:
             return
 
-        resource_table = self.create_table(
-            ["Partitionable Resources", "Usage ", "Request", "Allocated"],
-            title=title
-        )
+        if headers is None:
+            headers = [
+                "Partitionable Resources",
+                "Usage",
+                "Request",
+                "Allocated"
+            ]
+
+        resource_table = self.create_table(headers)
 
         for resource in resources.resources:
             if not resource.is_empty():

@@ -1,6 +1,7 @@
 
 from datetime import timedelta
 from typing import List
+from rich.progress import track
 
 from .view import View
 from ..log_summarizer.summarized_condor_logs.summarized_condor_logs import (
@@ -59,8 +60,7 @@ class SummarizedLogfileView(View):
                 "Avg. Waiting Time",
                 "Avg. Execution Time",
                 "Avg. Runtime (Total)"
-            ],
-            # title="Job Dates and Times",
+            ]
         )
 
         if sort_by_n_jobs:
@@ -138,7 +138,6 @@ class SummarizedLogfileView(View):
             ["State", "No. of Jobs"],
             title="Number of Jobs per State",
         )
-
         for state_summarized_logs in summarized_condor_logs:
             color = state_summarized_logs.state.get_jobstate_color()
             jobs_table.add_row(
@@ -164,7 +163,12 @@ class SummarizedLogfileView(View):
 
             self.print_resources(
                 state_summarized_logs.avg_resources,
-                title="Average Job Resources"
+                headers=[
+                    "Partitionable Resources",
+                    "Avg. Usage",
+                    "Avg. Request",
+                    "Avg. Allocated"
+                ]
             )
 
             self.print_summarized_node_jobs(
