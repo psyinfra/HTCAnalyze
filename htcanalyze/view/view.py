@@ -1,4 +1,3 @@
-
 import os
 import logging
 
@@ -8,6 +7,7 @@ from abc import ABC
 from rich.console import Console
 from rich.table import Table, box
 from rich.text import Text
+from rich.progress import Progress
 
 from htcanalyze.globals import BAD_USAGE, TOLERATED_USAGE
 
@@ -23,6 +23,44 @@ class View(ABC):
         self.window_width = self.console.size.width
         self.bad_usage = bad_usage
         self.tolerated_usage = tolerated_usage
+
+    def track_progress(self, condor_logs, n_files):
+        analyzed_logs = []
+        with Progress(
+                transient=True,
+                redirect_stdout=False,
+                redirect_stderr=False,
+                console=self.console
+        ) as progress:
+            task = progress.add_task("Analysing files...", total=n_files)
+            for condor_log in condor_logs:
+                progress.update(task, advance=1)
+                analyzed_logs.append(condor_log)
+            return analyzed_logs
+
+    def read_file(self, file: str):
+        """
+        Read a file.
+
+        :param: file
+        :return: content
+        """
+        output_string = ""
+        try:
+
+            if os.path.getsize(file) == 0:
+                return output_string
+
+            with open(file, "r", encoding='utf-8') as output_content:
+                output_string = output_content.read()
+        except NameError as err:
+            logging.exception(err)
+        except FileNotFoundError:
+            self.console.print(f"[yellow]There is no file: {file}")
+        except TypeError as err:
+            logging.exception(err)
+
+        return output_string
 
     @staticmethod
     def create_table(headers: List, title=None) -> Table:
@@ -88,27 +126,3 @@ class View(ABC):
 
         if boxing:
             print(highlight_char*self.window_width)
-
-    def read_file(self, file: str):
-        """
-        Read a file.
-
-        :param: file
-        :return: content
-        """
-        output_string = ""
-        try:
-
-            if os.path.getsize(file) == 0:
-                return output_string
-
-            with open(file, "r", encoding='utf-8') as output_content:
-                output_string = output_content.read()
-        except NameError as err:
-            logging.exception(err)
-        except FileNotFoundError:
-            self.console.print(f"[yellow]There is no file: {file}")
-        except TypeError as err:
-            logging.exception(err)
-
-        return output_string
