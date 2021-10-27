@@ -11,17 +11,23 @@ import subprocess
 from typing import List
 from datetime import datetime as date_time
 from configargparse import ArgumentParser, HelpFormatter
-from rich import print as rprint
-from rich.progress import Progress
+from rich.console import Console
 
 # own classes
 from .log_analyzer.logvalidator import LogValidator
 from .log_analyzer.htcanalyzer import HTCAnalyzer
 from .log_summarizer.htcsummarizer import HTCSummarizer
+from .view.view import track_progress
 from .view.analyzed_logfile_view import AnalyzedLogfileView
 from .view.summarized_logfile_view import SummarizedLogfileView
 from .globals import *
 from . import setup_logging_tool
+
+
+class HTCAnalyzeException(Exception):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(args, kwargs)
 
 
 def check_for_redirection() -> (bool, bool, list):
@@ -95,13 +101,6 @@ def setup_prioritized_parser():
     parser.add_argument("--version",
                         help="Print out version",
                         action="store_true")
-
-    parser.add_argument("-f", "--files",
-                        nargs=1,
-                        action="append",
-                        dest="more_files",
-                        default=[],
-                        help="ONE path to log file")
     return parser
 
 
@@ -284,10 +283,9 @@ def manage_params(args: list) -> dict:
         # do not use config files if --no-config flag is set
         if prio_parsed.no_config:
             # if as well config is set, exit, because of conflict
-            print(
-                "htcanalyze: error: conflict between --no-config and --config"
+            raise HTCAnalyzeException(
+                "conflict between --no-config and --config"
             )
-            sys.exit(HTCANALYZE_ERROR)
         # else add config again
         args.extend(["--config", prio_parsed.config[0]])
 
@@ -334,11 +332,9 @@ def manage_params(args: list) -> dict:
 
     # error handling
     if cmd_dict["show_list"] and not cmd_dict["analyze"]:
-        rprint(
-            "[red]htcanalyze: error: "
-            "--show only allowed with analyze mode[/red]"
+        raise HTCAnalyzeException(
+            "--show only allowed with analyze mode"
         )
-        sys.exit(HTCANALYZE_ERROR)
 
     # delete unnecessary information
     del cmd_dict["version"]
@@ -389,7 +385,11 @@ def print_results(
             bad_usage=bad_usage,
             tolerated_usage=tolerated_usage
         )
-        analyzed_logs = view.track_progress(condor_logs, len(log_files))
+        analyzed_logs = track_progress(
+            condor_logs,
+            len(log_files),
+            tracking_title="Analyzing files ..."
+        )
         view.print_condor_logs(
             analyzed_logs,
             show_legend=show_legend,
@@ -399,7 +399,11 @@ def print_results(
 
     else:
         view = SummarizedLogfileView()
-        analyzed_logs = view.track_progress(condor_logs, len(log_files))
+        analyzed_logs = track_progress(
+            condor_logs,
+            len(log_files),
+            tracking_title="Summarizing files ..."
+        )
         htc_state_summarizer = HTCSummarizer(analyzed_logs)
         summarized_condor_logs = htc_state_summarizer.summarize()
         view.print_summarized_condor_logs(summarized_condor_logs)
@@ -416,6 +420,8 @@ def run(commandline_args):
     """
     if not isinstance(commandline_args, list):
         commandline_args = commandline_args.split()
+
+    console = Console()
 
     try:
         start = date_time.now()
@@ -446,18 +452,23 @@ def run(commandline_args):
         validator = LogValidator(
             ext_log=param_dict["ext_log"],
             ext_out=param_dict["ext_out"],
-            ext_err=param_dict["ext_err"],
+            ext_err=param_dict["ext_err"]
+        )
+        valid_files_generator = validator.common_validation(
+            param_dict["files"],
             recursive=param_dict["recursive"]
         )
+        with console.status("[bold green]Validating files ...") as status:
+            valid_files = [
+                file_path for file_path in valid_files_generator
+            ]
 
-        valid_files = validator.common_validation(param_dict["files"])
-
-        rprint(
+        console.print(
             f"[green]{len(valid_files)} valid log file(s)[/green]\n"
         )
 
         if not valid_files:
-            rprint("[red]No valid HTCondor log files found[/red]")
+            console.rprint("[red]No valid HTCondor log files found[/red]")
             logging.debug("-------End of htcanalyze script-------")
             sys.exit(NO_VALID_FILES)
 
@@ -466,27 +477,32 @@ def run(commandline_args):
 
         print_results(
             log_files=valid_files,
-            show_legend=False,
+            show_legend=show_legend,
             **param_dict
         )
 
-        end = date_time.now()
-
-        logging.debug(f"Runtime: {end - start}")  # runtime of this script
-
-        logging.debug("-------End of htcanalyze script-------")
-
-        sys.exit(NORMAL_EXECUTION)
+    except HTCAnalyzeException as err:
+        logging.exception(err)
+        console.print(f"[red]{err.__class__.__name__}: {err}[/red]")
+        sys.exit(HTCANALYZE_ERROR)
 
     except TypeError as err:
         logging.exception(err)
-        rprint(f"[red]{err.__class__.__name__}: {err}[/red]")
+        console.print(f"[red]{err.__class__.__name__}: {err}[/red]")
         sys.exit(TYPE_ERROR)
 
     except KeyboardInterrupt:
         logging.info("Script was interrupted by the user")
         print("Interrupted by user")
         sys.exit(KEYBOARD_INTERRUPT)
+
+    end = date_time.now()
+
+    logging.debug(f"Runtime: {end - start}")  # runtime of this script
+
+    logging.debug("-------End of htcanalyze script-------")
+
+    sys.exit(NORMAL_EXECUTION)
 
 
 def main():

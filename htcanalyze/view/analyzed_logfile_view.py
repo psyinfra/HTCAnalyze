@@ -2,7 +2,7 @@ import os
 
 from typing import List
 
-from .view import View
+from .view import View, track_progress
 from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog
 from htcanalyze.globals import STRF_FORMAT
 
