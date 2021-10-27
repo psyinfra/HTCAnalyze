@@ -26,8 +26,17 @@ from . import setup_logging_tool
 
 class HTCAnalyzeException(Exception):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(args, kwargs)
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.message = args[0]
+
+
+class HTCAnalyzeTerminationEvent(Exception):
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.message = args[0]
+        self.exit_code = args[1]
 
 
 def check_for_redirection() -> (bool, bool, list):
@@ -274,7 +283,10 @@ def manage_params(args: list) -> dict:
     # first of all check for prioritised/exit params
     if prio_parsed.version:
         print(f"Version: {version()}")
-        sys.exit(NORMAL_EXECUTION)
+        raise HTCAnalyzeTerminationEvent(
+            "Get current version",
+            NORMAL_EXECUTION
+        )
 
     # get files from prio_parsed
     files_list = []
@@ -374,9 +386,6 @@ def print_results(
         show_out=False,
         **__
 ):
-    if not log_files:
-        print("No files to process")
-        sys.exit(NORMAL_EXECUTION)
     htc_analyze = HTCAnalyzer(rdns_lookup=rdns_lookup)
     condor_logs = htc_analyze.analyze(log_files)
 
@@ -408,8 +417,6 @@ def print_results(
         summarized_condor_logs = htc_state_summarizer.summarize()
         view.print_summarized_condor_logs(summarized_condor_logs)
 
-    sys.exit(NORMAL_EXECUTION)
-
 
 def run(commandline_args):
     """
@@ -424,7 +431,6 @@ def run(commandline_args):
     console = Console()
 
     try:
-        start = date_time.now()
 
         redirecting_stdout, reading_stdin, std_input = check_for_redirection()
 
@@ -438,11 +444,6 @@ def run(commandline_args):
             param_dict["generate_log_file"],
             param_dict["verbose"]
         )
-
-        logging.debug("-------Start of htcanalyze script-------")
-
-        if param_dict["verbose"]:
-            logging.info('Verbose mode turned on')
 
         if reading_stdin:
             logging.debug("Reading from stdin")
@@ -458,7 +459,7 @@ def run(commandline_args):
             param_dict["files"],
             recursive=param_dict["recursive"]
         )
-        with console.status("[bold green]Validating files ...") as status:
+        with console.status("[bold green]Validating files ..."):
             valid_files = [
                 file_path for file_path in valid_files_generator
             ]
@@ -468,46 +469,46 @@ def run(commandline_args):
         )
 
         if not valid_files:
-            console.rprint("[red]No valid HTCondor log files found[/red]")
-            logging.debug("-------End of htcanalyze script-------")
-            sys.exit(NO_VALID_FILES)
-
-        # do not show legend, if output is redirected
-        show_legend = not redirecting_stdout
+            raise HTCAnalyzeTerminationEvent(
+                "No valid HTCondor log files found",
+                NO_VALID_FILES
+            )
 
         print_results(
             log_files=valid_files,
-            show_legend=show_legend,
+            show_legend=False,
             **param_dict
         )
 
     except HTCAnalyzeException as err:
-        logging.exception(err)
-        console.print(f"[red]{err.__class__.__name__}: {err}[/red]")
-        sys.exit(HTCANALYZE_ERROR)
+        raise HTCAnalyzeTerminationEvent(err, HTCANALYZE_ERROR)
 
     except TypeError as err:
-        logging.exception(err)
-        console.print(f"[red]{err.__class__.__name__}: {err}[/red]")
-        sys.exit(TYPE_ERROR)
+        raise HTCAnalyzeTerminationEvent(err, TYPE_ERROR)
 
     except KeyboardInterrupt:
-        logging.info("Script was interrupted by the user")
-        print("Interrupted by user")
-        sys.exit(KEYBOARD_INTERRUPT)
-
-    end = date_time.now()
-
-    logging.debug(f"Runtime: {end - start}")  # runtime of this script
-
-    logging.debug("-------End of htcanalyze script-------")
-
-    sys.exit(NORMAL_EXECUTION)
+        raise HTCAnalyzeTerminationEvent(
+            "Script was interrupted by the user",
+            KEYBOARD_INTERRUPT
+        )
 
 
 def main():
     """main function (entry point)."""
-    run(sys.argv[1:])
+    console = Console()
+    try:
+        logging.debug("-------Start of htcanalyze script-------")
+        start = date_time.now()
+        run(sys.argv[1:])
+        end = date_time.now()
+        logging.debug(f"Runtime: {end - start}")
+        logging.debug("-------End of htcanalyze script-------")
+        sys.exit(NORMAL_EXECUTION)
+    except HTCAnalyzeTerminationEvent as err:
+        if not err.exit_code == NORMAL_EXECUTION:
+            logging.debug(err.message)
+            console.print(f"[red]{err.message}[/red]")
+        sys.exit(err.exit_code)
 
 
 if __name__ == "main":
