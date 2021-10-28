@@ -167,17 +167,17 @@ def setup_commandline_parser(
     parser.add_argument(
         "--ext-log",
         help="Suffix of HTCondor job logs (default: none)",
-        type=str
+        default=EXT_LOG_DEFAULT
     )
     parser.add_argument(
         "--ext-out",
         help="Suffix of job out logs (default: .out)",
-        type=str
+        default=EXT_OUT_DEFAULT
     )
     parser.add_argument(
         "--ext-err",
         help="Suffix of job error logs (default: .err)",
-        type=str
+        default=EXT_ERR_DEFAULT
     )
 
     ignore_metavar = (

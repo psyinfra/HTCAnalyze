@@ -18,6 +18,10 @@ ALLOWED_IGNORE_VALUES = [
     "errors", "ram-history"
 ]
 
+EXT_LOG_DEFAULT = ".log"
+EXT_OUT_DEFAULT = ".out"
+EXT_ERR_DEFAULT = ".err"
+
 NORMAL_EXECUTION = 0
 NO_VALID_FILES = 1
 HTCANALYZE_ERROR = 2
