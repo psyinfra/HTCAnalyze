@@ -59,18 +59,8 @@ def version():
     )
     return output.decode('utf-8').split('\n', maxsplit=1)[0]
 
-
-class CustomFormatter(HelpFormatter):
-    """
-
-    Custom formatter for setting argparse formatter_class.
-
-    Identical to the default formatter,
-     except that very long option strings are split into two
-    lines.
-
-    Solution discussed on: https://bit.ly/32CkCWK
-    """
+def get_config(config_paths):
+    pass
 
     def _format_action_invocation(self, action):
         if not action.option_strings:
