@@ -1,6 +1,6 @@
 
 import pytest
-from htcanalyze.main import manage_params, HTCAnalyzeTerminationEvent
+from htcanalyze.main import HTCAnalyzeTerminationEvent
 from htcanalyze.globals import NORMAL_EXECUTION, HTCANALYZE_ERROR
 
 
@@ -16,74 +16,6 @@ class PseudoTTY(object):
 
     def isatty(self):
         return self.__isset
-
-
-def test_manage_params():
-
-    args = "--version".split()
-    with pytest.raises(HTCAnalyzeTerminationEvent) as pytest_wrapped_e:
-        manage_params(args)
-    assert pytest_wrapped_e.type == HTCAnalyzeTerminationEvent
-    assert pytest_wrapped_e.value.exit_code == NORMAL_EXECUTION
-    args = "--help".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        manage_params(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == NORMAL_EXECUTION
-
-    # normal parameters
-    args = "--ext-log=.logging --ext-out=.output --ext-err=.error".split()
-    res_dict = manage_params(args)
-    assert res_dict["ext_log"] == ".logging"
-    assert res_dict["ext_out"] == ".output"
-    assert res_dict["ext_err"] == ".error"
-
-    args = "--anal --show htc-err htc-out --ignore execution-details " \
-           "times errors host-nodes used-resources requested-resources " \
-           "allocated-resources all-resources ram-history".split()
-    res_dict = manage_params(args)
-    assert res_dict["show_list"] == "htc-err htc-out".split()
-    assert res_dict["ignore_list"] == "execution-details times errors " \
-                                      "host-nodes used-resources " \
-                                      "requested-resources " \
-                                      "allocated-resources " \
-                                      "all-resources ram-history".split()
-
-    args = "--show something".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        manage_params(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
-
-    args = "--show hct-err --anal".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        manage_params(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
-
-    args = "--ignore something".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        manage_params(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
-
-    args = "--rdns-lookup --no-config --generate-log -v".split()
-    res_dict = manage_params(args)
-    assert res_dict["rdns_lookup"] is True
-    assert res_dict["generate_log_file"] == "htcanalyze.log"
-    assert res_dict["verbose"] is True
-
-    args = "--what_is_this".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        manage_params(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
-
-    args = "--mode whatever".split()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        manage_params(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
 
 
 # Todo: other methods test
