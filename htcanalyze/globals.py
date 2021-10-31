@@ -1,22 +1,36 @@
 """Global parameters."""
 
-import sys
+import os
 from . import get_package_name
 
 # --- Main Globals --- #
 # config paths to watch in the following order
 CONFIG_PATHS = [
-    f'/etc/{get_package_name()}.conf',
-    f'~/.config/{get_package_name()}.conf',
-    f'{sys.prefix}/config/{get_package_name()}.conf'
+    f"/etc/{get_package_name()}.conf",
+    f"~/.config/{get_package_name()}.conf",
+    f"{os.getcwd()}/config/{get_package_name()}.conf",
+    f"{os.getcwd()}/{get_package_name()}.conf"
 ]
 
-ALLOWED_SHOW_VALUES = ["htc-err", "htc-out"]
-ALLOWED_IGNORE_VALUES = [
-    "execution-details", "times", "host-nodes", "used-resources",
-    "requested-resources", "allocated-resources", "all-resources",
-    "errors", "ram-history"
+ALLOWED_SHOW_VALUES = [
+    "htc-err",
+    "htc-out"
 ]
+ALLOWED_IGNORE_VALUES = [
+    "execution-details",
+    "times",
+    "host-nodes",
+    "used-resources",
+    "requested-resources",
+    "allocated-resources",
+    "all-resources",
+    "errors",
+    "ram-history"
+]
+
+EXT_LOG_DEFAULT = ".log"
+EXT_OUT_DEFAULT = ".out"
+EXT_ERR_DEFAULT = ".err"
 
 NORMAL_EXECUTION = 0
 NO_VALID_FILES = 1

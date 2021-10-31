@@ -12,6 +12,25 @@ from rich.progress import Progress
 from htcanalyze.globals import BAD_USAGE, TOLERATED_USAGE
 
 
+def track_progress(
+        generator,
+        n_items=100,
+        tracking_title="...",
+):
+    with Progress(
+            transient=True,
+            redirect_stdout=False,
+            redirect_stderr=False,
+            expand=True
+    ) as progress:
+        task = progress.add_task(tracking_title, total=n_items)
+        items = []
+        for item in generator:
+            progress.update(task, advance=1)
+            items.append(item)
+        return items
+
+
 class View(ABC):
 
     def __init__(
@@ -23,20 +42,6 @@ class View(ABC):
         self.window_width = self.console.size.width
         self.bad_usage = bad_usage
         self.tolerated_usage = tolerated_usage
-
-    @staticmethod
-    def track_progress(condor_logs, n_files):
-        with Progress(
-                transient=True,
-                redirect_stdout=False,
-                redirect_stderr=False
-        ) as progress:
-            task = progress.add_task("Analysing files...", total=n_files)
-            analyzed_logs = []
-            for condor_log in condor_logs:
-                progress.update(task, advance=1)
-                analyzed_logs.append(condor_log)
-            return analyzed_logs
 
     def read_file(self, file: str):
         """
