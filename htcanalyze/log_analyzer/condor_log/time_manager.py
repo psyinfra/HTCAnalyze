@@ -1,6 +1,4 @@
 """Manage times of HTCondor job logs."""
-import json
-
 from datetime import datetime as date_time, timedelta
 
 from htcanalyze import ReprObject
@@ -8,6 +6,9 @@ from ..event_handler.set_events import SETEvents
 
 
 class TimeDeltaWrapper(timedelta):
+    """
+    Wrapper class for time delta objects to have an __repr__ function.
+    """
 
     def __new__(cls, time_delta: timedelta):
         if time_delta:
@@ -48,6 +49,7 @@ class JobTimes(ReprObject):
         self.total_runtime = TimeDeltaWrapper(total_runtime)
 
     def is_empty(self):
+        """Returns true if all runtimes are equal to 00:00:00"""
         return (
                 self.waiting_time == timedelta() and
                 self.execution_time == timedelta() and
@@ -71,16 +73,10 @@ class JobTimes(ReprObject):
             self.total_runtime / other
         )
 
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )
 
 class TimeManager(ReprObject):
     """
-    Manage time differences and representation.
+    Manage time differences and representations.
 
     This class creates time differences between the
     submission, execution and termination date of one job log
@@ -89,6 +85,9 @@ class TimeManager(ReprObject):
     Furthermore it can be returned as a dictionary resolving the year,
     only if the job was running of new year.
 
+    :param submission_date:
+    :param execution_date:
+    :param termination_date:
     """
 
     def __init__(
@@ -121,33 +120,37 @@ class TimeManager(ReprObject):
         )
 
     def is_empty(self):
+        """Returns True if all dates are None."""
         return (
                 self.submission_date is None and
                 self.execution_date is None and
                 self.termination_date is None
         )
 
-    def calc_waiting_time(self):
+    def calc_waiting_time(self) -> timedelta:
+        """Calculate waiting time."""
         if self.submission_date:
             if self.execution_date:
                 return self.execution_date - self.submission_date
-            elif self.termination_date:
+            # elif
+            if self.termination_date:
                 return self.termination_date - self.submission_date
-            else:
-                today = date_time.now()
-                today = today.replace(microsecond=0)  # remove microseconds
-                return today - self.submission_date
+            # else
+            today = date_time.now()
+            today = today.replace(microsecond=0)  # remove microseconds
+            return today - self.submission_date
 
         return timedelta()
 
-    def calc_execution_time(self):
+    def calc_execution_time(self) -> timedelta:
+        """Calculate execution time."""
         if self.execution_date:
             if self.termination_date:
                 return self.termination_date - self.execution_date
-            else:
-                today = date_time.now()
-                today = today.replace(microsecond=0)  # remove microseconds
-                return today - self.execution_date
+            # else
+            today = date_time.now()
+            today = today.replace(microsecond=0)  # remove microseconds
+            return today - self.execution_date
 
         return timedelta()
 
@@ -156,7 +159,6 @@ class TimeManager(ReprObject):
         Calculate the waiting, execution and total runtime.
 
         Check also if the times are overlapping in years.
-
         """
         waiting_time = self.calc_waiting_time()
         execution_time = self.calc_execution_time()
@@ -169,16 +171,18 @@ class TimeManager(ReprObject):
         )
 
     @staticmethod
-    def decrease_year(date, val=1):
+    def decrease_year(date, val=1) -> date_time:
+        """Decrease year of a date by val if possible."""
         try:
             return date.replace(
                 year=date.year - val
             )
         except ValueError as err:
             if err.args[0] == 'day is out of range for month':
+                pass
                 # Likely due to leap year (29.02)
                 # Todo: fix whenever possible with htcondor module
-                return date
+            return date
 
     def _fix_dates_if_rolled_over(
             self,
@@ -231,14 +235,17 @@ class TimeManager(ReprObject):
 
     @property
     def waiting_time(self):
+        """Returns waiting time."""
         return self.job_times.waiting_time
 
     @property
     def execution_time(self):
+        """Returns execution time."""
         return self.job_times.execution_time
 
     @property
     def total_runtime(self):
+        """Returns total runtime (waiting_time + execution_time)."""
         return self.job_times.total_runtime
 
     @property
