@@ -1,6 +1,6 @@
+"""Module to manage error events of a single log file."""
 from htcanalyze import ReprObject
 
-import json
 
 class LogfileErrorEvents(ReprObject):
     """
