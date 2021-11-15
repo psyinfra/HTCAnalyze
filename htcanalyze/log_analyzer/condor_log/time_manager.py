@@ -3,6 +3,7 @@ import json
 
 from datetime import datetime as date_time, timedelta
 
+from htcanalyze import ReprObject
 from ..event_handler.set_events import SETEvents
 
 
@@ -27,7 +28,14 @@ class TimeDeltaWrapper(timedelta):
         return str(self)
 
 
-class JobTimes:
+class JobTimes(ReprObject):
+    """
+    Represents the waiting, execution and total runtime of a job.
+
+    :param waiting_time:
+    :param execution_time:
+    :param total_runtime:
+    """
 
     def __init__(
             self,
@@ -70,8 +78,7 @@ class JobTimes:
             default=lambda x: x.__dict__
         )
 
-
-class TimeManager:
+class TimeManager(ReprObject):
     """
     Manage time differences and representation.
 
@@ -245,6 +252,3 @@ class TimeManager:
             "total_runtime": str(self.total_runtime),
             "rolled_over_year_boundary": str(self.rolled_over_year_boundary)
         }
-
-    def __repr__(self):
-        return json.dumps(self.__dict__)

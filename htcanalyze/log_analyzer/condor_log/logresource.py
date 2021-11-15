@@ -6,6 +6,8 @@ from abc import ABC
 from enum import Enum
 from numpy import nan_to_num as ntn
 
+from htcanalyze import ReprObject
+
 
 class LevelColors(Enum):
     ERROR = 'red'
@@ -14,7 +16,7 @@ class LevelColors(Enum):
     NORMAL = 'green'
 
 
-class LogResource(ABC):
+class LogResource(ReprObject, ABC):
     """
     Class of one single HTCondor-JobLog resource.
 
@@ -65,10 +67,6 @@ class LogResource(ABC):
 
     def __radd__(self, other):
         return self if other == 0 or other.is_empty() else self + other
-
-    def __repr__(self):
-        """Own style of representing this class."""
-        return json.dumps(self.__dict__)
 
     @staticmethod
     def get_color(warning_level: LevelColors) -> str:
@@ -155,7 +153,15 @@ class GPULogResource(LogResource):
         self.assigned = assigned
 
 
-class LogResources:
+class LogResources(ReprObject):
+    """
+    Represents log resources of a single log file.
+
+    :param cpu_resource:
+    :param disc_resource:
+    :param memory_resource:
+    :param gpu_resource: Optional
+    """
     def __init__(
             self,
             cpu_resource: CPULogResource,
@@ -195,10 +201,3 @@ class LogResources:
 
     def __radd__(self, other):
         return self if other == 0 else self + other
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )

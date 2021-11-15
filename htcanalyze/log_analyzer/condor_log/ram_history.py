@@ -2,6 +2,8 @@
 import json
 
 from plotille import Figure
+from htcanalyze import ReprObject
+from ..event_handler.job_events import ImageSizeEvent
 
 
 def _int_formatter(val, chars, delta, left=False):
@@ -15,7 +17,9 @@ def _int_formatter(val, chars, delta, left=False):
     return '{:{}{}d}'.format(int(val), align, chars)
 
 
-class RamHistory:
+class RamHistory(ReprObject):
+    """
+    Create a RAM Histogram if at least two ImageSizeEvents are passed
 
     def __init__(self, image_size_events):
         self.image_size_events = image_size_events
@@ -50,10 +54,3 @@ class RamHistory:
             fig.scatter(dates, ram, lc='red', label="Single Values")
 
             return fig.show(legend=show_legend)
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )

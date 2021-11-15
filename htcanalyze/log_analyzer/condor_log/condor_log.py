@@ -1,12 +1,13 @@
 import os
 import json
 
+from htcanalyze import ReprObject
 from .job_details import JobDetails
 from .error_events import LogfileErrorEvents
 from .ram_history import RamHistory
 
 
-class CondorLog:
+class CondorLog(ReprObject):
 
     def __init__(
             self,
@@ -30,10 +31,3 @@ class CondorLog:
     @property
     def resources(self):
         return self.job_details.resources
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )

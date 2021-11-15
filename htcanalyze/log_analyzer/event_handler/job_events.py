@@ -2,6 +2,7 @@
 import json
 from datetime import datetime as date_time
 
+from htcanalyze import ReprObject
 from .node_cache import NodeCache
 from .states import *
 
@@ -31,7 +32,7 @@ class DateTimeWrapper(date_time):
         return str(self)
 
 
-class JobEvent:
+class JobEvent(ReprObject):
 
     def __init__(
             self,
@@ -40,13 +41,6 @@ class JobEvent:
     ):
         self.event_number = event_number
         self.time_stamp = DateTimeWrapper(time_stamp) if time_stamp else None
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )
 
 
 class JobSubmissionEvent(JobEvent):

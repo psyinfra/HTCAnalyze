@@ -1,5 +1,5 @@
-import json
-
+"""Module for submission, execution and termination events."""
+from htcanalyze import ReprObject
 from .job_events import (
     JobSubmissionEvent,
     JobExecutionEvent,
@@ -7,7 +7,7 @@ from .job_events import (
 )
 
 
-class SETEvents:
+class SETEvents(ReprObject):
     """
     Submission, Execution and Termination Events (SET-Events)
     """
@@ -83,11 +83,4 @@ class SETEvents:
             self.submission_event or
             self.execution_event or
             self.termination_event
-        )
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
         )
