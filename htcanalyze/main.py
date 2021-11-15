@@ -196,19 +196,22 @@ def run(commandline_args):
 def main():
     """main function (entry point)."""
     console = Console()
+    logging.debug("-------Start of htcanalyze script-------")
+    start = date_time.now()
+    exit_code = NORMAL_EXECUTION
     try:
-        logging.debug("-------Start of htcanalyze script-------")
-        start = date_time.now()
+
         run(sys.argv[1:])
-        end = date_time.now()
-        logging.debug(f"Runtime: {end - start}")
-        logging.debug("-------End of htcanalyze script-------")
-        sys.exit(NORMAL_EXECUTION)
     except HTCAnalyzeTerminationEvent as err:
         if not err.exit_code == NORMAL_EXECUTION:
             logging.debug(err.message)
             console.print(f"[red]{err.message}[/red]")
-        sys.exit(err.exit_code)
+        exit_code = err.exit_code
+
+    end = date_time.now()
+    logging.debug(f"Runtime: {end - start}")
+    logging.debug("-------End of htcanalyze script-------")
+    sys.exit(exit_code)
 
 
 if __name__ == "main":
