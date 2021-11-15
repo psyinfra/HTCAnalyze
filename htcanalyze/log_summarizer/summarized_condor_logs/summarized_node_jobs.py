@@ -1,9 +1,9 @@
-import json
-
+"""Module to represent summarized node jobs."""
+from htcanalyze import ReprObject
 from htcanalyze.log_analyzer.condor_log.time_manager import JobTimes
 
 
-class SingleNodeJob:
+class SingleNodeJob(ReprObject):
     """Single Node saving runtime on a node."""
 
     def __init__(
@@ -13,13 +13,6 @@ class SingleNodeJob:
     ):
         self.address = address
         self.job_times = job_times
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )
 
 
 class SummarizedNodeJobs(SingleNodeJob):

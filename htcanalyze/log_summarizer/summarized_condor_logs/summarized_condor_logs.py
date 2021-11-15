@@ -1,6 +1,7 @@
-import json
+"""Module to represent summarized condor logs."""
 from typing import List
 
+from htcanalyze import ReprObject
 from .summarized_node_jobs import SummarizedNodeJobs
 from .summarized_error_events import SummarizedErrorState
 from htcanalyze.log_analyzer.condor_log.time_manager import JobTimes
@@ -8,7 +9,7 @@ from htcanalyze.log_analyzer.condor_log.logresource import LogResources
 from htcanalyze.log_analyzer.event_handler.states import JobState
 
 
-class SummarizedCondorLogs:
+class SummarizedCondorLogs(ReprObject):
 
     def __init__(
             self,
@@ -25,13 +26,6 @@ class SummarizedCondorLogs:
         self.avg_resources = avg_resources
         self.summarized_node_jobs = summarized_node_jobs
         self.summarized_error_states = summarized_error_states
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )
 
     def __lt__(self, other):
         return self.n_jobs < other.n_jobs
