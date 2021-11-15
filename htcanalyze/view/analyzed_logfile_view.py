@@ -151,10 +151,28 @@ class AnalyzedLogfileView(View):
         self.print_error_events(condor_log.logfile_error_events)
 
         if show_out:
-            print(self.read_file(condor_log.job_spec_id + self.ext_out))
+            print()
+            out_file_name = condor_log.job_spec_id + self.ext_out
+            self.print_desc_line(
+                "Additional stdout output:",
+                out_file_name,
+                color="blue"
+            )
+            print(self.read_file(
+                os.path.join(os.path.dirname(condor_log.file), out_file_name)
+            ))
 
         if show_err:
-            print(self.read_file(condor_log.job_spec_id + self.ext_err))
+            print()
+            err_file_name = condor_log.job_spec_id + self.ext_err
+            self.print_desc_line(
+                f"Additional stderr output: ",
+                err_file_name,
+                color="red"
+            )
+            print(self.read_file(
+                os.path.join(os.path.dirname(condor_log.file), err_file_name)
+            ))
 
     def print_condor_logs(
             self,
