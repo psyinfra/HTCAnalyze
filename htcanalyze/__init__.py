@@ -17,6 +17,13 @@ def setup_logging_tool(verbose_mode):
     # disable the logging tool by default
     logging.getLogger().disabled = True
 
+    # I don't know why a root handler is already set,
+    # but we have to remove him in order
+    # to get just the output of our own handler
+    if len(logging.root.handlers) == 1:
+        default_handler = logging.root.handlers[0]
+        logging.root.removeHandler(default_handler)
+
     if verbose_mode:
         # activate logger if not already activated
         logging.getLogger().disabled = False
