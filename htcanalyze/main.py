@@ -196,7 +196,6 @@ def run(commandline_args):
 def main():
     """main function (entry point)."""
     console = Console()
-    logging.debug("-------Start of htcanalyze script-------")
     start = date_time.now()
     exit_code = NORMAL_EXECUTION
     try:
@@ -210,7 +209,7 @@ def main():
 
     end = date_time.now()
     logging.debug(f"Runtime: {end - start}")
-    logging.debug("-------End of htcanalyze script-------")
+    logging.debug("-------Script terminated-------")
     sys.exit(exit_code)
 
 
