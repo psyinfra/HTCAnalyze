@@ -136,20 +136,3 @@ def test_unknown_arg(parser):
         parser.get_params(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
-
-
-
-
-# def test_ignore():
-#
-#     assert res_dict["ignore_list"] == "execution-details times errors " \
-#                                       "host-nodes used-resources " \
-#                                       "requested-resources " \
-#                                       "allocated-resources " \
-#                                       "all-resources ram-history".split()
-#
-#     args = "--ignore something".split()
-#     with pytest.raises(SystemExit) as pytest_wrapped_e:
-#         manage_params(args)
-#     assert pytest_wrapped_e.type == SystemExit
-#     assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
