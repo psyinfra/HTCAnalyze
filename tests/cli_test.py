@@ -117,7 +117,6 @@ def test_config(parser):
     assert params.recursive is True
     assert params.rdns_lookup is True
     assert params.show_list == [""]
-    assert params.ignore_list == [""]
     assert params.ext_log == ".logging"
     assert params.ext_out == ".output"
     assert params.ext_err == ".error"

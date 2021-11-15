@@ -145,20 +145,6 @@ def setup_parser() -> CLIArgumentParser:
         default=EXT_ERR_DEFAULT
     )
 
-    ignore_metavar = (
-            "{" + ALLOWED_IGNORE_VALUES[0] + ", ... }"
-    )
-    allowed_ign_vals = ALLOWED_IGNORE_VALUES[:]  # copying
-    allowed_ign_vals.append('')  # needed so empty list are valid in config
-    parser.add_argument(
-        "--ignore",
-        nargs="+",
-        default=[],
-        choices=allowed_ign_vals,
-        metavar=ignore_metavar,
-        dest="ignore_list",
-        help="Ignore a section to not be printed",
-    )
     allowed_show_vals = ALLOWED_SHOW_VALUES[:]  # copying
     allowed_show_vals.append('')  # needed so empty list are valid in config
     parser.add_argument(
