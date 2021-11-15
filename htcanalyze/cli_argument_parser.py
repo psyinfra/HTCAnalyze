@@ -1,4 +1,5 @@
 
+import sys
 from configargparse import ArgumentParser
 from argparse import HelpFormatter
 from .globals import (
@@ -8,7 +9,8 @@ from .globals import (
     EXT_OUT_DEFAULT,
     EXT_ERR_DEFAULT,
     TOLERATED_USAGE,
-    BAD_USAGE
+    BAD_USAGE,
+    ARGUMENT_ERROR
 )
 
 
@@ -80,6 +82,10 @@ class CLIArgumentParser(ArgumentParser):
             self.set_default_config_paths(CONFIG_PATHS)
 
         return self.parse_args(args)
+
+    def error(self, message: str):
+        self.print_usage(sys.stderr)
+        self.exit(ARGUMENT_ERROR, '%s: error: %s\n' % (self.prog, message))
 
 
 def setup_parser() -> CLIArgumentParser:
