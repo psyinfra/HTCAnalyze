@@ -5,7 +5,7 @@ from htcanalyze.log_analyzer.condor_log.time_manager import TimeManager
 from htcanalyze.globals import STRP_FORMAT
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def today():
     today = datetime.now()
     return today.replace(microsecond=0)
