@@ -114,7 +114,7 @@ def setup_parser() -> CLIArgumentParser:
 
     parser.add_argument(
         "--version",
-        help="Print out extended execution details",
+        help="Get the current version of this script",
         action="store_true"
     )
     parser.add_argument(
