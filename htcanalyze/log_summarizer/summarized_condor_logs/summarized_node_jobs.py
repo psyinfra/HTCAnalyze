@@ -29,7 +29,7 @@ class SummarizedNodeJobs(SingleNodeJob):
             job_times: JobTimes = None,
             n_jobs: int = None
     ):
-        super(SummarizedNodeJobs, self).__init__(address, job_times)
+        super().__init__(address, job_times)
         self.n_jobs = n_jobs
 
     def __lt__(self, other):

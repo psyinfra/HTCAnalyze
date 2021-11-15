@@ -2,15 +2,24 @@
 from typing import List
 
 from htcanalyze import ReprObject
-from .summarized_node_jobs import SummarizedNodeJobs
-from .summarized_error_events import SummarizedErrorState
 from htcanalyze.log_analyzer.condor_log.time_manager import JobTimes
 from htcanalyze.log_analyzer.condor_log.logresource import LogResources
 from htcanalyze.log_analyzer.event_handler.states import JobState
+from .summarized_node_jobs import SummarizedNodeJobs
+from .summarized_error_events import SummarizedErrorState
 
 
 class SummarizedCondorLogs(ReprObject):
+    """
+    Represents summarized HTCondor logs.
 
+    :param state: state of the logs
+    :param n_jobs: number of jobs (logs)
+    :param avg_times: average job times
+    :param avg_resources: average log resources
+    :param summarized_node_jobs: summarized node jobs
+    :param summarized_error_states: summarized error states
+    """
     def __init__(
             self,
             state: JobState = None,

@@ -7,6 +7,16 @@ from htcanalyze.log_analyzer.event_handler.states import ErrorState
 
 
 class SummarizedErrorState(ReprObject):
+    """
+    Represents summarized error states.
+
+    :param error_state: error state
+        The error state
+    :param error_events: error events
+        All events with that error state
+    :param files: files
+        All files in which this error state occurred
+    """
 
     def __init__(
             self,
