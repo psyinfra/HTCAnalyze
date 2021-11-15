@@ -1,14 +1,21 @@
+"""Module to visualize condor logs."""
 import os
-
 from typing import List
 
-from .view import View, track_progress
 from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog
 from htcanalyze.globals import STRF_FORMAT
+from .view import View
 
 
 class AnalyzedLogfileView(View):
+    """
+    View to visualize a single (analyzed) CondorLog
 
+    :param bad_usage: bad usage threshold
+    :param tolerated_usage: tolerated usage threshold
+    :param ext_out: extension of stdout files
+    :param ext_err: extension of stderr files
+    """
     def __init__(
             self,
             bad_usage,
@@ -16,11 +23,12 @@ class AnalyzedLogfileView(View):
             ext_out=".out",
             ext_err=".err"
     ):
-        super(AnalyzedLogfileView, self).__init__(bad_usage, tolerated_usage)
+        super().__init__(bad_usage, tolerated_usage)
         self.ext_out = ext_out
         self.ext_err = ext_err
 
     def print_job_details(self, job_details, print_times=True):
+        """Prints job details."""
         if job_details.set_events.is_empty():
             return
 
@@ -56,6 +64,7 @@ class AnalyzedLogfileView(View):
             self.print_times(job_details.time_manager)
 
     def print_times(self, time_manager):
+        """Prints time manager data."""
         time_table = self.create_table(
             ["Description", "Timestamp", "Duration"],
             # title="Job Dates and Times"
@@ -97,12 +106,14 @@ class AnalyzedLogfileView(View):
         self.console.print(time_table)
 
     def print_ram_history(self, ram_history, show_legend=True):
+        """Prints ram histogram."""
         if not ram_history.image_size_events:
             return
         self.console.print("Ram Histogram", justify="center")
         print(ram_history.plot_ram(show_legend=show_legend))
 
     def print_error_events(self, logfile_error_events):
+        """Prints error events."""
         if not logfile_error_events.error_events:
             return
 
@@ -132,7 +143,7 @@ class AnalyzedLogfileView(View):
             show_err=False,
             show_legend=True
     ):
-
+        """Prints a single condor log."""
         self.print_desc_line(
             "Job Analysis of:",
             os.path.basename(condor_log.file),
@@ -166,7 +177,7 @@ class AnalyzedLogfileView(View):
             print()
             err_file_name = condor_log.job_spec_id + self.ext_err
             self.print_desc_line(
-                f"Additional stderr output: ",
+                "Additional stderr output: ",
                 err_file_name,
                 color="red"
             )
@@ -182,6 +193,7 @@ class AnalyzedLogfileView(View):
             show_legend=True,
             sep_char="~"
     ):
+        """Prints multiple condor logs."""
         for i, log in enumerate(condor_logs):
             self.print_condor_log(
                 log,

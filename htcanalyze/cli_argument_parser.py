@@ -1,7 +1,7 @@
-
+"""Module for the cli argument parser."""
 import sys
-from configargparse import ArgumentParser
-from argparse import HelpFormatter
+from typing import List
+from configargparse import ArgumentParser, HelpFormatter
 from .globals import (
     CONFIG_PATHS,
     ALLOWED_SHOW_VALUES,
@@ -27,6 +27,7 @@ class CustomFormatter(HelpFormatter):
     """
 
     def _format_action_invocation(self, action):
+        """Reformats long argument help descriptions."""
         if not action.option_strings:
             metavar, = self._metavar_formatter(action, action.dest)(1)
             return metavar
@@ -52,6 +53,10 @@ class CustomFormatter(HelpFormatter):
 
 
 class CLIArgumentParser(ArgumentParser):
+    """
+    Parser based on configargparse ArgumentParser to be able
+    to ignore config files.
+    """
 
     _ignore_configs = None
 
@@ -60,13 +65,15 @@ class CLIArgumentParser(ArgumentParser):
         self._ignore_configs = False
 
     def set_default_config_paths(self, config_paths):
+        """Set default config paths."""
         self._default_config_files = config_paths
 
     def ignore_configs(self):
         """Mainly for testing, ignore configs every time"""
         self._ignore_configs = True
 
-    def get_params(self, args=None):
+    def get_params(self, args: List = None):
+        """Get params from args."""
         if args is None:
             args = []
         # add config paths if help wanted
@@ -85,7 +92,7 @@ class CLIArgumentParser(ArgumentParser):
 
     def error(self, message: str):
         self.print_usage(sys.stderr)
-        self.exit(ARGUMENT_ERROR, '%s: error: %s\n' % (self.prog, message))
+        self.exit(ARGUMENT_ERROR, f"{self.prog}: error: {message}\n")
 
 
 def setup_parser() -> CLIArgumentParser:
@@ -102,21 +109,17 @@ def setup_parser() -> CLIArgumentParser:
         allow_abbrev=False,
         description="Analyze or summarize HTCondor-Joblogs",
     )
-
     parser.add_argument(
         "paths",
         nargs="*",
         help="Directory of file paths for log files"
     )
-    # also to add files with different destination,
-    # to be used for config file / escaping flags with action=append
     parser.add_argument(
         "-r", "--recursive",
         action="store_true",
         default=False,
         help="Recursive search through directory hierarchy"
     )
-
     parser.add_argument(
         "--version",
         help="Get the current version of this script",
@@ -149,7 +152,6 @@ def setup_parser() -> CLIArgumentParser:
         help="Suffix of job error logs (default: .err)",
         default=EXT_ERR_DEFAULT
     )
-
     allowed_show_vals = ALLOWED_SHOW_VALUES[:]  # copying
     allowed_show_vals.append('')  # needed so empty list are valid in config
     parser.add_argument(
@@ -160,7 +162,6 @@ def setup_parser() -> CLIArgumentParser:
         choices=allowed_show_vals,
         help="Show more details"
     )
-
     parser.add_argument(
         "--rdns-lookup",
         action="store_true",
@@ -168,7 +169,6 @@ def setup_parser() -> CLIArgumentParser:
         help="Resolve the ip-address of an execution nodes"
              " to their dns entry"
     )
-
     parser.add_argument(
         "--tolerated-usage",
         type=float,
@@ -177,7 +177,6 @@ def setup_parser() -> CLIArgumentParser:
              "between used and requested resources",
         default=TOLERATED_USAGE
     )
-
     parser.add_argument(
         "--bad-usage",
         type=float,
@@ -186,6 +185,7 @@ def setup_parser() -> CLIArgumentParser:
              "between used and requested resources",
         default=BAD_USAGE
     )
+
     action = parser.add_mutually_exclusive_group()
     action.add_argument(
         "-c", "--config",
@@ -199,4 +199,3 @@ def setup_parser() -> CLIArgumentParser:
     )
 
     return parser
-

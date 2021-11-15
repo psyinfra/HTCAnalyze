@@ -1,4 +1,4 @@
-
+"""Module to summarize all condor log files regarding the state."""
 from typing import List
 
 from .state_summarizer import StateSummarizer
@@ -7,11 +7,13 @@ from .summarizer.condor_log_summarizer import CondorLogSummarizer
 
 
 class HTCSummarizer(CondorLogSummarizer):
+    """Summarizer for ALL given condor log files."""
 
     def __init__(self, condor_logs):
-        super(HTCSummarizer, self).__init__(condor_logs)
+        super().__init__(condor_logs)
 
     def initialize_state_dict(self):
+        """Initialize state dictionary."""
         state_dict = {}
         for condor_log in self.condor_logs:
             state = condor_log.job_details.state
@@ -23,6 +25,7 @@ class HTCSummarizer(CondorLogSummarizer):
         return state_dict
 
     def summarize(self) -> List[SummarizedCondorLogs]:
+        """Summarize logs per state."""
         state_dict = self.initialize_state_dict()
         state_summarizers = [
             StateSummarizer(condor_logs, state)
