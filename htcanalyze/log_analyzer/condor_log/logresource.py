@@ -16,7 +16,7 @@ class LevelColors(Enum):
     NORMAL = 'green'
 
 
-class LogResource(ReprObject, ABC):
+class LogResource(ABC):
     """
     Class of one single HTCondor-JobLog resource.
 
@@ -100,6 +100,9 @@ class LogResource(ReprObject, ABC):
             tolerated_usage
         )
         return self.get_color(warning_level)
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
 
 
 class CPULogResource(LogResource):
