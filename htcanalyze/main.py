@@ -76,12 +76,14 @@ def print_results(
         bad_usage=BAD_USAGE,
         tolerated_usage=TOLERATED_USAGE,
         show_legend=True,
-        show_err=False,
-        show_out=False,
+        show_list=None,
         **__
 ):
     htc_analyze = HTCAnalyzer(rdns_lookup=rdns_lookup)
     condor_logs = htc_analyze.analyze(log_files)
+
+    if show_list is None:
+        show_list = []
 
     if analyze or len(log_files) == 1:
         view = AnalyzedLogfileView(
@@ -96,8 +98,8 @@ def print_results(
         view.print_condor_logs(
             analyzed_logs,
             show_legend=show_legend,
-            show_err=show_err,
-            show_out=show_out
+            show_err=True if "htc-err" in show_list else False,
+            show_out=True if "htc-out" in show_list else False
         )
     # else summarize
     else:
@@ -209,7 +211,7 @@ def main():
 
     end = date_time.now()
     logging.debug(f"Runtime: {end - start}")
-    logging.debug("-------Script terminated-------")
+    logging.debug(f"-------Script terminated, exit code: {exit_code}-------")
     sys.exit(exit_code)
 
 
