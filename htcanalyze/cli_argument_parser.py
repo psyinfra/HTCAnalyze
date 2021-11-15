@@ -3,7 +3,6 @@ from configargparse import ArgumentParser
 from argparse import HelpFormatter
 from .globals import (
     CONFIG_PATHS,
-    ALLOWED_IGNORE_VALUES,
     ALLOWED_SHOW_VALUES,
     EXT_LOG_DEFAULT,
     EXT_OUT_DEFAULT,

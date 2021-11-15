@@ -7,7 +7,6 @@ from htcanalyze.globals import (
     EXT_OUT_DEFAULT,
     EXT_ERR_DEFAULT,
     ALLOWED_SHOW_VALUES,
-    ALLOWED_IGNORE_VALUES
 )
 
 
