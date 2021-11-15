@@ -7,6 +7,7 @@ Create visible output by using htcanalyze.
 import sys
 import logging
 import subprocess
+import traceback
 
 from typing import List
 from datetime import datetime as date_time
@@ -21,23 +22,15 @@ from .view.view import track_progress
 from .view.analyzed_logfile_view import AnalyzedLogfileView
 from .view.summarized_logfile_view import SummarizedLogfileView
 from .cli_argument_parser import setup_parser
+
 from .globals import (
-    CONFIG_PATHS,
     BAD_USAGE,
     TOLERATED_USAGE,
     NORMAL_EXECUTION,
     NO_VALID_FILES,
-    HTCANALYZE_ERROR,
     TYPE_ERROR,
     KEYBOARD_INTERRUPT
 )
-
-
-class HTCAnalyzeException(Exception):
-
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.message = args[0]
 
 
 class HTCAnalyzeTerminationEvent(Exception):
@@ -180,11 +173,7 @@ def run(commandline_args):
             **vars(params)
         )
 
-    except HTCAnalyzeException as err:
-        raise HTCAnalyzeTerminationEvent(err, HTCANALYZE_ERROR)
-
     except TypeError as err:
-        import traceback
         print(traceback.print_exc())
         raise HTCAnalyzeTerminationEvent(err, TYPE_ERROR)
 
@@ -201,7 +190,6 @@ def main():
     start = date_time.now()
     exit_code = NORMAL_EXECUTION
     try:
-
         run(sys.argv[1:])
     except HTCAnalyzeTerminationEvent as err:
         if not err.exit_code == NORMAL_EXECUTION:
