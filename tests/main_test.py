@@ -1,7 +1,7 @@
 
 import pytest
 from htcanalyze.main import HTCAnalyzeTerminationEvent
-from htcanalyze.globals import NORMAL_EXECUTION, HTCANALYZE_ERROR
+from htcanalyze.globals import NORMAL_EXECUTION
 
 
 # To make a copy of stdin and stdout

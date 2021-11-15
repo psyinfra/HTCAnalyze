@@ -2,7 +2,7 @@ import pytest
 from htcanalyze.cli_argument_parser import setup_parser
 from htcanalyze.globals import (
     NORMAL_EXECUTION,
-    HTCANALYZE_ERROR,
+    ARGUMENT_ERROR,
     EXT_LOG_DEFAULT,
     EXT_OUT_DEFAULT,
     EXT_ERR_DEFAULT,
@@ -75,13 +75,13 @@ def test_show(parser):
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         parser.get_params(args)
     assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
+    assert pytest_wrapped_e.value.code == ARGUMENT_ERROR
 
     args = "--show something".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         parser.get_params(args)
     assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
+    assert pytest_wrapped_e.value.code == ARGUMENT_ERROR
 
     args = "--show".split()
     args.extend(ALLOWED_SHOW_VALUES)
@@ -126,7 +126,7 @@ def test_config_with_ignore_config(parser):
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         parser.get_params(args)
     assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
+    assert pytest_wrapped_e.value.code == ARGUMENT_ERROR
 
 
 def test_unknown_arg(parser):
@@ -134,4 +134,4 @@ def test_unknown_arg(parser):
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         parser.get_params(args)
     assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == HTCANALYZE_ERROR
+    assert pytest_wrapped_e.value.code == ARGUMENT_ERROR
