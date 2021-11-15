@@ -1,7 +1,6 @@
 """Module to summarize node jobs."""
 from typing import List
 
-from htcanalyze.log_analyzer.condor_log.job_details import JobDetails
 from htcanalyze.log_analyzer.condor_log.time_manager import JobTimes
 from .summarizer import Summarizer
 from ..summarized_condor_logs.summarized_node_jobs import (
@@ -56,7 +55,7 @@ class NodeManager:
 
     @property
     def node_collections(self) -> List[NodeJobCollection]:
-        """Returns a list of NodJobCollections."""
+        """Returns a list of NodJobCollection."""
         return list(self.nodes_dict.values())
 
 
@@ -65,12 +64,10 @@ class NodeSummarizer(Summarizer):
     """
     Summarize node jobs using a NodeManager.
 
-    :param job_details: List of JobDetails
+    :param nodes: List of SingleNodeJob
     """
-    def __init__(self, job_details: List[JobDetails]):
-        self.nodes = [
-            SingleNodeJob(jd.host_address, jd.job_times) for jd in job_details
-        ]
+    def __init__(self, nodes: List[SingleNodeJob]):
+        self.nodes = nodes
         self.node_manager = NodeManager()
         for node in self.nodes:
             self.node_manager.add_node(node)
