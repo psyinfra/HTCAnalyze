@@ -80,7 +80,7 @@ class HTCAnalyzer:
         condor_event_handler = EventHandler()
 
         try:
-            for event in condor_event_handler.get_events(file):
+            for event in condor_event_handler.get_htc_events(file):
 
                 try:
                     job_event = condor_event_handler.get_job_event(

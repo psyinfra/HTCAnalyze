@@ -1,7 +1,23 @@
 """htcanalyze module."""
-
+import json
 import sys
 import logging
+from abc import ABC
+
+
+class ReprObject(ABC):
+    """
+    This class is mainly used for development and manages that any class
+    inheriting from it can be easily printed to the command line represented by
+    a self.__dict__ with indentation.
+    """
+
+    def __repr__(self):
+        return json.dumps(
+            self.__dict__,
+            indent=2,
+            default=lambda x: x.__dict__
+        )
 
 
 def setup_logging_tool(verbose_mode):

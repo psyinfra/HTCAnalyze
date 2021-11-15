@@ -31,13 +31,16 @@ class NodeCache:
             # do the lookup
             try:
                 rdns = socket.gethostbyaddr(ip_address)
-                logging.debug(f"rDNS lookup successful: "
-                              f"{ip_address} resolved as {rdns[0]}")
+                logging.debug(
+                    "rDNS lookup successful: %s resolved as %s",
+                    ip_address, rdns[0]
+                )
                 self.rdns_cache[ip_address] = rdns[0]
                 return rdns[0]
             except socket.error:
                 logging.debug(
-                    f"Unable to perform rDNS lookup for {ip_address}"
+                    "Unable to perform rDNS lookup for %s",
+                    ip_address
                 )
                 # cache negative responses too
                 self.rdns_cache[ip_address] = ip_address

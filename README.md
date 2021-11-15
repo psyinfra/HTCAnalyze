@@ -30,7 +30,7 @@ the warning and error thresholds to their site requirements.
 
 It can also be passed directly as a flag.
 ```
-htcanalyze -c htcanalyze.conf [files/directories]
+htcanalyze -c htcanalyze.conf paths
 ```
 
 See [CONFIG](https://github.com/psyinfra/HTCAnalyze/blob/master/config/README.md)
@@ -38,30 +38,25 @@ for more information.
 
 ## Modes
 
-HTCAnalyze has four modes of operation:
+HTCAnalyze has two modes of operation:
+
 
 - `analyze`: provides detailed output, including a RAM
   histogram, HTCondor errors, and more.
-
-- `summarize`: summarize a collection of log files, including average resource
-  usage and execution time per-host.
-
-- `analyzed-summary`: combined output of both the summarize and analyze
-  modes.
+  This is the default if only one file is given.
+- `summarize`: provides summarized output collected by each state of a job
+  (e.g. waiting, running, terminated, etc.)
+  This is the default if more than one file is given.
 
 Example output:
 
-- analyzed-summary mode:
+- analyze mode:
 
-    ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_analyzed_summary_mode.png)
+  ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_analyze_mode.png)
 
 - summarize mode:
 
-    ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_summary_mode.png)
-
-- analyze mode:
-
-    ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_analyze_mode.png)
+  ![Example](https://github.com/psyinfra/HTCAnalyze/blob/master/examples/example_summary_mode.png)
 
 
 ## Examples
@@ -74,13 +69,9 @@ Example output:
   ```
   htcanalyze logs/job_5991_0.log
   ```
-- Analyze all log files in a directory (summarized by their states).
+- Summarize all log files in a directory (summarized by their states).
   ```
   htcanalyze logs/
-  ```
-- Summarize all files for a job cluster (exclude log files, without listed resources):
-  ```
-  htcanalyze -s logs/job_5991_*
   ```
 
 ## Testing

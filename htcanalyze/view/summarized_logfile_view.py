@@ -1,4 +1,4 @@
-
+"""Module to create a view for summarized log files."""
 from datetime import timedelta
 from typing import List
 
@@ -9,14 +9,16 @@ from ..log_summarizer.summarized_condor_logs.summarized_condor_logs import (
 
 
 class SummarizedLogfileView(View):
+    """Visualizes summarized log files."""
 
     def __init__(self):
-        super(SummarizedLogfileView, self).__init__()
+        super().__init__()
 
     def print_times(
             self,
             job_times
     ):
+        """Prints job times table."""
         if not job_times:
             return
         if job_times.is_empty():
@@ -47,8 +49,16 @@ class SummarizedLogfileView(View):
     def print_summarized_node_jobs(
             self,
             summarized_node_jobs,
-            sort_by_n_jobs=True
+            sort_by_n_jobs: bool = True
     ):
+        """
+        Prints summarized node jobs table,
+        sorted by the number of jobs.
+
+        :param summarized_node_jobs:
+        :param sort_by_n_jobs:
+        :return:
+        """
         if not summarized_node_jobs:
             return
 
@@ -82,6 +92,17 @@ class SummarizedLogfileView(View):
             sort_by_n_error_events=True,
             file_lim=3
     ):
+        """
+        Print summarized error events,
+        sorted by the number of events.
+        Prints file names if less than file_lim files have such an error event,
+        else only the number is printed to keep the output readable.
+
+        :param summarized_error_states:
+        :param sort_by_n_error_events:
+        :param file_lim:
+        :return:
+        """
         if not summarized_error_states:
             return
 
@@ -128,6 +149,16 @@ class SummarizedLogfileView(View):
             sort_states_by_n_jobs=True,
             sep_char='~'
     ):
+        """
+        Prints summarized log files
+        sorts descrption table by number of files per state,
+        separates each state summary by a line of sep_char
+
+        :param summarized_condor_logs:
+        :param sort_states_by_n_jobs:
+        :param sep_char:
+        :return:
+        """
         if sort_states_by_n_jobs:
             summarized_condor_logs = sorted(
                 summarized_condor_logs, reverse=True

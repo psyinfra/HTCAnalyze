@@ -3,16 +3,28 @@
 import os
 import re
 import logging
-import numpy as np
 from typing import List, Union
 from datetime import datetime as date_time
 
+import numpy as np
 from htcondor import (
     JobEventLog,
     JobEventType as jet,
     JobEvent as HTCJobEvent
 )
-from .states import *
+
+from htcanalyze.globals import STRP_FORMAT
+from .states import (
+    JobState,
+    RunningState,
+    ErrorWhileReadingState,
+    InvalidHostAddressState,
+    WaitingState,
+    InvalidUserAddressState,
+    NormalTerminationState,
+    AbnormalTerminationState,
+    AbortedState
+)
 from .job_events import (
     JobEvent,
     ErrorEvent,
@@ -33,19 +45,14 @@ from ..condor_log.logresource import (
     MemoryLogResource,
     GPULogResource
 )
-from htcanalyze.globals import STRP_FORMAT
 
 
 class ReadLogException(Exception):
-    """Exception raised for failed login.
-    :param message: Error description message
-    """
-
-    def __init__(self, message):
-        super().__init__(message)
+    """Can't read log file exception."""
 
 
 def event_decorator(func):
+    """Event decorator to set event number and time stamp."""
     def wrapper(self, event, *args, **kwargs):
         self._event_number = event.get('EventTypeNumber')
         self._time_stamp = date_time.strptime(
@@ -58,6 +65,7 @@ def event_decorator(func):
 
 
 class EventHandler:
+    """Event handler to wrap HTCondor job events."""
     _event_number = None
     _time_stamp = None
 
@@ -65,7 +73,17 @@ class EventHandler:
         self._state: Union[JobState, None] = None
 
     @event_decorator
-    def get_submission_event(self, event) -> JobEvent:
+    def get_submission_event(
+            self,
+            event: HTCJobEvent
+    ) -> Union[JobSubmissionEvent, ErrorEvent]:
+        """
+        Reads and returns a JobSubmissionEvent or an ErrorEvent if
+        the user address was dubious.
+
+        :param event:
+        :return:
+        """
         assert event.type == jet.SUBMIT
 
         match_from_host = re.match(
@@ -91,11 +109,25 @@ class EventHandler:
         )
 
     @property
-    def state(self):
+    def state(self) -> JobState:
+        """Returns current job state."""
         return self._state
 
     @event_decorator
-    def get_execution_event(self, event, rdns_lookup=False) -> JobEvent:
+    def get_execution_event(
+            self,
+            event: HTCJobEvent,
+            rdns_lookup: bool = False
+    ) -> Union[JobExecutionEvent, ErrorEvent]:
+        """
+        Reads and returns a JobExecutionEvent or an ErrorEvent if
+        the host address was dubious.
+
+        :param event:
+        :param rdns_lookup: bool
+            Whether to reversely resolve host addresses by domain name
+        :return:
+        """
         assert event.type == jet.EXECUTE
         match_to_host = re.match(
             r"<(.+):[0-9]+\?(.*)>",
@@ -111,54 +143,43 @@ class EventHandler:
                 rdns_lookup
             )
         # ERROR
-        else:
-            reason = "Can't read host address"
-            self._state = ErrorWhileReadingState()
-            return ErrorEvent(
-                self._event_number,
-                None,
-                InvalidHostAddressState(),
-                reason
-            )
+        reason = "Can't read host address"
+        self._state = ErrorWhileReadingState()
+        return ErrorEvent(
+            self._event_number,
+            None,
+            InvalidHostAddressState(),
+            reason
+        )
 
     @event_decorator
-    def get_job_terminated_event(self, event) -> JobEvent:
-
-        # get all resources, replace by np.nan if value is None
-        cpus_usage = event.get('CpusUsage', np.nan)
-        cpus_requested = event.get('RequestCpus', np.nan)
-        cpus_allocated = event.get('Cpus', np.nan)
-        disk_usage = event.get('DiskUsage', np.nan)
-        disk_requested = event.get('RequestDisk', np.nan)
-        disk_allocated = event.get("Disk", np.nan)
-        memory_usage = event.get('MemoryUsage', np.nan)
-        memory_requested = event.get('RequestMemory', np.nan)
-        memory_allocated = event.get('Memory', np.nan)
-        gpus_usage = event.get("GpusUsage", np.nan)
-        gpus_requested = event.get("RequestGpus", np.nan)
-        gpus_allocated = event.get('Gpus', np.nan)
-
-        # create list with resources
+    def get_job_terminated_event(
+            self,
+            event: HTCJobEvent
+    ) -> JobTerminationEvent:
+        """Reads and returns a JobTerminationEvent."""
+        # create list with resources,
+        # replace by np.nan if values are None
         resources = LogResources(
             CPULogResource(
-                cpus_usage,
-                cpus_requested,
-                cpus_allocated
+                event.get('CpusUsage', np.nan),
+                event.get('RequestCpus', np.nan),
+                event.get('Cpus', np.nan)
             ),
             DiskLogResource(
-                disk_usage,
-                disk_requested,
-                disk_allocated
+                event.get('DiskUsage', np.nan),
+                event.get('RequestDisk', np.nan),
+                event.get("Disk", np.nan)
             ),
             MemoryLogResource(
-                memory_usage,
-                memory_requested,
-                memory_allocated
+                event.get('MemoryUsage', np.nan),
+                event.get('RequestMemory', np.nan),
+                event.get('Memory', np.nan)
             ),
             GPULogResource(
-                gpus_usage,
-                gpus_requested,
-                gpus_allocated
+                event.get("GpusUsage", np.nan),
+                event.get("RequestGpus", np.nan),
+                event.get('Gpus', np.nan)
 
             )
         )
@@ -185,7 +206,8 @@ class EventHandler:
         )
 
     @event_decorator
-    def get_job_aborted_event(self, event) -> JobEvent:
+    def get_job_aborted_event(self, event: HTCJobEvent) -> JobAbortedEvent:
+        """Reads and returns a JobAbortedEvent."""
         assert event.type == jet.JOB_ABORTED
         reason = event.get('Reason')
         if not self._state:
@@ -210,7 +232,8 @@ class EventHandler:
         return aborted_event
 
     @event_decorator
-    def get_image_size_event(self, event) -> JobEvent:
+    def get_image_size_event(self, event: HTCJobEvent) -> ImageSizeEvent:
+        """Reads and returns a ImageSizeEvent."""
         assert event.type == jet.IMAGE_SIZE
         size_update = event.get('Size')
         memory_usage = event.get('MemoryUsage')
@@ -224,7 +247,8 @@ class EventHandler:
         )
 
     @event_decorator
-    def get_job_held_event(self, event) -> JobEvent:
+    def get_job_held_event(self, event: HTCJobEvent) -> JobHeldEvent:
+        """Reads and returns a JobHeldEvent."""
         assert event.type == jet.JOB_HELD
         reason = event.get('HoldReason')
         return JobHeldEvent(
@@ -234,7 +258,10 @@ class EventHandler:
         )
 
     @event_decorator
-    def get_shadow_exception_event(self, event) -> JobEvent:
+    def get_shadow_exception_event(
+            self, event: HTCJobEvent
+    ) -> ShadowExceptionEvent:
+        """Reads and returns a ShadowExceptionEvent."""
         assert event.type == jet.SHADOW_EXCEPTION
         reason = event.get('Message')
         return ShadowExceptionEvent(
@@ -243,8 +270,17 @@ class EventHandler:
             reason
         )
 
-    def get_events(self, file, sec: int = 0) -> iter(List[HTCJobEvent]):
-
+    def get_htc_events(
+            self,
+            file: str,
+            sec: int = 0
+    ) -> iter(List[HTCJobEvent]):
+        """
+        Returns a generator over HTCondor job events.
+        :param file: HTCondor log file
+        :param sec: seconds to wait for new events
+        :return: list of HTCondor job events
+        """
         jel = JobEventLog(file)
 
         try:
@@ -265,13 +301,23 @@ class EventHandler:
                 reason = f"Not able to open the file: {file_name}"
 
             self._state = ErrorWhileReadingState()
-            raise ReadLogException(reason)
+            raise ReadLogException(reason) from err
 
     def get_job_event(
             self,
             event: HTCJobEvent,
             rdns_lookup: bool = False
     ) -> JobEvent:
+        """
+        Takes a HTCondor job event and returns an own wrapped JobEvent class.
+
+        :param event: HTCJobEvent
+            A job event from the HTCondor python bindings.
+        :param rdns_lookup: bool
+            Whether to reversely resolve host addresses by domain name
+        :return: JobEvent
+            Wrapped JobEvent class with own properties
+        """
         if event.type == jet.SUBMIT:
             job_event = self.get_submission_event(event)
 
@@ -304,4 +350,3 @@ class EventHandler:
             raise AttributeError(f"Event type: {event.type} not handled yet")
 
         return job_event
-

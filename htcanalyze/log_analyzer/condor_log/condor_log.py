@@ -1,12 +1,25 @@
-import os
-import json
+"""Module to represent a log file as an CondorLog object."""
 
+import os
+
+from htcanalyze import ReprObject
 from .job_details import JobDetails
 from .error_events import LogfileErrorEvents
 from .ram_history import RamHistory
 
 
-class CondorLog:
+class CondorLog(ReprObject):
+    """
+    Represents the analysis of one single log file.
+
+    :param file: HTCondor log file
+    :param job_details: JobDetails
+        details about resources, times and the current state
+    :param logfile_error_events: LogfileErrorEvents
+        All Error Events that occurred in the log file
+    :param ram_history: RamHistory
+        Can be used to generate a ram histogram
+    """
 
     def __init__(
             self,
@@ -29,11 +42,5 @@ class CondorLog:
 
     @property
     def resources(self):
+        """Returns log resources."""
         return self.job_details.resources
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )

@@ -1,3 +1,4 @@
+"""Module for a basic abstract view class."""
 import os
 import logging
 
@@ -17,6 +18,15 @@ def track_progress(
         n_items=100,
         tracking_title="...",
 ):
+    """
+    Visualize the process of generating objects.
+    Takes a generator and generates a finite amount of objects.
+
+    :param generator: generator or iterrator
+    :param n_items: if possible provide the number of objects
+    :param tracking_title: Title of the process
+    :return:
+    """
     with Progress(
             transient=True,
             redirect_stdout=False,
@@ -32,6 +42,11 @@ def track_progress(
 
 
 class View(ABC):
+    """A general view to visualize HTCAnalyze data to the terminal.
+
+    :param bad_usage: bad usage threshold
+    :param tolerated_usage: tolerated usage threshold
+    """
 
     def __init__(
             self,
@@ -69,6 +84,7 @@ class View(ABC):
 
     @staticmethod
     def create_table(headers: List, title=None) -> Table:
+        """Creates a rich table."""
         return Table(
             *headers,
             title=title,
@@ -84,6 +100,7 @@ class View(ABC):
             headers=None,
             precision=3
     ):
+        """Prints a resource table."""
         if not resources:
             return
 
@@ -120,6 +137,20 @@ class View(ABC):
             highlight_char="#",
             boxing=False
     ):
+        """
+        Prints a description line with the length of the terminal.
+        The title should be less than the width of the terminal, the
+        rest of the space is filled with hightlight_char to fill the gaps.
+        The desc_str is centered.
+
+        :param self:
+        :param desc_str: raw desc
+        :param desc_value: a value that is colored
+        :param color: coloring of the desc_value
+        :param highlight_char: character to fill the rest of the line
+        :param boxing: adds one line above and below the desc line
+        :return:
+        """
         with_color = f"{desc_str} [{color}]{desc_value}[/{color}]"
         raw_text = Text.from_markup(with_color)
 

@@ -45,7 +45,7 @@ class LogValidator:
             return False
 
         if os.path.getsize(file) == 0:  # file is empty
-            logging.debug(f"{file} is empty")
+            logging.debug("%s is empty", file)
             return False
 
         try:

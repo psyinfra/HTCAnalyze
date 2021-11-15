@@ -16,17 +16,6 @@ ALLOWED_SHOW_VALUES = [
     "htc-err",
     "htc-out"
 ]
-ALLOWED_IGNORE_VALUES = [
-    "execution-details",
-    "times",
-    "host-nodes",
-    "used-resources",
-    "requested-resources",
-    "allocated-resources",
-    "all-resources",
-    "errors",
-    "ram-history"
-]
 
 EXT_LOG_DEFAULT = ".log"
 EXT_OUT_DEFAULT = ".out"
@@ -35,7 +24,7 @@ EXT_ERR_DEFAULT = ".err"
 # Exit Codes
 NORMAL_EXECUTION = 0
 NO_VALID_FILES = 1
-HTCANALYZE_ERROR = 2
+ARGUMENT_ERROR = 2  # 2 is default by argparse
 TYPE_ERROR = 3
 KEYBOARD_INTERRUPT = 4
 

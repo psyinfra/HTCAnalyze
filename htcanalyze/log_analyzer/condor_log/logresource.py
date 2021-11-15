@@ -1,13 +1,17 @@
-"""Class to define HTCondor Joblog resources."""
+"""Manage HTCondor job log resources."""
 
 import json
 import math
 from abc import ABC
 from enum import Enum
+from typing import List
 from numpy import nan_to_num as ntn
+
+from htcanalyze import ReprObject
 
 
 class LevelColors(Enum):
+    """Coloring for different usages."""
     ERROR = 'red'
     WARNING = 'yellow'
     LIGHT_WARNING = 'yellow2'
@@ -21,6 +25,10 @@ class LogResource(ABC):
     One file contains usually multiple resources,
     so that nested lists represent a collection of job resources
 
+    :param usage:
+    :param requested:
+    :param allocated:
+    :param description:
     """
 
     def __init__(
@@ -38,7 +46,7 @@ class LogResource(ABC):
     def __add__(self, other):
         if other == 0 or other is None:
             return self
-        assert type(self) == type(other)
+        assert isinstance(self, other.__class__)
         if other.is_empty():
             return self
         return self.__class__(
@@ -56,7 +64,8 @@ class LogResource(ABC):
             float(ntn(self.allocated) / other)
         )
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
+        """Returns true if all values are NaN."""
         return (
                 math.isnan(self.usage) and
                 math.isnan(self.requested) and
@@ -65,10 +74,6 @@ class LogResource(ABC):
 
     def __radd__(self, other):
         return self if other == 0 or other.is_empty() else self + other
-
-    def __repr__(self):
-        """Own style of representing this class."""
-        return json.dumps(self.__dict__)
 
     @staticmethod
     def get_color(warning_level: LevelColors) -> str:
@@ -96,51 +101,55 @@ class LogResource(ABC):
         return warning_level
 
     def get_color_by_threshold(self, bad_usage, tolerated_usage):
-
+        """Get coloring depending on thresholds."""
         warning_level = self.get_warning_lvl_by_threshold(
             bad_usage,
             tolerated_usage
         )
         return self.get_color(warning_level)
 
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
 
 class CPULogResource(LogResource):
+    """Represents a CPU log resource."""
+
     def __init__(
             self,
             usage: float,
             requested: float,
             allocated: float
     ):
-        super(CPULogResource, self).__init__(
-            usage, requested, allocated, "Cpus"
-        )
+        super().__init__(usage, requested, allocated, "Cpus")
 
 
 class DiskLogResource(LogResource):
+    """Represents a disk log resource."""
+
     def __init__(
             self,
             usage: float,
             requested: float,
             allocated: float
     ):
-        super(DiskLogResource, self).__init__(
-            usage, requested, allocated, "Disk (KB)"
-        )
+        super().__init__(usage, requested, allocated, "Disk (KB)")
 
 
 class MemoryLogResource(LogResource):
+    """Represents a memory log resource."""
+
     def __init__(
             self,
             usage: float,
             requested: float,
             allocated: float
     ):
-        super(MemoryLogResource, self).__init__(
-            usage, requested, allocated, "Memory (MB)"
-        )
+        super().__init__(usage, requested, allocated, "Memory (MB)")
 
 
 class GPULogResource(LogResource):
+    """Represents a GPU log resource."""
 
     def __init__(
             self,
@@ -149,13 +158,19 @@ class GPULogResource(LogResource):
             allocated: float,
             assigned: str = ""
     ):
-        super(GPULogResource, self).__init__(
-            usage, requested, allocated, "Gpus (Average)"
-        )
+        super().__init__(usage, requested, allocated, "Gpus (Average)")
         self.assigned = assigned
 
 
-class LogResources:
+class LogResources(ReprObject):
+    """
+    Represents log resources of a single log file.
+
+    :param cpu_resource:
+    :param disc_resource:
+    :param memory_resource:
+    :param gpu_resource: Optional
+    """
     def __init__(
             self,
             cpu_resource: CPULogResource,
@@ -169,7 +184,8 @@ class LogResources:
         self.gpu_resource = gpu_resource
 
     @property
-    def resources(self):
+    def resources(self) -> List[LogResource]:
+        """Returns resource list."""
         return [
             self.cpu_resource,
             self.disc_resource,
@@ -195,10 +211,3 @@ class LogResources:
 
     def __radd__(self, other):
         return self if other == 0 else self + other
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )

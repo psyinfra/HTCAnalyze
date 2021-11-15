@@ -1,12 +1,13 @@
 """Save HTCondor job execution details."""
-import json
 
-from .time_manager import TimeManager
+from htcanalyze import ReprObject
 from ..event_handler.set_events import SETEvents
 from ..event_handler.states import JobState
+from .time_manager import TimeManager, JobTimes
+from .logresource import LogResources
 
 
-class JobDetails:
+class JobDetails(ReprObject):
     """
     Class to store and manage the different job details.
 
@@ -18,31 +19,27 @@ class JobDetails:
             self,
             set_events: SETEvents,
             state: JobState
-
     ):
         self.set_events = set_events
         self.time_manager = TimeManager.from_set_events(set_events)
         self.state = state
 
     @property
-    def resources(self):
+    def resources(self) -> LogResources:
+        """Returns log resources."""
         return self.set_events.resources
 
     @property
-    def host_address(self):
+    def host_address(self) -> str:
+        """Returns host address."""
         return self.set_events.host_address
 
     @property
-    def submitter_address(self):
+    def submitter_address(self) -> str:
+        """Returns submitter address."""
         return self.set_events.submitter_address
 
     @property
-    def job_times(self):
+    def job_times(self) -> JobTimes:
+        """Returns job times."""
         return self.time_manager.job_times
-
-    def __repr__(self):
-        return json.dumps(
-            self.__dict__,
-            indent=2,
-            default=lambda x: x.__dict__
-        )

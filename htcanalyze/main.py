@@ -7,6 +7,7 @@ Create visible output by using htcanalyze.
 import sys
 import logging
 import subprocess
+import traceback
 
 from typing import List
 from datetime import datetime as date_time
@@ -21,26 +22,24 @@ from .view.view import track_progress
 from .view.analyzed_logfile_view import AnalyzedLogfileView
 from .view.summarized_logfile_view import SummarizedLogfileView
 from .cli_argument_parser import setup_parser
+
 from .globals import (
-    CONFIG_PATHS,
     BAD_USAGE,
     TOLERATED_USAGE,
     NORMAL_EXECUTION,
     NO_VALID_FILES,
-    HTCANALYZE_ERROR,
     TYPE_ERROR,
     KEYBOARD_INTERRUPT
 )
 
 
-class HTCAnalyzeException(Exception):
-
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.message = args[0]
-
-
 class HTCAnalyzeTerminationEvent(Exception):
+    """
+    Exception called with a message and an exit code
+
+    :param args: args
+        excepts args[0] to be a message an args[1] to be the exit code
+    """
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -71,21 +70,48 @@ def version():
 
 def print_results(
         log_files: List[str],
-        analyze=False,
-        rdns_lookup=False,
-        bad_usage=BAD_USAGE,
-        tolerated_usage=TOLERATED_USAGE,
-        show_legend=True,
-        show_list=None,
+        analyze: bool = False,
+        rdns_lookup: bool = False,
+        show_legend: bool = True,
+        show_list: List = None,
+        bad_usage: float = BAD_USAGE,
+        tolerated_usage: float = TOLERATED_USAGE,
         **__
-):
+) -> None:
+    """
+    Print results by analyzing the files and using a particular view.
+
+    :param log_files: List[str]
+        valid log file paths
+    :param analyze: bool, default: False
+        whether to analyze the files
+    :param rdns_lookup: bool
+        reverse dns lookup of ip-addresses
+    :param show_legend: bool
+        Show legend of RAM histogram if analyzed and possible
+    :param show_list: list
+        Show more output like stdout or stderr if analyzed
+    :param bad_usage: float
+        Threshold to signalize a critical percentage
+        the usage is away from the requested resources (usually red colored)
+    :param tolerated_usage: float
+        Threshold to signalize a tolerated but unpleasant percentage
+        the usage is away from the requested resources (usually yellow colored)
+    :param __: ignore unknown params
+
+    :return: None
+    """
     htc_analyze = HTCAnalyzer(rdns_lookup=rdns_lookup)
     condor_logs = htc_analyze.analyze(log_files)
 
     if show_list is None:
         show_list = []
 
-    if analyze or len(log_files) == 1:
+    # analyze files if only one file was given
+    if len(log_files) == 1:
+        analyze = True
+
+    if analyze:
         view = AnalyzedLogfileView(
             bad_usage=bad_usage,
             tolerated_usage=tolerated_usage
@@ -98,8 +124,8 @@ def print_results(
         view.print_condor_logs(
             analyzed_logs,
             show_legend=show_legend,
-            show_err=True if "htc-err" in show_list else False,
-            show_out=True if "htc-out" in show_list else False
+            show_err="htc-err" in show_list,
+            show_out="htc-out" in show_list
         )
     # else summarize
     else:
@@ -114,12 +140,12 @@ def print_results(
         view.print_summarized_condor_logs(summarized_condor_logs)
 
 
-def run(commandline_args):
+def run(commandline_args) -> None:
     """
     Run this script.
 
     :param commandline_args: list of args
-    :return:
+    :return: None
     """
     if not isinstance(commandline_args, list):
         commandline_args = commandline_args.split()
@@ -160,9 +186,7 @@ def run(commandline_args):
             recursive=params.recursive
         )
         with console.status("[bold green]Validating files ..."):
-            valid_files = [
-                file_path for file_path in valid_files_generator
-            ]
+            valid_files = list(valid_files_generator)
 
         console.print(
             f"[green]{len(valid_files)} valid log file(s)[/green]\n"
@@ -180,28 +204,23 @@ def run(commandline_args):
             **vars(params)
         )
 
-    except HTCAnalyzeException as err:
-        raise HTCAnalyzeTerminationEvent(err, HTCANALYZE_ERROR)
-
     except TypeError as err:
-        import traceback
         print(traceback.print_exc())
-        raise HTCAnalyzeTerminationEvent(err, TYPE_ERROR)
+        raise HTCAnalyzeTerminationEvent(err, TYPE_ERROR) from TypeError
 
     except KeyboardInterrupt:
         raise HTCAnalyzeTerminationEvent(
             "Script was interrupted by the user",
             KEYBOARD_INTERRUPT
-        )
+        ) from KeyboardInterrupt
 
 
 def main():
-    """main function (entry point)."""
+    """Main function (entry point)."""
     console = Console()
     start = date_time.now()
     exit_code = NORMAL_EXECUTION
     try:
-
         run(sys.argv[1:])
     except HTCAnalyzeTerminationEvent as err:
         if not err.exit_code == NORMAL_EXECUTION:
@@ -210,8 +229,8 @@ def main():
         exit_code = err.exit_code
 
     end = date_time.now()
-    logging.debug(f"Runtime: {end - start}")
-    logging.debug(f"-------Script terminated, exit code: {exit_code}-------")
+    logging.debug("Runtime: %s", end - start)
+    logging.debug("-------Script terminated, exit code: %s-------", exit_code)
     sys.exit(exit_code)
 
 

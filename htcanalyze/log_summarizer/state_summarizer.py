@@ -1,3 +1,4 @@
+"""Module to create a summarize for each state."""
 from abc import abstractmethod
 from htcanalyze.log_analyzer.event_handler.states import (
     JobState,
@@ -20,6 +21,13 @@ from .summarizer.condor_log_summarizer import (
 
 
 class StateSummarizer(CondorLogSummarizer):
+    """
+    Abstract state summarizer class.
+    Gets instantiatiated by passing log files and a specific state.
+
+    :param condor_logs:
+    :param state:
+    """
 
     def __new__(cls, condor_logs, state: JobState = None):
         if isinstance(state, NormalTerminationState):
@@ -45,4 +53,4 @@ class StateSummarizer(CondorLogSummarizer):
 
     @abstractmethod
     def summarize(self):
-        pass
+        """Summarize."""

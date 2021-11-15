@@ -4,58 +4,46 @@
 .
 .Sh NAME
 .Nm htcanalyze
-.Nd summarize and analyze HTCondor job log files
+.Nd summarize or analyze HTCondor job log files
 .
 .Sh SYNOPSIS
 .Nm
-.Op Ar
-.Op Fl fhrv
+.Op Ar paths
+.Op Fl hrv
 .Op Fl Fl help
-.Op Fl Fl files
+.Op Fl Fl recursive
 .Op Fl Fl version
 .Op Fl Fl verbose
+.Op Fl Fl analyze
 .Op Fl Fl ext-log Ar suffix
 .Op Fl Fl ext-out Ar suffix
 .Op Fl Fl ext-err Ar suffix
-.Op Fl Fl ignore Ar keywords
 .Op Fl Fl show-more Ar keywords
-.Op Fl c Ar config
-.Op Fl Fl config Ar config
-.Op Fl Fl no-config
-.Op Fl Fl recursive
-.Op Fl Fl generate-log-file
-.Op Fl Fl filter Ar keywords Op Fl Fl extend
-.Op Fl Fl reverse-dns-lookup
+.Op Fl Fl rdns-lookup
 .Op Fl Fl tolerated-usage Ar threshold
 .Op Fl Fl bad-usage Ar threshold
+.Op Fl c Ar config | Fl Fl config Ar config
+.Op Fl Fl ignore-config
 .
 .Sh DESCRIPTION
 The
 .Nm
 script takes files and directories as input with given flags and prints out a
 readable result of valid HTCondor log files.
-There are 4 main modes to work with this facility.
+There are 2 main modes to work with this facility.
 The analyze mode is mostly made for single log analytics.
-The summarize and analyzed-summary mode,
-are made to summarize huge collections of log files,
+The summary mode is made to summarize huge collections of log files,
 to give a view on the average used resources and occurred errors.
 More details about the different modes below.
 .Pp
 Its arguments are as follows:
 .Bl -tag -width Ds
 .
-.It Ar FILES | Fl f Ar FILES | Fl Fl files Ar FILES
-just pass any log files or directories,
-you just need to separate them by space.
-There is no need to use the flags,
-but sometimes you have to use them,
-to escape the previous option, for ex:
+.It Ar PATHS
+just pass any log files or directories separated by space.
+Paths should be the first arguments before any flags
 .Bd -literal
-    htcanalyze --ignore all-resources --files log1 log2
-
-to prevent this, always hand the files first, like:
-
-    htcanalyze log1 log2 --ignore all-resources
+    htcanalyze log1 log2 ... [--flags]
 .Ed
 .
 .It Ar OPTIONS
@@ -65,53 +53,24 @@ Prints a summary of
 .Nm Ap s
 command\[hy]line options and exits.
 .
-.It Fl Fl filter Ar keywords Op OPTIONS
-Its options are as follows:
-.Bl -tag -width Ds
-.It Ar OPTIONS
-.Op Fl m Ar mode | Fl Fl mode Ar mode
-.Op Fl Fl extend
+.It Fl r | Fl Fl recursive
+Recursive search through directory hierarchy
 .
-.It Fl m Ar mode | Fl Fl mode Ar mode
-Forward the results, to be processed.
-.It Fl Fl extend
-will include these keywords:
-.Bd -literal
-["err", "error", "warn", "warning", "exception",
- "aborted", "abortion", "abnormal", "fatal"]
-.Ed
-.El
-.Bd -literal
-search inside the given files or directories
-for the given keywords,
-if you want to show multiple information,
-separate them by space like:
---filter err warn ...
-.Ed
-.Bd -literal
-you can forward the result to be processed by a mode
-directly with the additional --mode flag
-.Ed
-.Bd -literal
-Note: This option is NOT case sensitive
-.Ed
-.Bd -literal
-if you want to find any kind of termination,
-that is not normal, use --extend:
-.Ed
-.Bd -literal
-Examples:
---filter exception gpu -s
---filter error warnings --mode analyze
-.Ed
+.It Fl v | Fl Fl version
+Get the current version of this script
+.
+.It Fl v | Fl Fl verbose
+Start the script in verbose mode, this will generate more detailed output,
+about what the script is doing
+but printing it to stdout
+.
+.It Fl Fl analyze
+Analyze all given files one by one.
+This is the default if only one valid logfile was given.
 .
 .It Fl Fl ext-log Ar suffix
 The suffix to filter for HTCondor log files.
-The default attempts to parse all files that don't end in the
-.It Fl Fl ext-err
-or
-.It Fl Fl ext-out
-suffixes.
+.Qq .log .
 .
 .It Fl Fl ext-err Ar suffix
 The suffix to filter for HTCondor error files.
@@ -123,7 +82,7 @@ The suffix to filter for HTCondor out files.
 Defaults to
 .Qq .out .
 .
-.It Fl Fl show-more Ar keywords
+.It Fl Fl show Ar keywords
 show information inside the (if generated) stdout and stderr files,
 related to the current log file.
 .Bd -literal
@@ -139,46 +98,11 @@ separate them by space like:
 --show std-err std-out
 .Ed
 .
-.It Fl Fl ignore Ar keywords
-ignore a given set of information
-.Bd -literal
-Valid arguments are:
-
-[execution-details, times, errors, host-nodes,
- used-resources, requested-resources,
- allocated-resources, all-resources, ram-history]
-
-if you want to ignore multiple information,
-separate them by space like:
---ignore times errors
-.Ed
-.
-.It Fl r | Fl Fl recursive
-Run recursively through given directories
-.
-.It Fl c | Fl Fl config Ar config
-Use args specified by a config file.
-Check CONFIG section for more details
-.
-.It Fl Fl no-config
-Do not search for a config file
-.
-.It Fl Fl reverse-dns-lookup
-Resolve the host the job was running on by it's ip address
+.It Fl Fl rdns-lookup
+Reverse DNS lookup.
+Resolve the host on which the job was running on by it's ip-address
 to a related domain name, if possible.
-Else, go with the ip address.
-.
-.It Fl v | Fl Fl verbose
-Start the script in verbose mode, this will generate more detailed output,
-about what the script is doing
-but printing it to stdout
-.
-.It Fl Fl generate-log-file
-Related to the verbose mode,
-this will generate the same output but not onto the terminal.
-This will create a log rotation file: htcanalyze.log or append output to it.
-The maximum size is limited by 1 MB,
-which means the output starts to rollover on a backup file: htcanalyze.log.1
+Else, go with the ip-address.
 .
 .It Fl Fl tolerated-usage Ar threshold
 Threshold to warn the user,
@@ -190,36 +114,39 @@ Threshold to signal overuse/waste of resources,
 when a given percentage is exceeded
 between used and requested resources
 .
+.It Fl c | Fl Fl config Ar config
+Use args specified by a config file.
+Check CONFIG section for more details
+.
+.It Fl Fl ignore-config
+Do not search for a config file
+.
 .El
 .Sh CONFIG
 .Bd -literal -compact
-Args that start with '--' (eg. -f) can also be set in a config file. Config file
-syntax allows: key=value, flag=true, stuff=[a,b,c]
+Analyze or summarize HTCondor-Joblogs Args that start with '--' (eg. -r)
+can also be set in a config file
+(/etc/htcanalyze.conf or
+~/.config/htcanalyze.conf or
+/home/mloevenich/HTCAnalyze/config/htcanalyze.conf or
+/home/mloevenich/HTCAnalyze/htcanalyze.conf or specified via -c).
+Config file syntax allows: key=value, flag=true, stuff=[a,b,c]
+(for details, see syntax at https://goo.gl/R74nmi).
 If an arg is specified in more than one place, then
 commandline values override config file values which override defaults.
 
 See the config specification:
 .Lk https://github.com/psyinfra/HTCAnalyze/blob/master/config/README.md
 
-The script is also checking for other config files in other places:
-.
-"project_dir/config/htcanalyze.conf",
- "/etc/htcanalyze.conf" and "~/.config/htcanalyze/htcanalyze.conf"
-.Ed
-.Bd -literal
-with different priorities from 1 (high) to 5 (low):
-Priority[1] -c | --config config_file
-Priority[2] search for config_file in project_dir/config/htcanalyze.conf
-Priority[3] search for config_file in ~/.config/htcanalyze/htcanalyze.conf
-Priority[4] search for config_file in /etc/htcanalyze.conf
-Priority[5] run with default settings
+To avoid using a config file at all use the --ignore-config flag.
 .Ed
 .
 .Sh FEATURES
 .Bd -literal -compact
 - Always try to generate output, if possible
+- A single file gets analyzed, multiple files summarized
+- summarizing files by state (Waiting, Running, Terminated, ...)
 - Listening to stdin to make the use of tools like grep possible
--> --filter is a more naive alternative to grep
 .Ed
 .
 .Sh FILES
@@ -230,25 +157,13 @@ A default setup for this script.
 .
 .Sh EXIT STATUS
 .Ex -std
-.Bd -literal -compact
-Exit Codes:
-No given files: 1
-Wrong options or arguments: 2
-TypeError: 3
-Keyboard interruption: 4
-.Ed
 .
 .Sh EXAMPLES
 .Bd -literal
-htcanalyze -a 398_440.log
-htcanalyze -s log_directory --ignore execution-details --no-config
-htcanalyze -as log_directory
-htcanalyze -e 005
-htcanalyze --filter "" --extend -s --ignore all-resources log_directory
-htcanalyze htcanalyze.conf 394_440 -a --show ext-out
-htcanalyze --filter aborted -as ~/logs
-OR
-grep -R -l aborted ~/logs | htcanalyze -as
+htcanalyze 398_440.log
+htcanalyze log_directory --ignore-config
+htcanalyze log_directory -c htcanalyze.conf --show ext-out
+grep -R -l aborted ~/logs | htcanalyze
 .Ed
 .
 .Sh SEE ALSO
