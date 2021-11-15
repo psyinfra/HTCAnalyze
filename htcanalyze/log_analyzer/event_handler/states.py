@@ -3,14 +3,17 @@ from abc import ABC
 
 
 class State(ABC):
+    """Abstract state class."""
     _name: str
 
     @property
     def name(self):
+        """Name getter."""
         return self._name
 
     @name.setter
     def name(self, name):
+        """Name setter."""
         self._name = name
 
     def __eq__(self, other):
@@ -22,22 +25,26 @@ class State(ABC):
 
 
 class JobState(State, ABC):
+    """Represents the current state of a job."""
     _color: str = None
 
     @property
     def color(self):
+        """Color getter."""
         return self._color
 
     @color.setter
     def color(self, color):
+        """Color setter."""
         self._color = color
 
 
 class TerminationState(JobState, ABC):
-    pass
+    """Abstract class to represent a termination state."""
 
 
 class NormalTerminationState(TerminationState):
+    """Represents a normal termination state."""
 
     def __init__(self):
         self.color = "green"
@@ -45,6 +52,7 @@ class NormalTerminationState(TerminationState):
 
 
 class AbnormalTerminationState(TerminationState):
+    """Represents an abnormal termination state."""
 
     def __init__(self):
         self.color = "red"
@@ -52,12 +60,14 @@ class AbnormalTerminationState(TerminationState):
 
 
 class ExecutionState(JobState, ABC):
+    """Abstract class to represent an execution state."""
 
     def __init__(self):
         self.color = "blue"
 
 
 class WaitingState(ExecutionState):
+    """Represents a waiting state."""
 
     def __init__(self):
         super().__init__()
@@ -65,6 +75,7 @@ class WaitingState(ExecutionState):
 
 
 class RunningState(ExecutionState):
+    """Represents a running state."""
 
     def __init__(self):
         super().__init__()
@@ -72,19 +83,21 @@ class RunningState(ExecutionState):
 
 
 class ErrorState(State, ABC):
+    """Represents an error state."""
 
     def __init__(self):
         self.color = "red"
 
 
 class ErrorWhileReadingState(JobState, ErrorState):
-
+    """Represents an error while reading state."""
     def __init__(self):
         super().__init__()
         self.name = "ERROR_WHILE_READING"
 
 
 class InvalidHostAddressState(ErrorState):
+    """Represents an invalid host address state."""
 
     def __init__(self):
         super().__init__()
@@ -92,6 +105,7 @@ class InvalidHostAddressState(ErrorState):
 
 
 class InvalidUserAddressState(ErrorState):
+    """Represents an invalid user address state."""
 
     def __init__(self):
         super().__init__()
@@ -99,6 +113,7 @@ class InvalidUserAddressState(ErrorState):
 
 
 class AbortedState(TerminationState, ErrorState):
+    """Represents an abortion state."""
 
     def __init__(self):
         super().__init__()
@@ -106,6 +121,7 @@ class AbortedState(TerminationState, ErrorState):
 
 
 class JobHeldState(ErrorState):
+    """Represents a job held state."""
 
     def __init__(self):
         super().__init__()
@@ -113,6 +129,7 @@ class JobHeldState(ErrorState):
 
 
 class ShadowExceptionState(ErrorState):
+    """Represents a shadow exception state."""
 
     def __init__(self):
         super().__init__()
