@@ -16,39 +16,26 @@ htcanalyze.conf
 
 #! Setup of the Config file
 
-files = [check-the-htcanalyze.conf]
-
-# if std-log is not set, every file will be interpreted as a log file,
-# except std-err and std-out files
-# std-log = ''
-std-err = .err
-std-out = .out
+# if ext-log is not set, every file will be interpreted as a log file,
+# except ext-err and ext-out files
+ext-log = .log
+ext-err = .err
+ext-out = .out
 
 # only for default and analyze mode
-show-list = []
-# valid values are: "std-err, std-out"
+show = []
+# valid values are: "htc-err, htc-out"
 # This is checking for errors and warnings inside the stderr output of a job
 # if a .err file is found, same with output, which will just return stdout in .out files
-
-# ignore HTCondor related information that is gained within the process
-ignore-list = []
-# valid values are:
-# "used-resources, requested-resources, allocated-resources,
-# execution-details, all-resources, times, errors, host-nodes"
-
 
 # everything with a deviation of more than 10% is tolerated
 tolerated-usage = 0.1
 # everything with a deviation of more than 25% is considered bad
 bad-usage = 0.25
 
-mode = default
-# valid modes: [summarize, analyze, analyzed-summary, default]
-
 # more features
-verbose = false
-# generate-log-file = htcanalyze.log
-reverse-dns-lookup = False
+analyze = False
+rdns-lookup = False
 recursive = False
 
 ```
@@ -67,23 +54,17 @@ But you can also just copy this into a file and run the script with that config 
 htcanalyze -c config_file [files][arguments]
 ```
 
-If you just run the script by:
-```
-htcanalyze -c config_file
-```
-This will run the script with the given config_file
-
-
 Else if you just run the script by just:
 ```
 htcanalyze
 ```
-If the --no-config Flag is NOT set, this will search following locations for the config_file with the priorities from 1 (high) to 4 (low):
+If the --ignore-config Flag is NOT set, this will search following locations for the config_file with the priorities from 1 (low) to 5 (high):
 
-1.  environment_dir/config/htcanalyze.conf (virtual environment)
-2.  ~/.config/htcanalyze/htcanalyze.conf
-3.  /etc/htcanalyze.conf
-4.  else go with default settings
+1. default settings (no config file was found)
+2. /etc/htcanalyze.conf
+3. ~/.config/htcanalyze.conf
+4. <sys_prefix>/HTCAnalyze/config/htcanalyze.conf
+5. <sys_prefix>/HTCAnalyze/htcanalyze.conf
 
 
 ##### Note
@@ -99,35 +80,6 @@ the name has to be "htcanalyze.conf":
 2.  ~/.config/htcanalyze
 3.  /etc
 
-<details>
-<summary>
-htcanalyze_setup.conf
-</summary>
-
-```
-[documents] # section headers will be ignored
-files = [log_file1 log_directory1]
-
-[htc-files]
-std-log = .log
-std-err = .err
-std-out = .out
-
-[features]
-mode = summarize
-```
-</details>
-
-You could summarize or analyze *log_file1* and every log_file, that's found inside *log_directory1* just by:
-```
-htcanalyze -c htcanalyze_setup.conf
-```
-
 The idea is, that for a bunch of settings it's easier to go with config files, \
-so you could have a specified file for just the summary mode and an other file just for the analyze mode and so on ...
+so you could have a specified file for just the summary mode and another file just for the analyze mode and so on ...
 
-If the name of the config file is changed to htcanalyze.conf
-and is moved to one of the locations specified above the call reduced to:
-```
-htcanalyze
-```
