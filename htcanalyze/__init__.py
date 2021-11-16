@@ -1,11 +1,26 @@
 """htcanalyze module."""
-
+import json
 import sys
 import logging
-from logging.handlers import RotatingFileHandler
+from abc import ABC
 
 
-def setup_logging_tool(log_file=None, verbose_mode=False):
+class ReprObject(ABC):
+    """
+    This class is mainly used for development and manages that any class
+    inheriting from it can be easily printed to the command line represented by
+    a self.__dict__ with indentation.
+    """
+
+    def __repr__(self):
+        return json.dumps(
+            self.__dict__,
+            indent=2,
+            default=lambda x: x.__dict__
+        )
+
+
+def setup_logging_tool(verbose_mode):
     """
         Set up the logging device.
 
@@ -15,7 +30,7 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
         both modes are compatible together
     :return:
     """
-    # disable the loggeing tool by default
+    # disable the logging tool by default
     logging.getLogger().disabled = True
 
     # I don't know why a root handler is already set,
@@ -24,28 +39,6 @@ def setup_logging_tool(log_file=None, verbose_mode=False):
     if len(logging.root.handlers) == 1:
         default_handler = logging.root.handlers[0]
         logging.root.removeHandler(default_handler)
-
-    # if logging tool is set to use
-    if log_file is not None:
-        # activate logger if not already activated
-        logging.getLogger().disabled = False
-
-        # more specific view into the script itself
-        logging_file_format = '%(asctime)s - [%(funcName)s:%(lineno)d]' \
-                              ' %(levelname)s : %(message)s'
-        file_formatter = logging.Formatter(logging_file_format)
-
-        handler = RotatingFileHandler(
-            log_file,
-            maxBytes=1000000,
-            backupCount=1
-        )
-        handler.setLevel(logging.DEBUG)
-        handler.setFormatter(file_formatter)
-
-        log = logging.getLogger()
-        log.setLevel(logging.DEBUG)
-        log.addHandler(handler)
 
     if verbose_mode:
         # activate logger if not already activated
