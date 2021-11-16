@@ -3,27 +3,24 @@ import os
 from typing import List
 
 from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog
-from htcanalyze.globals import STRF_FORMAT
+from htcanalyze.globals import STRF_FORMAT, BAD_USAGE, TOLERATED_USAGE
 from .view import View
+from .resource_view import ResourceView
 
 
 class AnalyzedLogfileView(View):
     """
     View to visualize a single (analyzed) CondorLog
 
-    :param bad_usage: bad usage threshold
-    :param tolerated_usage: tolerated usage threshold
     :param ext_out: extension of stdout files
     :param ext_err: extension of stderr files
     """
     def __init__(
             self,
-            bad_usage,
-            tolerated_usage,
             ext_out=".out",
             ext_err=".err"
     ):
-        super().__init__(bad_usage, tolerated_usage)
+        super().__init__()
         self.ext_out = ext_out
         self.ext_err = ext_err
 
@@ -139,11 +136,23 @@ class AnalyzedLogfileView(View):
     def print_condor_log(
             self,
             condor_log: CondorLog,
+            bad_usage=BAD_USAGE,
+            tolerated_usage=TOLERATED_USAGE,
             show_out=False,
             show_err=False,
             show_legend=True
     ):
-        """Prints a single condor log."""
+        """
+        Prints out a single log file
+
+        :param condor_log: log file
+        :param bad_usage: bad resource usage threshold
+        :param tolerated_usage: tolerated resource usage threshold
+        :param show_out: show stdout output if exists
+        :param show_err: show stderr output if exists
+        :param show_legend: show legend of ram histogram
+        :return:
+        """
         self.print_desc_line(
             "Job Analysis of:",
             os.path.basename(condor_log.file),
@@ -152,7 +161,12 @@ class AnalyzedLogfileView(View):
 
         self.print_job_details(condor_log.job_details)
 
-        self.print_resources(condor_log.job_details.resources)
+        resource_view = ResourceView(
+            condor_log.job_details.resources,
+            bad_usage,
+            tolerated_usage
+        )
+        resource_view.print_resources()
 
         self.print_ram_history(
             condor_log.ram_history,
@@ -169,9 +183,15 @@ class AnalyzedLogfileView(View):
                 out_file_name,
                 color="blue"
             )
-            print(self.read_file(
+            file_content = self.read_file(
                 os.path.join(os.path.dirname(condor_log.file), out_file_name)
-            ))
+            )
+            if file_content is None:
+                self.console.print("[red]No stdout file found[/red]")
+            elif file_content == "":
+                self.console.print("[yellow]stdout file is empty[/yellow]")
+            else:
+                print(file_content)
 
         if show_err:
             print()
@@ -181,25 +201,26 @@ class AnalyzedLogfileView(View):
                 err_file_name,
                 color="red"
             )
-            print(self.read_file(
+            file_content = self.read_file(
                 os.path.join(os.path.dirname(condor_log.file), err_file_name)
-            ))
+            )
+            if file_content is None:
+                self.console.print("[red]No stderr file found[/red]")
+            elif file_content == "":
+                self.console.print("[yellow]stderr file is empty[/yellow]")
+            else:
+                print(file_content)
 
     def print_condor_logs(
             self,
-            condor_logs: List[CondorLog],
-            show_out=False,
-            show_err=False,
-            show_legend=True,
-            sep_char="~"
+            condor_logs,
+            sep_char="~",
+            **kwargs
     ):
         """Prints multiple condor logs."""
+        print(sep_char*self.window_width)
         for i, log in enumerate(condor_logs):
             self.print_condor_log(
-                log,
-                show_out=show_out,
-                show_err=show_err,
-                show_legend=show_legend
+                log, **kwargs
             )
-            if i < len(condor_logs)-1:
-                print(sep_char*self.window_width)
+            print(sep_char*self.window_width)

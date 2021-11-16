@@ -2,7 +2,9 @@
 from datetime import timedelta
 from typing import List
 
+from htcanalyze.globals import BAD_USAGE, TOLERATED_USAGE
 from .view import View
+from .resource_view import ResourceView
 from ..log_summarizer.summarized_condor_logs.summarized_condor_logs import (
     SummarizedCondorLogs
 )
@@ -147,6 +149,8 @@ class SummarizedLogfileView(View):
             self,
             summarized_condor_logs: List[SummarizedCondorLogs],
             sort_states_by_n_jobs=True,
+            bad_usage=BAD_USAGE,
+            tolerated_usage=TOLERATED_USAGE,
             sep_char='~'
     ):
         """
@@ -156,6 +160,8 @@ class SummarizedLogfileView(View):
 
         :param summarized_condor_logs:
         :param sort_states_by_n_jobs:
+        :param bad_usage:
+        :param tolerated_usage
         :param sep_char:
         :return:
         """
@@ -191,8 +197,12 @@ class SummarizedLogfileView(View):
 
             self.print_times(state_summarized_logs.avg_times)
 
-            self.print_resources(
+            resource_view = ResourceView(
                 state_summarized_logs.avg_resources,
+                bad_usage=bad_usage,
+                tolerated_usage=tolerated_usage,
+            )
+            resource_view.print_resources(
                 headers=[
                     "Partitionable Resources",
                     "Avg. Usage",

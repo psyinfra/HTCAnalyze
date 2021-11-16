@@ -48,15 +48,9 @@ class View(ABC):
     :param tolerated_usage: tolerated usage threshold
     """
 
-    def __init__(
-            self,
-            bad_usage=BAD_USAGE,
-            tolerated_usage=TOLERATED_USAGE
-    ):
+    def __init__(self):
         self.console = Console()
         self.window_width = self.console.size.width
-        self.bad_usage = bad_usage
-        self.tolerated_usage = tolerated_usage
 
     def read_file(self, file: str):
         """
@@ -65,11 +59,11 @@ class View(ABC):
         :param: file
         :return: content
         """
-        output_string = ""
+        output_string = None
         try:
 
             if os.path.getsize(file) == 0:
-                return output_string
+                return ""
 
             with open(file, "r", encoding='utf-8') as output_content:
                 output_string = output_content.read()
@@ -93,41 +87,6 @@ class View(ABC):
             header_style="bold magenta",
             box=box.ASCII
         )
-
-    def print_resources(
-            self,
-            resources,
-            headers=None,
-            precision=3
-    ):
-        """Prints a resource table."""
-        if not resources:
-            return
-
-        if headers is None:
-            headers = [
-                "Partitionable Resources",
-                "Usage",
-                "Request",
-                "Allocated"
-            ]
-
-        resource_table = self.create_table(headers)
-
-        for resource in resources.resources:
-            if not resource.is_empty():
-                color = resource.get_color_by_threshold(
-                    bad_usage=self.bad_usage,
-                    tolerated_usage=self.tolerated_usage
-                )
-                resource_table.add_row(
-                    resource.description,
-                    f"[{color}]{round(resource.usage, precision)}[/{color}]",
-                    str(round(resource.requested, precision)),
-                    str(round(resource.allocated, precision))
-                )
-
-        self.console.print(resource_table)
 
     def print_desc_line(
             self,

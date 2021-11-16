@@ -26,6 +26,8 @@ from .cli_argument_parser import setup_parser
 from .globals import (
     BAD_USAGE,
     TOLERATED_USAGE,
+    EXT_ERR_DEFAULT,
+    EXT_OUT_DEFAULT,
     NORMAL_EXECUTION,
     NO_VALID_FILES,
     TYPE_ERROR,
@@ -74,6 +76,8 @@ def print_results(
         rdns_lookup: bool = False,
         show_legend: bool = True,
         show_list: List = None,
+        ext_out: str = EXT_OUT_DEFAULT,
+        ext_err: str = EXT_ERR_DEFAULT,
         bad_usage: float = BAD_USAGE,
         tolerated_usage: float = TOLERATED_USAGE,
         **__
@@ -94,6 +98,10 @@ def print_results(
     :param bad_usage: float
         Threshold to signalize a critical percentage
         the usage is away from the requested resources (usually red colored)
+    :param ext_out: str
+        stdout file extension (default: .out)
+    :param ext_err: str
+        stderr file extension (default: .err)
     :param tolerated_usage: float
         Threshold to signalize a tolerated but unpleasant percentage
         the usage is away from the requested resources (usually yellow colored)
@@ -113,8 +121,8 @@ def print_results(
 
     if analyze:
         view = AnalyzedLogfileView(
-            bad_usage=bad_usage,
-            tolerated_usage=tolerated_usage
+            ext_out=ext_out,
+            ext_err=ext_err
         )
         analyzed_logs = track_progress(
             condor_logs,
@@ -123,9 +131,11 @@ def print_results(
         )
         view.print_condor_logs(
             analyzed_logs,
-            show_legend=show_legend,
+            bad_usage=bad_usage,
+            tolerated_usage=tolerated_usage,
             show_err="htc-err" in show_list,
-            show_out="htc-out" in show_list
+            show_out="htc-out" in show_list,
+            show_legend=show_legend
         )
     # else summarize
     else:
@@ -137,7 +147,11 @@ def print_results(
         )
         htc_state_summarizer = HTCSummarizer(analyzed_logs)
         summarized_condor_logs = htc_state_summarizer.summarize()
-        view.print_summarized_condor_logs(summarized_condor_logs)
+        view.print_summarized_condor_logs(
+            summarized_condor_logs,
+            bad_usage=bad_usage,
+            tolerated_usage=tolerated_usage,
+        )
 
 
 def run(commandline_args) -> None:
