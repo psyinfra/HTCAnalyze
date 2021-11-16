@@ -44,6 +44,7 @@ HTCAnalyze has two modes of operation:
 - `analyze`: provides detailed output, including a RAM
   histogram, HTCondor errors, and more.
   This is the default if only one file is given.
+
 - `summarize`: provides summarized output collected by each state of a job
   (e.g. waiting, running, terminated, etc.)
   This is the default if more than one file is given.

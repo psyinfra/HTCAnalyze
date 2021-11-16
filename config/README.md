@@ -80,6 +80,5 @@ the name has to be "htcanalyze.conf":
 2.  ~/.config/htcanalyze
 3.  /etc
 
-The idea is, that for a bunch of settings it's easier to go with config files, \
+The idea is, that for a bunch of settings it's easier to go with config files, 
 so you could have a specified file for just the summary mode and another file just for the analyze mode and so on ...
-
