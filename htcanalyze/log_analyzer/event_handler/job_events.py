@@ -15,7 +15,7 @@ from .states import (
 class DateTimeWrapper(date_time):
     """Wrapper for datetime objects to create a representation __repr__."""
 
-    def __new__(cls, time_stamp):
+    def __new__(cls, time_stamp, *_, **__):
         new = date_time.__new__(
             cls,
             year=time_stamp.year,

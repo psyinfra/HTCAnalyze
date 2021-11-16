@@ -10,7 +10,7 @@ class TimeDeltaWrapper(timedelta):
     Wrapper class for time delta objects to have an __repr__ function.
     """
 
-    def __new__(cls, time_delta: timedelta):
+    def __new__(cls, time_delta: timedelta, *_, **__):
         if time_delta:
             return timedelta.__new__(
                 cls,
