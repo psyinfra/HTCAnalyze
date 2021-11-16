@@ -1,6 +1,5 @@
 """Module to visualize condor logs."""
 import os
-from typing import List
 
 from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog
 from htcanalyze.globals import STRF_FORMAT, BAD_USAGE, TOLERATED_USAGE
@@ -219,7 +218,7 @@ class AnalyzedLogfileView(View):
     ):
         """Prints multiple condor logs."""
         print(sep_char*self.window_width)
-        for i, log in enumerate(condor_logs):
+        for log in condor_logs:
             self.print_condor_log(
                 log, **kwargs
             )

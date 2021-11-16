@@ -10,8 +10,6 @@ from rich.table import Table, box
 from rich.text import Text
 from rich.progress import Progress
 
-from htcanalyze.globals import BAD_USAGE, TOLERATED_USAGE
-
 
 def track_progress(
         generator,

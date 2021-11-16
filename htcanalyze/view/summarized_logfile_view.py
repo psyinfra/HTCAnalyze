@@ -13,9 +13,6 @@ from ..log_summarizer.summarized_condor_logs.summarized_condor_logs import (
 class SummarizedLogfileView(View):
     """Visualizes summarized log files."""
 
-    def __init__(self):
-        super().__init__()
-
     def print_times(
             self,
             job_times
@@ -155,7 +152,7 @@ class SummarizedLogfileView(View):
     ):
         """
         Prints summarized log files
-        sorts descrption table by number of files per state,
+        sorts description table by number of files per state,
         separates each state summary by a line of sep_char
 
         :param summarized_condor_logs:
