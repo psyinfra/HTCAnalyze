@@ -3,6 +3,14 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog, JobDetails
+from htcanalyze.log_analyzer.event_handler.states import (
+    WaitingState,
+    RunningState,
+    AbortedState,
+    NormalTerminationState,
+    AbnormalTerminationState,
+    ErrorWhileReadingState
+)
 from .summarizer import Summarizer
 from .log_resource_summarizer import LogResourceSummarizer, LogResources
 from .time_summarizer import TimeSummarizer, TimeManager
@@ -80,7 +88,7 @@ class NormalTerminationStateSummarizer(CondorLogSummarizer):
     """Summarizer for NormalTerminationState."""
 
     def __init__(self, condor_logs: List[CondorLog]):
-        super().__init__(condor_logs)
+        super().__init__(condor_logs, NormalTerminationState())
 
     def summarize(self) -> SummarizedCondorLogs:
         """Summarize."""
@@ -105,12 +113,16 @@ class AbnormalTerminationStateSummarizer(NormalTerminationStateSummarizer):
     Does not differ form NormalTerminationStateSummarizer for now.
     """
 
+    def __init__(self, condor_logs: List[CondorLog]):
+        super().__init__(condor_logs)
+        self.state = AbnormalTerminationState()
+
 
 class WaitingStateSummarizer(CondorLogSummarizer):
     """Summarizer for WaitingState."""
 
     def __init__(self, condor_logs: List[CondorLog]):
-        super().__init__(condor_logs)
+        super().__init__(condor_logs, WaitingState())
 
     def summarize(self) -> SummarizedCondorLogs:
         """Summarize."""
@@ -128,7 +140,7 @@ class RunningStateSummarizer(CondorLogSummarizer):
     """Summarizer for RunningState."""
 
     def __init__(self, condor_logs: List[CondorLog]):
-        super().__init__(condor_logs)
+        super().__init__(condor_logs, RunningState())
 
     def summarize(self) -> SummarizedCondorLogs:
         """Summarize."""
@@ -148,7 +160,7 @@ class AbortedStateSummarizer(CondorLogSummarizer):
     """Summarizer for AbortedState."""
 
     def __init__(self, condor_logs: List[CondorLog]):
-        super().__init__(condor_logs)
+        super().__init__(condor_logs, AbortedState())
 
     def summarize(self) -> SummarizedCondorLogs:
         """Summarize."""
@@ -165,7 +177,7 @@ class AbortedStateSummarizer(CondorLogSummarizer):
 class ErrorWhileReadingStateSummarizer(CondorLogSummarizer):
     """Summarizer for ErrorWhileReadingState"""
     def __init__(self, condor_logs: List[CondorLog]):
-        super().__init__(condor_logs)
+        super().__init__(condor_logs, ErrorWhileReadingState())
 
     def summarize(self) -> SummarizedCondorLogs:
         """Summarize."""
