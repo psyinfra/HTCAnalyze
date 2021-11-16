@@ -1,8 +1,9 @@
 """State Module."""
 from abc import ABC
+from htcanalyze import ReprObject
 
 
-class State(ABC):
+class State(ReprObject, ABC):
     """Abstract state class."""
     _name: str
 
