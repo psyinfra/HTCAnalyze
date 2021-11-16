@@ -64,7 +64,9 @@ Example output:
 
 - Print help text, listing functionality:
   ```
-  htcanalyze -h (show a detailed description to all functionalities)
+  htcanalyze -h
+  or 
+  man htcanalyze (uses more detailed man page)
   ```
 - Analyze a single file:
   ```
