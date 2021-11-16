@@ -51,7 +51,7 @@ class ReadLogException(Exception):
     """Can't read log file exception."""
 
 
-class WrappedHTCJobEvent(HTCJobEvent):
+class HTCJobEventWrapper(HTCJobEvent):
     """Wrapper for HTCJobEvent."""
 
     def __new__(cls, job_event: HTCJobEvent):
@@ -72,7 +72,7 @@ class EventHandler:
 
     def get_submission_event(
             self,
-            event: WrappedHTCJobEvent
+            event: HTCJobEventWrapper
     ) -> Union[JobSubmissionEvent, ErrorEvent]:
         """
         Reads and returns a JobSubmissionEvent or an ErrorEvent if
@@ -112,7 +112,7 @@ class EventHandler:
 
     def get_execution_event(
             self,
-            event: WrappedHTCJobEvent,
+            event: HTCJobEventWrapper,
             rdns_lookup: bool = False
     ) -> Union[JobExecutionEvent, ErrorEvent]:
         """
@@ -150,7 +150,7 @@ class EventHandler:
 
     def get_job_terminated_event(
             self,
-            event: WrappedHTCJobEvent
+            event: HTCJobEventWrapper
     ) -> JobTerminationEvent:
         """Reads and returns a JobTerminationEvent."""
         # create list with resources,
@@ -202,7 +202,7 @@ class EventHandler:
 
     def get_job_aborted_event(
             self,
-            event: WrappedHTCJobEvent
+            event: HTCJobEventWrapper
     ) -> JobAbortedEvent:
         """Reads and returns a JobAbortedEvent."""
         assert event.type == jet.JOB_ABORTED
@@ -229,7 +229,7 @@ class EventHandler:
         return aborted_event
 
     @staticmethod
-    def get_image_size_event(event: WrappedHTCJobEvent) -> ImageSizeEvent:
+    def get_image_size_event(event: HTCJobEventWrapper) -> ImageSizeEvent:
         """Reads and returns a ImageSizeEvent."""
         assert event.type == jet.IMAGE_SIZE
         size_update = event.get('Size')
@@ -244,7 +244,7 @@ class EventHandler:
         )
 
     @staticmethod
-    def get_job_held_event(event: WrappedHTCJobEvent) -> JobHeldEvent:
+    def get_job_held_event(event: HTCJobEventWrapper) -> JobHeldEvent:
         """Reads and returns a JobHeldEvent."""
         assert event.type == jet.JOB_HELD
         reason = event.get('HoldReason')
@@ -256,7 +256,7 @@ class EventHandler:
 
     @staticmethod
     def get_shadow_exception_event(
-            event: WrappedHTCJobEvent
+            event: HTCJobEventWrapper
     ) -> ShadowExceptionEvent:
         """Reads and returns a ShadowExceptionEvent."""
         assert event.type == jet.SHADOW_EXCEPTION
@@ -315,7 +315,7 @@ class EventHandler:
         :return: JobEvent
             Wrapped JobEvent class with own properties
         """
-        wrapped_job_event = WrappedHTCJobEvent(event)
+        wrapped_job_event = HTCJobEventWrapper(event)
         if wrapped_job_event.type == jet.SUBMIT:
             job_event = self.get_submission_event(wrapped_job_event)
 
