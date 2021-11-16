@@ -42,11 +42,7 @@ def track_progress(
 
 
 class View(ABC):
-    """A general view to visualize HTCAnalyze data to the terminal.
-
-    :param bad_usage: bad usage threshold
-    :param tolerated_usage: tolerated usage threshold
-    """
+    """A general view to visualize HTCAnalyze data to the terminal."""
 
     def __init__(self):
         self.console = Console()
