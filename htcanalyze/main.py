@@ -34,10 +34,10 @@ from htcanalyze.globals import ALLOWED_IGNORE_VALUES, \
 def version():
     """Get version from setup.py."""
     output = subprocess.check_output(
-        "python -W ignore setup.py --version",
+        "pip show htcanalyze | grep Version",
         shell=True
     )
-    return output.decode('utf-8').split('\n', maxsplit=1)[0]
+    return output.decode('utf-8').split()[-1]
 
 
 class CustomFormatter(HelpFormatter):
