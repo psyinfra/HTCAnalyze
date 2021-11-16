@@ -51,31 +51,28 @@ class ReadLogException(Exception):
     """Can't read log file exception."""
 
 
-def event_decorator(func):
-    """Event decorator to set event number and time stamp."""
-    def wrapper(self, event, *args, **kwargs):
-        self._event_number = event.get('EventTypeNumber')
-        self._time_stamp = date_time.strptime(
-            event.get('EventTime'),
+class WrappedHTCJobEvent(HTCJobEvent):
+    """Wrapper for HTCJobEvent."""
+
+    def __new__(cls, job_event: HTCJobEvent):
+        new = job_event
+        new.event_number = job_event.get('EventTypeNumber')
+        new.time_stamp = date_time.strptime(
+            job_event.get('EventTime'),
             STRP_FORMAT
         )
-        return func(self, event, *args, **kwargs)
-
-    return wrapper
+        return new
 
 
 class EventHandler:
     """Event handler to wrap HTCondor job events."""
-    _event_number = None
-    _time_stamp = None
 
     def __init__(self):
         self._state: Union[JobState, None] = None
 
-    @event_decorator
     def get_submission_event(
             self,
-            event: HTCJobEvent
+            event: WrappedHTCJobEvent
     ) -> Union[JobSubmissionEvent, ErrorEvent]:
         """
         Reads and returns a JobSubmissionEvent or an ErrorEvent if
@@ -94,15 +91,15 @@ class EventHandler:
             submitted_host = match_from_host[1]
             self._state = WaitingState()
             return JobSubmissionEvent(
-                self._event_number,
-                self._time_stamp,
+                event.event_number,
+                event.time_stamp,
                 submitted_host
             )
         # else ERROR
         reason = "Can't read user address"
         self._state = ErrorWhileReadingState()
         return ErrorEvent(
-            self._event_number,
+            event.event_number,
             None,
             InvalidUserAddressState(),
             reason
@@ -113,10 +110,9 @@ class EventHandler:
         """Returns current job state."""
         return self._state
 
-    @event_decorator
     def get_execution_event(
             self,
-            event: HTCJobEvent,
+            event: WrappedHTCJobEvent,
             rdns_lookup: bool = False
     ) -> Union[JobExecutionEvent, ErrorEvent]:
         """
@@ -137,8 +133,8 @@ class EventHandler:
             execution_host = match_to_host[1]
             self._state = RunningState()
             return JobExecutionEvent(
-                self._event_number,
-                self._time_stamp,
+                event.event_number,
+                event.time_stamp,
                 execution_host,
                 rdns_lookup
             )
@@ -146,16 +142,15 @@ class EventHandler:
         reason = "Can't read host address"
         self._state = ErrorWhileReadingState()
         return ErrorEvent(
-            self._event_number,
+            event.event_number,
             None,
             InvalidHostAddressState(),
             reason
         )
 
-    @event_decorator
     def get_job_terminated_event(
             self,
-            event: HTCJobEvent
+            event: WrappedHTCJobEvent
     ) -> JobTerminationEvent:
         """Reads and returns a JobTerminationEvent."""
         # create list with resources,
@@ -198,75 +193,77 @@ class EventHandler:
 
         self._state = state
         return JobTerminationEvent(
-            self._event_number,
-            self._time_stamp,
+            event.event_number,
+            event.time_stamp,
             resources,
             state,
             return_value
         )
 
-    @event_decorator
-    def get_job_aborted_event(self, event: HTCJobEvent) -> JobAbortedEvent:
+    def get_job_aborted_event(
+            self,
+            event: WrappedHTCJobEvent
+    ) -> JobAbortedEvent:
         """Reads and returns a JobAbortedEvent."""
         assert event.type == jet.JOB_ABORTED
         reason = event.get('Reason')
         if not self._state:
             aborted_event = JobAbortedBeforeSubmissionEvent(
-                self._event_number,
-                self._time_stamp,
+                event.event_number,
+                event.time_stamp,
                 reason
             )
         elif self._state == WaitingState():
             aborted_event = JobAbortedBeforeExecutionEvent(
-                self._event_number,
-                self._time_stamp,
+                event.event_number,
+                event.time_stamp,
                 reason
             )
         else:
             aborted_event = JobAbortedEvent(
-                self._event_number,
-                self._time_stamp,
+                event.event_number,
+                event.time_stamp,
                 reason
             )
         self._state = AbortedState()
         return aborted_event
 
-    @event_decorator
-    def get_image_size_event(self, event: HTCJobEvent) -> ImageSizeEvent:
+    @staticmethod
+    def get_image_size_event(event: WrappedHTCJobEvent) -> ImageSizeEvent:
         """Reads and returns a ImageSizeEvent."""
         assert event.type == jet.IMAGE_SIZE
         size_update = event.get('Size')
         memory_usage = event.get('MemoryUsage')
         resident_set_size = event.get('ResidentSetSize')
         return ImageSizeEvent(
-            self._event_number,
-            self._time_stamp,
+            event.event_number,
+            event.time_stamp,
             size_update,
             memory_usage,
             resident_set_size
         )
 
-    @event_decorator
-    def get_job_held_event(self, event: HTCJobEvent) -> JobHeldEvent:
+    @staticmethod
+    def get_job_held_event(event: WrappedHTCJobEvent) -> JobHeldEvent:
         """Reads and returns a JobHeldEvent."""
         assert event.type == jet.JOB_HELD
         reason = event.get('HoldReason')
         return JobHeldEvent(
-            self._event_number,
-            self._time_stamp,
+            event.event_number,
+            event.time_stamp,
             reason
         )
 
-    @event_decorator
+    @staticmethod
     def get_shadow_exception_event(
-            self, event: HTCJobEvent
+            event: WrappedHTCJobEvent
     ) -> ShadowExceptionEvent:
         """Reads and returns a ShadowExceptionEvent."""
         assert event.type == jet.SHADOW_EXCEPTION
         reason = event.get('Message')
         return ShadowExceptionEvent(
-            self._event_number,
-            self._time_stamp,
+            event.event_number,
+            event.time_stamp,
             reason
         )
 
@@ -318,35 +315,38 @@ class EventHandler:
         :return: JobEvent
             Wrapped JobEvent class with own properties
         """
-        if event.type == jet.SUBMIT:
-            job_event = self.get_submission_event(event)
+        wrapped_job_event = WrappedHTCJobEvent(event)
+        if wrapped_job_event.type == jet.SUBMIT:
+            job_event = self.get_submission_event(wrapped_job_event)
 
-        elif event.type == jet.EXECUTE:
+        elif wrapped_job_event.type == jet.EXECUTE:
             job_event = self.get_execution_event(
-                event,
+                wrapped_job_event,
                 rdns_lookup=rdns_lookup
             )
 
-        elif event.type == jet.IMAGE_SIZE:
-            job_event = self.get_image_size_event(event)
+        elif wrapped_job_event.type == jet.IMAGE_SIZE:
+            job_event = self.get_image_size_event(wrapped_job_event)
 
             # update resource dict and termination date
-        elif event.type == jet.JOB_TERMINATED:
-            job_event = self.get_job_terminated_event(event)
+        elif wrapped_job_event.type == jet.JOB_TERMINATED:
+            job_event = self.get_job_terminated_event(wrapped_job_event)
 
             # update error dict and termination date
-        elif event.type == jet.JOB_ABORTED:
-            job_event = self.get_job_aborted_event(event)
+        elif wrapped_job_event.type == jet.JOB_ABORTED:
+            job_event = self.get_job_aborted_event(wrapped_job_event)
 
             # update error dict
-        elif event.type == jet.JOB_HELD:
-            job_event = self.get_job_held_event(event)
+        elif wrapped_job_event.type == jet.JOB_HELD:
+            job_event = self.get_job_held_event(wrapped_job_event)
 
             # update error dict
-        elif event.type == jet.SHADOW_EXCEPTION:
-            job_event = self.get_shadow_exception_event(event)
+        elif wrapped_job_event.type == jet.SHADOW_EXCEPTION:
+            job_event = self.get_shadow_exception_event(wrapped_job_event)
 
         else:
-            raise AttributeError(f"Event type: {event.type} not handled yet")
+            raise AttributeError(
+                f"Event type: {wrapped_job_event.type} not handled yet"
+            )
 
         return job_event
