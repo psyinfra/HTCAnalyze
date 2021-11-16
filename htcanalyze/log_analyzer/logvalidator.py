@@ -6,22 +6,27 @@ import logging
 from typing import List
 
 from rich import print as rprint
+from htcanalyze.globals import (
+    EXT_LOG_DEFAULT,
+    EXT_OUT_DEFAULT,
+    EXT_ERR_DEFAULT
+)
 
 
 class LogValidator:
     """
     HTCondor LogValidator.
 
-    :param ext_log: log file extension
-    :param ext_err: stderr file extension
-    :param ext_out: stdout file extension
+    :param ext_log: log file extension (default: .log)
+    :param ext_err: stderr file extension (default: .err)
+    :param ext_out: stdout file extension (default: .out)
     """
 
     def __init__(
             self,
-            ext_log="",
-            ext_err=".err",
-            ext_out=".out"
+            ext_log=EXT_LOG_DEFAULT,
+            ext_err=EXT_ERR_DEFAULT,
+            ext_out=EXT_OUT_DEFAULT
     ):
         self.ext_log = ext_log
         self.ext_err = ext_err
