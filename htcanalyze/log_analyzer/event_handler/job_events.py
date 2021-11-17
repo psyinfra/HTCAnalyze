@@ -187,7 +187,7 @@ class JobCheckpointedEvent(JobEvent):
 
     Event Number: 003
     Event Name: Job was checkpointed
-    Event Description: The job’s complete state was written to a checkpoint 
+    Event Description: The job’s complete state was written to a checkpoint
         file. This might happen without the job being removed from a machine,
         because the checkpointing can happen periodically.
 

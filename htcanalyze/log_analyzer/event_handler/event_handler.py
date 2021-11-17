@@ -69,7 +69,6 @@ class HTCJobEventWrapper:
     """
 
     def __init__(self, job_event: HTCJobEvent):
-
         self.wrapped_class = job_event
         self.event_number = job_event.get('EventTypeNumber')
         self.time_stamp = date_time.strptime(
@@ -81,19 +80,24 @@ class HTCJobEventWrapper:
         return getattr(self.wrapped_class, attr)
 
     def get(self, *args, **kwargs):
+        """Wraps wrapped_class get function."""
         return self.wrapped_class.get(*args, **kwargs)
 
     def items(self):
+        """Wraps wrapped_class items method."""
         return self.wrapped_class.items()
 
     def keys(self):
+        """Wraps wrapped_class keys method."""
         return self.wrapped_class.keys()
 
     def values(self):
+        """Wraps wrapped_class values method."""
         return self.wrapped_class.values()
 
     def to_dict(self):
-        return {key: val for key, val in self.items()}
+        """Turns wrapped_class items into a dictionary."""
+        return dict(self.items())
 
     def __repr__(self):
         return json.dumps(
@@ -217,10 +221,8 @@ class EventHandler:
             )
         )
 
-        normal_termination = event.get('TerminatedNormally')
-
         # differentiate between normal and abnormal termination
-        if normal_termination:
+        if event.get('TerminatedNormally'):
             self._state = NormalTerminationState()
             return_value = event.get('ReturnValue')
             return NormalTerminationEvent(
@@ -229,16 +231,16 @@ class EventHandler:
                 resources,
                 return_value
             )
-        else:
-            return_value = event.get('TerminatedBySignal')
-            self._state = AbnormalTerminationState()
-            return AbnormalTerminationEvent(
-                event.event_number,
-                event.time_stamp,
-                resources,
-                return_value
-            )
-            # Todo: include description when possible
+        # else:
+        return_value = event.get('TerminatedBySignal')
+        self._state = AbnormalTerminationState()
+        return AbnormalTerminationEvent(
+            event.event_number,
+            event.time_stamp,
+            resources,
+            return_value
+        )
+        # Todo: include description when possible
 
     @staticmethod
     def get_job_evicted_event(
@@ -325,6 +327,7 @@ class EventHandler:
     def get_job_disconnected_event(
             event: HTCJobEventWrapper
     ) -> JobDisconnectedEvent:
+        """Reads and returns a JobDisconnectedEvent."""
         assert event.type == jet.JOB_DISCONNECTED
         reason = f"{event.get('DisconnectReason')}"
         return JobDisconnectedEvent(
@@ -337,18 +340,18 @@ class EventHandler:
     def get_job_reconnected_event(
             event: HTCJobEventWrapper
     ) -> JobReconnectedEvent:
+        """Reads and returns a JobReconnectedEvent."""
         assert event.type == jet.JOB_RECONNECTED
-        reason = f"{event.get('Reason')}"
         return JobReconnectedEvent(
             event.event_number,
             event.time_stamp,
-            reason
         )
 
     @staticmethod
     def get_job_reconnect_failed_event(
             event: HTCJobEventWrapper
     ) -> JobReconnectFailedEvent:
+        """Reads and returns a JobReconnectFailedEvent."""
         assert event.type == jet.JOB_RECONNECT_FAILED
         reason = f"{event.get('Reason')}"
         return JobReconnectFailedEvent(
