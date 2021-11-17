@@ -51,17 +51,48 @@ class ReadLogException(Exception):
     """Can't read log file exception."""
 
 
-class HTCJobEventWrapper(HTCJobEvent):
-    """Wrapper for HTCJobEvent."""
+class HTCJobEventWrapper:
+    """
+    Wrapper for HTCondor JobEvent.
 
-    def __new__(cls, job_event: HTCJobEvent):
-        new = job_event
-        new.event_number = job_event.get('EventTypeNumber')
-        new.time_stamp = date_time.strptime(
-            job_event.get('EventTime'),
-            STRP_FORMAT
+    Extracts event number and time_stamp of an event.
+    The wrapped event can be printed to the terminal for dev purpose.
+
+    :param job_event: HTCJobEvent
+    """
+
+    def __init__(self, job_event: HTCJobEvent):
+
+        self.wrapped_class = job_event
+        self.event_number = job_event.get('EventTypeNumber')
+        self.time_stamp = date_time.strptime(
+                job_event.get('EventTime'),
+                STRP_FORMAT
+            )
+
+    def __getattr__(self, attr):
+        return getattr(self.wrapped_class, attr)
+
+    def get(self, *args, **kwargs):
+        return self.wrapped_class.get(*args, **kwargs)
+
+    def items(self):
+        return self.wrapped_class.items()
+
+    def keys(self):
+        return self.wrapped_class.keys()
+
+    def values(self):
+        return self.wrapped_class.values()
+
+    def to_dict(self):
+        return {key: val for key, val in self.items()}
+
+    def __repr__(self):
+        return json.dumps(
+            self.to_dict(),
+            indent=2
         )
-        return new
 
 
 class EventHandler:
