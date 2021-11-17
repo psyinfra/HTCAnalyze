@@ -450,6 +450,17 @@ class JobHeldEvent(ErrorEvent):
         )
 
 
+class JobReleasedEvent(JobEvent):
+    """
+    Job was released after being hold event.
+
+    Event Number: 013
+    Event Name: Job was released
+    Event Description: The job was in the hold state and is to be re-run.
+
+    """
+
+
 class JobDisconnectedEvent(ErrorEvent):
     """
     Job disconnected event.
