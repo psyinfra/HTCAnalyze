@@ -6,10 +6,17 @@ from htcanalyze import ReprObject
 from .node_cache import NodeCache
 from .states import (
     TerminationState,
+    NormalTerminationState,
+    AbnormalTerminationState,
     ErrorState,
     AbortedState,
     ShadowExceptionState,
-    JobHeldState
+    JobSuspendedState,
+    JobHeldState,
+    JobEvictedState,
+    ExecutableErrorState,
+    JobReconnectFailedState,
+    JobDisconnectedState
 )
 
 
@@ -78,7 +85,7 @@ class ErrorEvent(JobEvent, ABC):
             event_number,
             time_stamp,
             error_state: ErrorState,
-            reason: str
+            reason: str = None
     ):
         super().__init__(event_number, time_stamp)
         assert isinstance(error_state, ErrorState)
@@ -188,7 +195,7 @@ class JobCheckpointedEvent(JobEvent):
     # Todo: figure out data load
 
 
-class JobEvictedEvent(JobEvent):
+class JobEvictedEvent(ErrorEvent):
     """
     Job evicted event.
 
@@ -199,7 +206,29 @@ class JobEvictedEvent(JobEvent):
         claimed the computer, or perhaps another job is higher priority.
 
     """
-    # Todo: figure out data load
+    def __init__(
+            self,
+            event_number,
+            time_stamp,
+            checkpointed=False,
+    ):
+        if checkpointed:
+            message = (
+                "Job evicted with checkpoint, "
+                "continue process on last checkpoint"
+            )
+        else:
+            message = (
+                "Job evicted, progress is lost, "
+                "job goes back into the queue"
+            )
+
+        super().__init__(
+            event_number,
+            time_stamp,
+            JobEvictedState(),
+            message
+        )
 
 
 class JobTerminationEvent(JobEvent, ABC):
@@ -222,14 +251,35 @@ class JobTerminationEvent(JobEvent, ABC):
             event_number=None,
             time_stamp=None,
             resources=None,
-            termination_state: TerminationState = None,
-            return_value: int = None
-
+            return_value: int = None,
+            termination_state: TerminationState = None
     ):
         super().__init__(event_number, time_stamp)
         self.resources = resources
-        self.termination_state = termination_state
         self.return_value = return_value
+        self.termination_state = termination_state
+
+
+class NormalTerminationEvent(JobTerminationEvent):
+    """Normal Termination Event."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            *args,
+            **kwargs,
+            termination_state=NormalTerminationState()
+        )
+
+
+class AbnormalTerminationEvent(JobTerminationEvent):
+    """Abnormal Termination Event."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            *args,
+            **kwargs,
+            termination_state=AbnormalTerminationState()
+        )
 
 
 class ImageSizeEvent(JobEvent):
@@ -396,5 +446,72 @@ class JobHeldEvent(ErrorEvent):
             event_number,
             time_stamp,
             JobHeldState(),
+            reason
+        )
+
+
+class JobDisconnectedEvent(ErrorEvent):
+    """
+    Job disconnected event.
+
+    Event Number: 022
+    Event Name: Remote system call socket lost
+    Event Description: The condor_shadow and condor_starter
+        (which communicate while the job runs) have lost contact.
+
+    """
+
+    def __init__(
+            self,
+            event_number,
+            time_stamp,
+            reason
+    ):
+        super().__init__(
+            event_number,
+            time_stamp,
+            JobDisconnectedState(),
+            reason
+        )
+
+
+class JobReconnectedEvent(JobEvent):
+    """
+    Job reconnected event.
+
+    Event Number: 023
+    Event Name: Remote system call socket reestablished
+    Event Description: The condor_shadow and condor_starter
+        (which communicate while the job runs) have been able
+        to resume contact before the job lease expired.
+
+    """
+
+
+class JobReconnectFailedEvent(ErrorEvent):
+    """
+    Job reconnect failed event.
+
+    Event Number: 024
+    Event Name: Remote system call reconnect failure
+    Event Description: The condor_shadow and condor_starter
+        (which communicate while the job runs) were unable to resume
+        contact before the job lease expired.
+
+    :param event_number:
+    :param time_stamp:
+    :param reason:
+    """
+
+    def __init__(
+            self,
+            event_number,
+            time_stamp,
+            reason
+    ):
+        super().__init__(
+            event_number,
+            time_stamp,
+            JobReconnectFailedState(),
             reason
         )

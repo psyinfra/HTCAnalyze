@@ -3,6 +3,7 @@
 import os
 import re
 import logging
+import json
 from typing import List, Union
 from datetime import datetime as date_time
 
@@ -30,13 +31,19 @@ from .job_events import (
     ErrorEvent,
     JobSubmissionEvent,
     JobExecutionEvent,
+    JobEvictedEvent,
     JobTerminationEvent,
+    NormalTerminationEvent,
+    AbnormalTerminationEvent,
     JobAbortedEvent,
     JobAbortedBeforeExecutionEvent,
     JobAbortedBeforeSubmissionEvent,
     JobHeldEvent,
     ImageSizeEvent,
-    ShadowExceptionEvent
+    ShadowExceptionEvent,
+    JobDisconnectedEvent,
+    JobReconnectedEvent,
+    JobReconnectFailedEvent
 )
 from ..condor_log.logresource import (
     LogResources,
@@ -101,6 +108,11 @@ class EventHandler:
     def __init__(self):
         self._state: Union[JobState, None] = None
 
+    @property
+    def state(self) -> JobState:
+        """Returns current job state."""
+        return self._state
+
     def get_submission_event(
             self,
             event: HTCJobEventWrapper
@@ -116,7 +128,7 @@ class EventHandler:
 
         match_from_host = re.match(
             r"<(.+):[0-9]+\?(.*)>",
-            event.get('SubmitHost')
+            event.get("SubmitHost")
         )
         if match_from_host:
             submitted_host = match_from_host[1]
@@ -135,11 +147,6 @@ class EventHandler:
             InvalidUserAddressState(),
             reason
         )
-
-    @property
-    def state(self) -> JobState:
-        """Returns current job state."""
-        return self._state
 
     def get_execution_event(
             self,
@@ -214,21 +221,65 @@ class EventHandler:
 
         # differentiate between normal and abnormal termination
         if normal_termination:
-            state = NormalTerminationState()
-
+            self._state = NormalTerminationState()
             return_value = event.get('ReturnValue')
+            return NormalTerminationEvent(
+                event.event_number,
+                event.time_stamp,
+                resources,
+                return_value
+            )
         else:
-            state = AbnormalTerminationState()
             return_value = event.get('TerminatedBySignal')
+            self._state = AbnormalTerminationState()
+            return AbnormalTerminationEvent(
+                event.event_number,
+                event.time_stamp,
+                resources,
+                return_value
+            )
             # Todo: include description when possible
 
-        self._state = state
-        return JobTerminationEvent(
+    @staticmethod
+    def get_job_evicted_event(
+            event: HTCJobEventWrapper
+    ) -> JobEvictedEvent:
+        """Reads and returns a JobEvictedEvent."""
+        assert event.type == jet.JOB_EVICTED
+        # Todo: figure out the data load of
+        #  TerminatedNormally and TerminatedAndRequed
+        return JobEvictedEvent(
             event.event_number,
             event.time_stamp,
-            resources,
-            state,
-            return_value
+            checkpointed=event.get("Checkpointed")
+        )
+
+    @staticmethod
+    def get_image_size_event(event: HTCJobEventWrapper) -> ImageSizeEvent:
+        """Reads and returns a ImageSizeEvent."""
+        assert event.type == jet.IMAGE_SIZE
+        size_update = event.get('Size')
+        memory_usage = event.get('MemoryUsage')
+        resident_set_size = event.get('ResidentSetSize')
+        return ImageSizeEvent(
+            event.event_number,
+            event.time_stamp,
+            size_update,
+            memory_usage,
+            resident_set_size
+        )
+
+    @staticmethod
+    def get_shadow_exception_event(
+            event: HTCJobEventWrapper
+    ) -> ShadowExceptionEvent:
+        """Reads and returns a ShadowExceptionEvent."""
+        assert event.type == jet.SHADOW_EXCEPTION
+        reason = event.get('Message')
+        return ShadowExceptionEvent(
+            event.event_number,
+            event.time_stamp,
+            reason
         )
 
     def get_job_aborted_event(
@@ -260,42 +311,104 @@ class EventHandler:
         return aborted_event
 
     @staticmethod
-    def get_image_size_event(event: HTCJobEventWrapper) -> ImageSizeEvent:
-        """Reads and returns a ImageSizeEvent."""
-        assert event.type == jet.IMAGE_SIZE
-        size_update = event.get('Size')
-        memory_usage = event.get('MemoryUsage')
-        resident_set_size = event.get('ResidentSetSize')
-        return ImageSizeEvent(
-            event.event_number,
-            event.time_stamp,
-            size_update,
-            memory_usage,
-            resident_set_size
-        )
-
-    @staticmethod
     def get_job_held_event(event: HTCJobEventWrapper) -> JobHeldEvent:
         """Reads and returns a JobHeldEvent."""
         assert event.type == jet.JOB_HELD
-        reason = event.get('HoldReason')
+        message = event.get('HoldReason')
         return JobHeldEvent(
+            event.event_number,
+            event.time_stamp,
+            message
+        )
+
+    @staticmethod
+    def get_job_disconnected_event(
+            event: HTCJobEventWrapper
+    ) -> JobDisconnectedEvent:
+        assert event.type == jet.JOB_DISCONNECTED
+        reason = f"{event.get('DisconnectReason')}"
+        return JobDisconnectedEvent(
             event.event_number,
             event.time_stamp,
             reason
         )
 
     @staticmethod
-    def get_shadow_exception_event(
+    def get_job_reconnected_event(
             event: HTCJobEventWrapper
-    ) -> ShadowExceptionEvent:
-        """Reads and returns a ShadowExceptionEvent."""
-        assert event.type == jet.SHADOW_EXCEPTION
-        reason = event.get('Message')
-        return ShadowExceptionEvent(
+    ) -> JobReconnectedEvent:
+        assert event.type == jet.JOB_RECONNECTED
+        reason = f"{event.get('Reason')}"
+        return JobReconnectedEvent(
             event.event_number,
             event.time_stamp,
             reason
+        )
+
+    @staticmethod
+    def get_job_reconnect_failed_event(
+            event: HTCJobEventWrapper
+    ) -> JobReconnectFailedEvent:
+        assert event.type == jet.JOB_RECONNECT_FAILED
+        reason = f"{event.get('Reason')}"
+        return JobReconnectFailedEvent(
+            event.event_number,
+            event.time_stamp,
+            reason
+        )
+
+    def get_job_event(
+            self,
+            event: HTCJobEvent,
+            rdns_lookup: bool = False
+    ) -> JobEvent:
+        """
+        Takes a HTCondor job event and returns an own wrapped JobEvent class.
+
+        :param event: HTCJobEvent
+            A job event from the HTCondor python bindings.
+        :param rdns_lookup: bool
+            Whether to reversely resolve host addresses by domain name
+        :return: JobEvent
+            Wrapped JobEvent class with own properties
+        """
+        wrapped_job_event = HTCJobEventWrapper(event)
+        if wrapped_job_event.type == jet.SUBMIT:
+            return self.get_submission_event(wrapped_job_event)
+
+        if wrapped_job_event.type == jet.EXECUTE:
+            return self.get_execution_event(
+                wrapped_job_event,
+                rdns_lookup=rdns_lookup
+            )
+
+        if wrapped_job_event.type == jet.JOB_EVICTED:
+            return self.get_job_evicted_event(wrapped_job_event)
+
+        if wrapped_job_event.type == jet.JOB_TERMINATED:
+            return self.get_job_terminated_event(wrapped_job_event)
+
+        if wrapped_job_event.type == jet.IMAGE_SIZE:
+            return self.get_image_size_event(wrapped_job_event)
+
+        if wrapped_job_event.type == jet.SHADOW_EXCEPTION:
+            return self.get_shadow_exception_event(wrapped_job_event)
+
+        if wrapped_job_event.type == jet.JOB_ABORTED:
+            return self.get_job_aborted_event(wrapped_job_event)
+
+        if wrapped_job_event.type == jet.JOB_HELD:
+            return self.get_job_held_event(wrapped_job_event)
+
+        if wrapped_job_event.type == jet.JOB_DISCONNECTED:
+            return self.get_job_disconnected_event(wrapped_job_event)
+
+        if wrapped_job_event.type == jet.JOB_RECONNECT_FAILED:
+            return self.get_job_reconnect_failed_event(wrapped_job_event)
+
+        # else:
+        raise AttributeError(
+            f"Event type: {wrapped_job_event.type} not handled yet"
         )
 
     def get_htc_events(
@@ -330,54 +443,3 @@ class EventHandler:
 
             self._state = ErrorWhileReadingState()
             raise ReadLogException(reason) from err
-
-    def get_job_event(
-            self,
-            event: HTCJobEvent,
-            rdns_lookup: bool = False
-    ) -> JobEvent:
-        """
-        Takes a HTCondor job event and returns an own wrapped JobEvent class.
-
-        :param event: HTCJobEvent
-            A job event from the HTCondor python bindings.
-        :param rdns_lookup: bool
-            Whether to reversely resolve host addresses by domain name
-        :return: JobEvent
-            Wrapped JobEvent class with own properties
-        """
-        wrapped_job_event = HTCJobEventWrapper(event)
-        if wrapped_job_event.type == jet.SUBMIT:
-            job_event = self.get_submission_event(wrapped_job_event)
-
-        elif wrapped_job_event.type == jet.EXECUTE:
-            job_event = self.get_execution_event(
-                wrapped_job_event,
-                rdns_lookup=rdns_lookup
-            )
-
-        elif wrapped_job_event.type == jet.IMAGE_SIZE:
-            job_event = self.get_image_size_event(wrapped_job_event)
-
-            # update resource dict and termination date
-        elif wrapped_job_event.type == jet.JOB_TERMINATED:
-            job_event = self.get_job_terminated_event(wrapped_job_event)
-
-            # update error dict and termination date
-        elif wrapped_job_event.type == jet.JOB_ABORTED:
-            job_event = self.get_job_aborted_event(wrapped_job_event)
-
-            # update error dict
-        elif wrapped_job_event.type == jet.JOB_HELD:
-            job_event = self.get_job_held_event(wrapped_job_event)
-
-            # update error dict
-        elif wrapped_job_event.type == jet.SHADOW_EXCEPTION:
-            job_event = self.get_shadow_exception_event(wrapped_job_event)
-
-        else:
-            raise AttributeError(
-                f"Event type: {wrapped_job_event.type} not handled yet"
-            )
-
-        return job_event

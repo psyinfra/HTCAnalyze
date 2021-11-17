@@ -86,39 +86,36 @@ class RunningState(ExecutionState):
 class ErrorState(State, ABC):
     """Represents an error state."""
 
-    def __init__(self):
+    def __init__(self, name=None):
+        self.name = name
         self.color = "red"
 
 
 class ErrorWhileReadingState(JobState, ErrorState):
     """Represents an error while reading state."""
     def __init__(self):
-        super().__init__()
-        self.name = "ERROR_WHILE_READING"
+        super().__init__("ERROR_WHILE_READING")
 
 
 class InvalidHostAddressState(ErrorState):
     """Represents an invalid host address state."""
 
     def __init__(self):
-        super().__init__()
-        self.name = "INVALID_HOST_ADDRESS"
+        super().__init__("INVALID_HOST_ADDRESS")
 
 
 class InvalidUserAddressState(ErrorState):
     """Represents an invalid user address state."""
 
     def __init__(self):
-        super().__init__()
-        self.name = "INVALID_USER_ADDRESS"
+        super().__init__("INVALID_USER_ADDRESS")
 
 
 class AbortedState(TerminationState, ErrorState):
     """Represents an abortion state."""
 
     def __init__(self):
-        super().__init__()
-        self.name = "ABORTED"
+        super().__init__("ABORTED")
 
 
 class JobHeldState(ErrorState):
@@ -133,5 +130,39 @@ class ShadowExceptionState(ErrorState):
     """Represents a shadow exception state."""
 
     def __init__(self):
-        super().__init__()
-        self.name = "SHADOW_EXCEPTION"
+        super().__init__("SHADOW_EXCEPTION")
+
+
+class JobSuspendedState(ErrorState):
+    """Represents if a suspended job state."""
+
+    def __init__(self):
+        super().__init__("JOB_SUSPENDED")
+
+
+class JobEvictedState(ErrorState):
+    """Represents an evicted job."""
+
+    def __init__(self):
+        super().__init__("JOB_EVICTED")
+
+
+class ExecutableErrorState(ErrorState):
+    """Represents an evicted job."""
+
+    def __init__(self):
+        super().__init__("EXECUTABLE_ERROR")
+
+
+class JobDisconnectedState(ErrorState):
+    """Represents a disconnected job state."""
+
+    def __init__(self):
+        super().__init__("JOB_DISCONNECTED")
+
+
+class JobReconnectFailedState(ErrorState):
+    """Represents if a job reconnect failed."""
+
+    def __init__(self):
+        super().__init__("JOB_RECONNECT_FAILED")
