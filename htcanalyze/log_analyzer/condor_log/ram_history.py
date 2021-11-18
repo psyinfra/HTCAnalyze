@@ -35,7 +35,10 @@ class RamHistory(ReprObject):
         :param show_legend: Shows a legend
         :return: str
         """
-        ram = [ram.size_update for ram in self.image_size_events]
+        ram = [
+            ram.size_update/1000  # convert to MB
+            for ram in self.image_size_events
+        ]
         dates = [ram.time_stamp for ram in self.image_size_events]
         if len(ram) == 0:
             return ""  # No memory usage detected
@@ -44,7 +47,7 @@ class RamHistory(ReprObject):
             return str(
                 f"Single memory update found:\n"
                 f"Memory usage on the {dates[0]} "
-                f"was updatet to {ram[0]} MB\n"
+                f"was updated to {ram[0]} MB\n"
             )
 
         # else
@@ -54,7 +57,7 @@ class RamHistory(ReprObject):
         fig.set_x_limits(min_=min(dates))
         min_ram = int(min(ram))  # raises error if not casted
         fig.set_y_limits(min_=min_ram)
-        fig.y_label = "Usage (KB)"
+        fig.y_label = "Usage [MB]"
         fig.x_label = "Time"
 
         # this will use the self written function _
