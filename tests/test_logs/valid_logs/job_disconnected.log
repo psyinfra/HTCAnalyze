@@ -1,0 +1,54 @@
+000 (164567.000.000) 07/30 13:56:22 Job submitted from host: <10.0.8.10:9618?addrs=10.0.8.10-9618&noUDP&sock=2364585_35f2_3>
+    DAG Node: 1293281_DS
+...
+001 (164567.000.000) 07/30 14:45:03 Job executing on host: <10.0.9.19:9618?addrs=10.0.9.19-9618&noUDP&sock=2421_2ee0_3>
+...
+006 (164567.000.000) 07/30 14:45:11 Image size of job updated: 41524
+        41  -  MemoryUsage of job (MB)
+        41524  -  ResidentSetSize of job (KB)
+...
+006 (164567.000.000) 07/30 14:50:11 Image size of job updated: 1074221696
+        41  -  MemoryUsage of job (MB)
+        41524  -  ResidentSetSize of job (KB)
+...
+006 (164567.000.000) 07/30 14:55:12 Image size of job updated: 1074221696
+        43  -  MemoryUsage of job (MB)
+        43160  -  ResidentSetSize of job (KB)
+...
+006 (164567.000.000) 07/30 15:00:12 Image size of job updated: 2148275100
+        43  -  MemoryUsage of job (MB)
+        43160  -  ResidentSetSize of job (KB)
+...
+022 (164567.000.000) 07/30 15:42:05 Job disconnected, attempting to reconnect
+    Socket between submit and execute hosts closed unexpectedly
+    Trying to reconnect to slot8@cpu19.htc.inm7.de <10.0.9.19:9618?addrs=10.0.9.19-9618&noUDP&sock=2421_2ee0_3>
+...
+024 (164567.000.000) 07/30 16:22:25 Job reconnection failed
+    Job disconnected too long: JobLeaseDuration (2400 seconds) expired
+    Can not reconnect to slot8@cpu19.htc.inm7.de, rescheduling job
+...
+001 (164567.000.000) 07/30 16:22:27 Job executing on host: <10.0.9.23:9618?addrs=10.0.9.23-9618&noUDP&sock=1350_90f1_3>
+...
+006 (164567.000.000) 07/30 16:22:35 Image size of job updated: 1074221748
+        44  -  MemoryUsage of job (MB)
+        45000  -  ResidentSetSize of job (KB)
+...
+006 (164567.000.000) 07/30 16:25:02 Image size of job updated: 1074243876
+        44  -  MemoryUsage of job (MB)
+        45000  -  ResidentSetSize of job (KB)
+...
+005 (164567.000.000) 07/30 16:25:02 Job terminated.
+        (1) Normal termination (return value 0)
+                Usr 0 00:01:43, Sys 0 00:00:14  -  Run Remote Usage
+                Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+                Usr 0 00:01:43, Sys 0 00:00:14  -  Total Remote Usage
+                Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+        0  -  Run Bytes Sent By Job
+        0  -  Run Bytes Received By Job
+        0  -  Total Bytes Sent By Job
+        0  -  Total Bytes Received By Job
+        Partitionable Resources :    Usage  Request Allocated
+           Cpus                 :     1.00        1         1
+           Disk (KB)            :     1    73400320 116045872
+           Memory (MB)          :    44         100     15360
+...
