@@ -107,7 +107,11 @@ class AnalyzedLogfileView(View):
         if not ram_history.image_size_events:
             return
         self.console.print("Ram Histogram", justify="center")
-        print(ram_history.plot_ram(show_legend=show_legend))
+        self.console.out(
+            ram_history.plot_ram(show_legend=show_legend),
+            highlight=False,
+            style=None
+        )
 
     def print_error_events(self, logfile_error_events):
         """Prints error events."""
