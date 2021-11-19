@@ -3,7 +3,7 @@
 import logging
 import os.path
 from typing import List
-from rich import print as rprint
+from rich.console import Console
 
 # import own module
 from .condor_log.condor_log import (
@@ -34,8 +34,10 @@ class HTCAnalyzer:
 
     def __init__(
             self,
+            console=None,
             rdns_lookup=False
     ):
+        self.console = console if console else Console()
         self.rdns_cache = {}
         self.rdns_lookup = rdns_lookup
 
@@ -54,8 +56,8 @@ class HTCAnalyzer:
             condor_log = self.get_condor_log(file, self.rdns_lookup)
             yield condor_log
 
-    @staticmethod
     def get_condor_log(
+            self,
             file: str,
             rdns_lookup=False
     ) -> CondorLog:
@@ -104,11 +106,11 @@ class HTCAnalyzer:
                         occurred_errors.append(job_event)
 
                 except AttributeError as err:
-                    rprint(f"[yellow]{err}[/yellow]")
+                    self.console.print(f"[yellow]{err}[/yellow]")
 
         except ReadLogException as err:
             logging.debug(err)
-            rprint(f"[red]{err}[/red]")
+            self.console.print(f"[red]{err}[/red]")
             occurred_errors.append(
                 ErrorEvent(
                     None,
