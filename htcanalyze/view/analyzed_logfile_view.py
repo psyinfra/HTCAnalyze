@@ -192,7 +192,7 @@ class AnalyzedLogfileView(View):
             elif file_content == "":
                 self.console.print("[yellow]stdout file is empty[/yellow]")
             else:
-                self.console.print(file_content)
+                self.console.print(file_content, highlight=False)
 
         if show_err:
             self.console.print()
@@ -210,7 +210,7 @@ class AnalyzedLogfileView(View):
             elif file_content == "":
                 self.console.print("[yellow]stderr file is empty[/yellow]")
             else:
-                self.console.print(file_content)
+                self.console.print(file_content, highlight=False)
 
     def print_condor_logs(
             self,
