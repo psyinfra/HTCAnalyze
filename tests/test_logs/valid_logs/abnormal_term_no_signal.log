@@ -11,7 +11,7 @@
 	264  -  ResidentSetSize of job (KB)
 ...
 005 (469.1418.000) 02/28 12:58:28 Job terminated.
-	(0) Abnormal termination (signal NO)
+	(0) Abnormal termination (signal null)
 	(0) No core file
 		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
 		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
