@@ -179,11 +179,11 @@ class SummarizedLogfileView(View):
             )
 
         self.console.print(jobs_table)
-        print(sep_char * self.window_width)
+        self.console.print(sep_char * self.window_width)
 
         for state_summarized_logs in summarized_condor_logs:
 
-            print()
+            self.console.print()
 
             color = state_summarized_logs.state.color
             self.print_desc_line(
@@ -195,7 +195,8 @@ class SummarizedLogfileView(View):
             self.print_times(state_summarized_logs.avg_times)
 
             resource_view = ResourceView(
-                state_summarized_logs.avg_resources,
+                console=self.console,
+                resources=state_summarized_logs.avg_resources,
                 bad_usage=bad_usage,
                 tolerated_usage=tolerated_usage,
             )
@@ -216,5 +217,5 @@ class SummarizedLogfileView(View):
                 state_summarized_logs.summarized_error_states
             )
 
-            print()
-            print(sep_char * self.window_width)
+            self.console.print()
+            self.console.print(sep_char * self.window_width)
