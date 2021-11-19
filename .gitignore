@@ -138,7 +138,7 @@ dmypy.json
 cython_debug/
 
 
-# HTCompact realted files
+# HTCondor realted files
 logs/
 .log
 .out
