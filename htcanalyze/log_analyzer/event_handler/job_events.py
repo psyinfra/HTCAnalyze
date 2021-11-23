@@ -20,20 +20,6 @@ from .states import (
 )
 
 
-class DateTimeWrapper(date_time):
-    """Wrapper for datetime objects to create a representation __repr__."""
-
-    def __new__(cls, time_stamp, *_, **__):
-        return time_stamp
-
-    @property
-    def __dict__(self):
-        return str(self)
-
-    def __repr__(self):
-        return str(self)
-
-
 class JobEvent(ReprObject, ABC):
     """
     Abstract class to wrap each HTCondor JobEvent.
@@ -55,7 +41,7 @@ class JobEvent(ReprObject, ABC):
             time_stamp: date_time = None
     ):
         self.event_number = event_number
-        self.time_stamp = DateTimeWrapper(time_stamp) if time_stamp else None
+        self.time_stamp = time_stamp
 
 
 class ErrorEvent(JobEvent, ABC):
