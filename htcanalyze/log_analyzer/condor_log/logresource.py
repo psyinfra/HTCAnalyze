@@ -3,7 +3,7 @@
 import json
 from abc import ABC
 from enum import Enum
-from typing import List
+from typing import List, Union
 from numpy import isnan, nan_to_num as ntn
 
 from htcanalyze import ReprObject
@@ -172,7 +172,7 @@ class GPULogResource(LogResource):
             usage: float,
             requested: float,
             allocated: float,
-            assigned: str = ""
+            assigned: Union[str, None] = None
     ):
         super().__init__(usage, requested, allocated, "Gpus (Average)")
         self.assigned = assigned

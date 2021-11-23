@@ -216,8 +216,8 @@ class EventHandler:
             GPULogResource(
                 event.get("GpusUsage", np.nan),
                 event.get("RequestGpus", np.nan),
-                event.get('Gpus', np.nan)
-
+                event.get('Gpus', np.nan),
+                assigned=event.get("AssignedGpus")
             )
         )
 

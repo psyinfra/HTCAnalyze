@@ -4,7 +4,6 @@ from typing import List
 
 from htcanalyze.globals import BAD_USAGE, TOLERATED_USAGE
 from .view import View
-from .resource_view import ResourceView
 from ..log_summarizer.summarized_condor_logs.summarized_condor_logs import (
     SummarizedCondorLogs
 )
@@ -84,6 +83,43 @@ class SummarizedLogfileView(View):
             )
 
         self.console.print(node_table)
+
+    def print_resources(
+            self,
+            resources,
+            bad_usage=BAD_USAGE,
+            tolerated_usage=TOLERATED_USAGE,
+            headers=None,
+            precision=3,
+    ):
+        """Prints a resource table."""
+        if not resources:
+            return
+
+        if headers is None:
+            headers = [
+                "Partitionable Resources",
+                "Usage",
+                "Request",
+                "Allocated"
+            ]
+
+        resource_table = self.create_table(headers)
+
+        for resource in resources.resources:
+            if not resource.is_empty():
+                color = resource.get_color_by_threshold(
+                    bad_usage=bad_usage,
+                    tolerated_usage=tolerated_usage
+                )
+                resource_table.add_row(
+                    resource.description,
+                    f"[{color}]{round(resource.usage, precision)}[/{color}]",
+                    str(round(resource.requested, precision)),
+                    str(round(resource.allocated, precision))
+                )
+
+        self.console.print(resource_table)
 
     def print_summarized_error_events(
             self,
@@ -194,13 +230,10 @@ class SummarizedLogfileView(View):
 
             self.print_times(state_summarized_logs.avg_times)
 
-            resource_view = ResourceView(
-                console=self.console,
-                resources=state_summarized_logs.avg_resources,
+            self.print_resources(
+                state_summarized_logs.avg_resources,
                 bad_usage=bad_usage,
                 tolerated_usage=tolerated_usage,
-            )
-            resource_view.print_resources(
                 headers=[
                     "Partitionable Resources",
                     "Avg. Usage",
