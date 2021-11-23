@@ -133,10 +133,19 @@ def test_div():
 
 
 def test_is_empty():
-    assert LogResource(0.7, 1.0, 1).is_empty() is False
-    assert LogResource(0.7, 1.0, nan).is_empty() is False
-    assert LogResource(0.7, nan, nan).is_empty() is False
-    assert LogResource(nan, nan, nan).is_empty() is True
+    assert not LogResource(0.7, 1.0, 1).is_empty()
+    assert not LogResource(0.7, 1.0, nan).is_empty()
+    assert not LogResource(0.7, nan, nan).is_empty()
+    assert not LogResource(nan, 1.0, 1).is_empty()
+    assert not LogResource(nan, 1.0, nan).is_empty()
+    assert not LogResource(nan, nan, 1).is_empty()
+    assert LogResource(nan, nan, nan).is_empty()
+
+
+def test_is_equal():
+    assert LogResource(0.7, 1.0, 2) == LogResource(0.7, 1.0, 2)
+    assert not LogResource(0.7, 1.0, 2) == LogResource(0.7, 1.1, 2)
+    assert not LogResource(0.7, 1.0, 2) == 1
 
 
 def test_warning_lvl():
