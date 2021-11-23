@@ -2,9 +2,9 @@
 import os
 
 from htcanalyze.log_analyzer.condor_log.condor_log import CondorLog
+from htcanalyze.log_analyzer.condor_log.logresource import GPULogResource
 from htcanalyze.globals import STRF_FORMAT, BAD_USAGE, TOLERATED_USAGE
 from .view import View
-from .resource_view import ResourceView
 
 
 class AnalyzedLogfileView(View):
@@ -113,6 +113,55 @@ class AnalyzedLogfileView(View):
             style=None
         )
 
+    def print_analyzed_resources(
+            self,
+            resources,
+            bad_usage=BAD_USAGE,
+            tolerated_usage=TOLERATED_USAGE,
+            precision=3,
+    ):
+        """Prints a resource table."""
+        if not resources:
+            return
+
+        headers = [
+            "Partitionable Resources",
+            "Usage",
+            "Request",
+            "Allocated",
+        ]
+        if resources.gpu_is_assigned:
+            headers.append("Assigned")
+
+        resource_table = self.create_table(headers)
+
+        for resource in resources.resources:
+            if not resource.is_empty():
+                color = resource.get_color_by_threshold(
+                    bad_usage=bad_usage,
+                    tolerated_usage=tolerated_usage
+                )
+
+                data_list = [
+                    resource.description,
+                    f"[{color}]{round(resource.usage, precision)}[/{color}]",
+                    str(round(resource.requested, precision)),
+                    str(round(resource.allocated, precision))
+                ]
+                if resources.gpu_is_assigned:
+                    assigned = (
+                        resource.assigned
+                        if isinstance(resource, GPULogResource)
+                        else ""
+                    )
+                    data_list.append(assigned)
+
+                resource_table.add_row(
+                    *data_list
+                )
+
+        self.console.print(resource_table)
+
     def print_error_events(self, logfile_error_events):
         """Prints error events."""
         if not logfile_error_events.error_events:
@@ -165,13 +214,11 @@ class AnalyzedLogfileView(View):
 
         self.print_job_details(condor_log.job_details)
 
-        resource_view = ResourceView(
-            console=self.console,
-            resources=condor_log.job_details.resources,
+        self.print_analyzed_resources(
+            condor_log.job_details.resources,
             bad_usage=bad_usage,
             tolerated_usage=tolerated_usage,
         )
-        resource_view.print_resources()
 
         self.print_ram_history(
             condor_log.ram_history,

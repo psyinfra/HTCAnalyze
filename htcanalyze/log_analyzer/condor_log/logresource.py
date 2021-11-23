@@ -3,7 +3,7 @@
 import json
 from abc import ABC
 from enum import Enum
-from typing import List
+from typing import List, Union
 from numpy import isnan, nan_to_num as ntn
 
 from htcanalyze import ReprObject
@@ -172,7 +172,7 @@ class GPULogResource(LogResource):
             usage: float,
             requested: float,
             allocated: float,
-            assigned: str = ""
+            assigned: Union[str, None] = None
     ):
         super().__init__(usage, requested, allocated, "Gpus (Average)")
         self.assigned = assigned
@@ -198,6 +198,11 @@ class LogResources(ReprObject):
         self.disc_resource = disc_resource
         self.memory_resource = memory_resource
         self.gpu_resource = gpu_resource
+
+    @property
+    def gpu_is_assigned(self):
+        """Returns if GPU Resource has assigned value."""
+        return self.gpu_resource and self.gpu_resource.assigned
 
     @property
     def resources(self) -> List[LogResource]:
