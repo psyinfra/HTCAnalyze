@@ -24,19 +24,7 @@ class DateTimeWrapper(date_time):
     """Wrapper for datetime objects to create a representation __repr__."""
 
     def __new__(cls, time_stamp, *_, **__):
-        new = date_time.__new__(
-            cls,
-            year=time_stamp.year,
-            month=time_stamp.month,
-            day=time_stamp.day,
-            hour=time_stamp.hour,
-            minute=time_stamp.minute,
-            second=time_stamp.second,
-            microsecond=time_stamp.microsecond,
-            tzinfo=time_stamp.tzinfo,
-            fold=time_stamp.fold
-        )
-        return new
+        return time_stamp
 
     @property
     def __dict__(self):
