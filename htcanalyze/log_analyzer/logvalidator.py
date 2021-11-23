@@ -4,8 +4,8 @@ import os
 import re
 import logging
 from typing import List
+from rich.console import Console
 
-from rich import print as rprint
 from htcanalyze.globals import (
     EXT_LOG_DEFAULT,
     EXT_OUT_DEFAULT,
@@ -92,14 +92,17 @@ class LogValidator:
                 if self.is_valid_logfile(file_path):
                     yield os.path.join(root, file)
 
-    def common_validation(self, path_list, recursive=False):
+    def common_validation(self, path_list, recursive=False, console=None):
         """
         Filters paths for valid HTCondor log files
 
         :param path_list: list of HTCondor log paths
         :param recursive: Search recursively for log files
+        :param console: Console
         :return: list with valid HTCondor log files
         """
+        if console is None:
+            console = Console()
         valid_files = []
 
         for arg in path_list:
@@ -117,11 +120,13 @@ class LogValidator:
                 if self.is_valid_logfile(abs_path):
                     yield abs_path
                 else:
-                    rprint(
+                    console.print(
                         f"[yellow]The given file {abs_path} "
                         f"is not a valid HTCondor log file[/yellow]"
                     )
             else:
-                rprint(f"[red]The given path: {arg} does not exist[/red]")
+                console.print(
+                    f"[red]The given path: {arg} does not exist[/red]"
+                )
 
         return valid_files

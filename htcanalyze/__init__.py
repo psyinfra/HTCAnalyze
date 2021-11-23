@@ -11,12 +11,18 @@ class ReprObject(ABC):
     inheriting from it can be easily printed to the command line represented by
     a self.__dict__ with indentation.
     """
+    @staticmethod
+    def get_dict_or_str(obj):
+        """Try to get __dict__ of obj. Else return str(obj)."""
+        if getattr(obj, "__dict__", None):
+            return obj.__dict__
+        return str(obj)
 
     def __repr__(self):
         return json.dumps(
             self.__dict__,
             indent=2,
-            default=lambda x: x.__dict__
+            default=self.get_dict_or_str
         )
 
 

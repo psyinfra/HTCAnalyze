@@ -42,8 +42,8 @@ def track_progress(
 class View(ABC):
     """A general view to visualize HTCAnalyze data to the terminal."""
 
-    def __init__(self):
-        self.console = Console()
+    def __init__(self, console=None):
+        self.console = console if console else Console()
         self.window_width = self.console.size.width
 
     def read_file(self, file: str):
@@ -114,9 +114,9 @@ class View(ABC):
         fill_up_str2 = fill_up_str[:-overhang]
 
         if boxing:
-            print(highlight_char*self.window_width)
+            self.console.print(highlight_char*self.window_width)
 
         self.console.print(f"{fill_up_str} {with_color} {fill_up_str2}")
 
         if boxing:
-            print(highlight_char*self.window_width)
+            self.console.print(highlight_char*self.window_width)

@@ -80,6 +80,7 @@ def print_results(
         ext_err: str = EXT_ERR_DEFAULT,
         bad_usage: float = BAD_USAGE,
         tolerated_usage: float = TOLERATED_USAGE,
+        console=None,
         **__
 ) -> None:
     """
@@ -105,22 +106,28 @@ def print_results(
     :param tolerated_usage: float
         Threshold to signalize a tolerated but unpleasant percentage
         the usage is away from the requested resources (usually yellow colored)
+    :param console: Console
     :param __: ignore unknown params
 
     :return: None
     """
-    htc_analyze = HTCAnalyzer(rdns_lookup=rdns_lookup)
-    condor_logs = htc_analyze.analyze(log_files)
-
+    if console is None:
+        console = Console()
     if show_list is None:
         show_list = []
-
     # analyze files if only one file was given
     if len(log_files) == 1:
         analyze = True
 
+    htc_analyze = HTCAnalyzer(
+        console=console,
+        rdns_lookup=rdns_lookup
+    )
+    condor_logs = htc_analyze.analyze(log_files)
+
     if analyze:
         view = AnalyzedLogfileView(
+            console=console,
             ext_out=ext_out,
             ext_err=ext_err
         )
@@ -139,7 +146,7 @@ def print_results(
         )
     # else summarize
     else:
-        view = SummarizedLogfileView()
+        view = SummarizedLogfileView(console=console)
         analyzed_logs = track_progress(
             condor_logs,
             len(log_files),
@@ -154,17 +161,18 @@ def print_results(
         )
 
 
-def run(commandline_args) -> None:
+def run(commandline_args, console=None) -> None:
     """
     Run this script.
 
     :param commandline_args: list of args
+    :param console: Console
     :return: None
     """
+    if console is None:
+        console = Console()
     if not isinstance(commandline_args, list):
         commandline_args = commandline_args.split()
-
-    console = Console()
 
     try:
 
@@ -179,7 +187,7 @@ def run(commandline_args) -> None:
         setup_logging_tool(params.verbose)
 
         if params.version:
-            print(f"Version: {version()}")
+            console.print(f"Version: {version()}")
             raise HTCAnalyzeTerminationEvent(
                 "Get current version",
                 NORMAL_EXECUTION
@@ -197,6 +205,7 @@ def run(commandline_args) -> None:
         )
         valid_files_generator = validator.common_validation(
             params.paths,
+            console=console,
             recursive=params.recursive
         )
         with console.status("[bold green]Validating files ..."):
@@ -215,11 +224,14 @@ def run(commandline_args) -> None:
         print_results(
             log_files=valid_files,
             show_legend=False,
+            console=console,
             **vars(params)
         )
 
+        sys.exit(NORMAL_EXECUTION)
+
     except TypeError as err:
-        print(traceback.print_exc())
+        console.print(traceback.print_exc())
         raise HTCAnalyzeTerminationEvent(err, TYPE_ERROR) from TypeError
 
     except KeyboardInterrupt:
@@ -235,7 +247,7 @@ def main():
     start = date_time.now()
     exit_code = NORMAL_EXECUTION
     try:
-        run(sys.argv[1:])
+        run(sys.argv[1:], console=console)
     except HTCAnalyzeTerminationEvent as err:
         if not err.exit_code == NORMAL_EXECUTION:
             logging.debug(err.message)

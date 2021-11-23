@@ -23,9 +23,10 @@ class ResourceView(View):
             self,
             resources,
             bad_usage=BAD_USAGE,
-            tolerated_usage=TOLERATED_USAGE
+            tolerated_usage=TOLERATED_USAGE,
+            console=None
     ):
-        super().__init__()
+        super().__init__(console=console)
         self.resources = resources
         self.bad_usage = bad_usage
         self.tolerated_usage = tolerated_usage

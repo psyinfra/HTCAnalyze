@@ -1,11 +1,10 @@
 """Manage HTCondor job log resources."""
 
 import json
-import math
 from abc import ABC
 from enum import Enum
 from typing import List
-from numpy import nan_to_num as ntn
+from numpy import isnan, nan_to_num as ntn
 
 from htcanalyze import ReprObject
 
@@ -44,10 +43,7 @@ class LogResource(ABC):
         self.description = description
 
     def __add__(self, other):
-        if other == 0 or other is None:
-            return self
-        assert isinstance(self, other.__class__)
-        if other.is_empty():
+        if not isinstance(other, self.__class__) or other.is_empty():
             return self
         return self.__class__(
             float(ntn(self.usage) + ntn(other.usage)),
@@ -56,6 +52,7 @@ class LogResource(ABC):
         )
 
     def __truediv__(self, other):
+        assert isinstance(other, (float, int))
         if self.is_empty():
             return self
         return self.__class__(
@@ -67,13 +64,15 @@ class LogResource(ABC):
     def is_empty(self) -> bool:
         """Returns true if all values are NaN."""
         return (
-                math.isnan(self.usage) and
-                math.isnan(self.requested) and
-                math.isnan(self.allocated)
+                isnan(self.usage) and
+                isnan(self.requested) and
+                isnan(self.allocated)
         )
 
     def __radd__(self, other):
-        return self if other == 0 or other.is_empty() else self + other
+        if not isinstance(other, self.__class__) or other.is_empty():
+            return self
+        return self + other
 
     @staticmethod
     def get_color(warning_level: LevelColors) -> str:
@@ -110,6 +109,23 @@ class LogResource(ABC):
 
     def __repr__(self):
         return json.dumps(self.__dict__)
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        usage_equal = (
+                self.usage == other.usage or
+                (isnan(self.usage) and isnan(other.usage))
+        )
+        requested_equal = (
+                self.requested == other.requested or
+                (isnan(self.requested) and isnan(other.requested))
+        )
+        allocated_equal = (
+                self.allocated == other.allocated or
+                (isnan(self.allocated) and isnan(other.allocated))
+        )
+        return usage_equal and requested_equal and allocated_equal
 
 
 class CPULogResource(LogResource):
@@ -210,4 +226,12 @@ class LogResources(ReprObject):
         )
 
     def __radd__(self, other):
-        return self if other == 0 else self + other
+        return self if not isinstance(other, self.__class__) else self + other
+
+    def __eq__(self, other):
+        return (
+            self.cpu_resource == other.cpu_resource and
+            self.disc_resource == other.disc_resource and
+            self.memory_resource == other.memory_resource and
+            self.gpu_resource == other.gpu_resource
+        )

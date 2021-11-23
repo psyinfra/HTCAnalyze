@@ -32,9 +32,9 @@
     0  -  Run Bytes Received By Job
     0  -  Total Bytes Sent By Job
     0  -  Total Bytes Received By Job
-    Partitionable Resources :    Usage  Request Allocated Assigned
-       Cpus                 :     1.00        1         1
-       Disk (KB)            :  1000        1000   3769294
-       Gpus                 :     0.99        1         1 "CUDA4"
-       Memory (MB)          :   951        2048      2048
+	Partitionable Resources :    Usage   Request Allocated Assigned
+	   Cpus                 :     0.11         1         1
+	   Disk (KB)            :     4    220200960 222312484
+	   Gpus                 :     0.99         1         1 "CUDA4"
+	   Memory (MB)          :   922        20480     20480
 ...

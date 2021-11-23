@@ -16,10 +16,11 @@ class AnalyzedLogfileView(View):
     """
     def __init__(
             self,
+            console=None,
             ext_out=".out",
             ext_err=".err"
     ):
-        super().__init__()
+        super().__init__(console=console)
         self.ext_out = ext_out
         self.ext_err = ext_err
 
@@ -106,7 +107,11 @@ class AnalyzedLogfileView(View):
         if not ram_history.image_size_events:
             return
         self.console.print("Ram Histogram", justify="center")
-        print(ram_history.plot_ram(show_legend=show_legend))
+        self.console.out(
+            ram_history.plot_ram(show_legend=show_legend),
+            highlight=False,
+            style=None
+        )
 
     def print_error_events(self, logfile_error_events):
         """Prints error events."""
@@ -161,9 +166,10 @@ class AnalyzedLogfileView(View):
         self.print_job_details(condor_log.job_details)
 
         resource_view = ResourceView(
-            condor_log.job_details.resources,
-            bad_usage,
-            tolerated_usage
+            console=self.console,
+            resources=condor_log.job_details.resources,
+            bad_usage=bad_usage,
+            tolerated_usage=tolerated_usage,
         )
         resource_view.print_resources()
 
@@ -175,7 +181,7 @@ class AnalyzedLogfileView(View):
         self.print_error_events(condor_log.logfile_error_events)
 
         if show_out:
-            print()
+            self.console.print()
             out_file_name = condor_log.job_spec_id + self.ext_out
             self.print_desc_line(
                 "Additional stdout output:",
@@ -190,10 +196,10 @@ class AnalyzedLogfileView(View):
             elif file_content == "":
                 self.console.print("[yellow]stdout file is empty[/yellow]")
             else:
-                print(file_content)
+                self.console.out(file_content, highlight=False, style=None)
 
         if show_err:
-            print()
+            self.console.print()
             err_file_name = condor_log.job_spec_id + self.ext_err
             self.print_desc_line(
                 "Additional stderr output: ",
@@ -208,7 +214,7 @@ class AnalyzedLogfileView(View):
             elif file_content == "":
                 self.console.print("[yellow]stderr file is empty[/yellow]")
             else:
-                print(file_content)
+                self.console.out(file_content, highlight=False, style=None)
 
     def print_condor_logs(
             self,
@@ -217,9 +223,9 @@ class AnalyzedLogfileView(View):
             **kwargs
     ):
         """Prints multiple condor logs."""
-        print(sep_char*self.window_width)
+        self.console.print(sep_char*self.window_width)
         for log in condor_logs:
             self.print_condor_log(
                 log, **kwargs
             )
-            print(sep_char*self.window_width)
+            self.console.print(sep_char*self.window_width)
