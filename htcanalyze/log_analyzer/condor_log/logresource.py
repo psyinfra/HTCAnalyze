@@ -111,6 +111,23 @@ class LogResource(ABC):
     def __repr__(self):
         return json.dumps(self.__dict__)
 
+    def __eq__(self, other):
+        if other == 0:
+            return False
+        usage_equal = (
+                self.usage == other.usage or
+                (isnan(self.usage) and isnan(other.usage))
+        )
+        requested_equal = (
+                self.requested == other.requested or
+                (isnan(self.requested) and isnan(other.requested))
+        )
+        allocated_equal = (
+                self.allocated == other.allocated or
+                (isnan(self.allocated) and isnan(other.allocated))
+        )
+        return usage_equal and requested_equal and allocated_equal
+
 
 class CPULogResource(LogResource):
     """Represents a CPU log resource."""
@@ -211,3 +228,13 @@ class LogResources(ReprObject):
 
     def __radd__(self, other):
         return self if other == 0 else self + other
+
+    def __eq__(self, other):
+        if other == 0:
+            return False
+        return (
+            self.cpu_resource == other.cpu_resource and
+            self.disc_resource == other.disc_resource and
+            self.memory_resource == other.memory_resource and
+            self.gpu_resource == other.gpu_resource
+        )
