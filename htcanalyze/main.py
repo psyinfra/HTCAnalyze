@@ -228,6 +228,8 @@ def run(commandline_args, console=None) -> None:
             **vars(params)
         )
 
+        sys.exit(NORMAL_EXECUTION)
+
     except TypeError as err:
         console.print(traceback.print_exc())
         raise HTCAnalyzeTerminationEvent(err, TYPE_ERROR) from TypeError
