@@ -64,7 +64,7 @@ class JobTimes(ReprObject):
         )
 
     def __radd__(self, other):
-        return self if other == 0 else self + other
+        return self if not isinstance(other, self.__class__) else self + other
 
     def __truediv__(self, other):
         return JobTimes(
