@@ -1,11 +1,10 @@
 """Manage HTCondor job log resources."""
 
 import json
-import math
 from abc import ABC
 from enum import Enum
 from typing import List
-from numpy import nan_to_num as ntn
+from numpy import isnan, nan_to_num as ntn
 
 from htcanalyze import ReprObject
 
@@ -67,9 +66,9 @@ class LogResource(ABC):
     def is_empty(self) -> bool:
         """Returns true if all values are NaN."""
         return (
-                math.isnan(self.usage) and
-                math.isnan(self.requested) and
-                math.isnan(self.allocated)
+                isnan(self.usage) and
+                isnan(self.requested) and
+                isnan(self.allocated)
         )
 
     def __radd__(self, other):
