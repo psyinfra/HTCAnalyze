@@ -1,34 +1,7 @@
 import sys
 import io
 from htcanalyze import main as ht
-
-
-class PseudoTTY(object):
-
-    def __init__(self, underlying, isset):
-        """
-
-        :param underlying:
-        :param isset:
-        """
-        self.__underlying = underlying
-        self.__isset = isset
-
-    def __getattr__(self, name):
-        """
-
-        :param name:
-        :return:
-        """
-        return getattr(self.__underlying, name)
-
-    def isatty(self):
-        """
-
-        :return:
-        """
-        return self.__isset
-
+from . import PseudoTTY
 
 copy_sys_stdout = sys.stdout
 copy_sys_stdin = sys.stdin

@@ -2,20 +2,16 @@
 
 import sys
 import pytest
-from io import StringIO
-from rich.console import Console
 from htcanalyze.globals import NORMAL_EXECUTION
 from htcanalyze.main import run
-from .redirection_test import PseudoTTY
+from . import PseudoTTY
 
 
 # needed because stdin is set from pytest
-# sys.stdin = PseudoTTY(sys.stdin, True)
-
-
-# @pytest.fixture(scope="module")
-# def console():
-#     return Console(file=StringIO())
+copy_sys_stdout = sys.stdout
+copy_sys_stdin = sys.stdin
+sys.stdin = PseudoTTY(sys.stdin, True)
+sys.stdout = PseudoTTY(sys.stdout, True)
 
 
 def run_htcanalyze(paths, *args):
@@ -27,7 +23,6 @@ def run_htcanalyze(paths, *args):
 
 
 def test_valid_files_summarized():
-    # monkeypatch.setattr("builtins.input", lambda _: None)
     paths = "tests/test_logs/valid_logs"
     # default summarization
     with pytest.raises(SystemExit) as pytest_wrapped_e:
