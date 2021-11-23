@@ -200,6 +200,11 @@ class LogResources(ReprObject):
         self.gpu_resource = gpu_resource
 
     @property
+    def gpu_is_assigned(self):
+        """Returns if GPU Resource has assigned value."""
+        return self.gpu_resource and self.gpu_resource.assigned
+
+    @property
     def resources(self) -> List[LogResource]:
         """Returns resource list."""
         return [
