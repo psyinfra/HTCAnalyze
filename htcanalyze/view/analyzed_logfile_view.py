@@ -113,7 +113,7 @@ class AnalyzedLogfileView(View):
             style=None
         )
 
-    def print_resources(
+    def print_analyzed_resources(
             self,
             resources,
             bad_usage=BAD_USAGE,
@@ -129,8 +129,9 @@ class AnalyzedLogfileView(View):
             "Usage",
             "Request",
             "Allocated",
-            "Assigned"
         ]
+        if resources.gpu_is_assigned:
+            headers.append("Assigned")
 
         resource_table = self.create_table(headers)
 
@@ -140,17 +141,23 @@ class AnalyzedLogfileView(View):
                     bad_usage=bad_usage,
                     tolerated_usage=tolerated_usage
                 )
-                assigned = (
-                    resource.assigned
-                    if isinstance(resource, GPULogResource)
-                    else ""
-                )
-                resource_table.add_row(
+
+                data_list = [
                     resource.description,
                     f"[{color}]{round(resource.usage, precision)}[/{color}]",
                     str(round(resource.requested, precision)),
-                    str(round(resource.allocated, precision)),
-                    assigned
+                    str(round(resource.allocated, precision))
+                ]
+                if resources.gpu_is_assigned:
+                    assigned = (
+                        resource.assigned
+                        if isinstance(resource, GPULogResource)
+                        else ""
+                    )
+                    data_list.append(assigned)
+
+                resource_table.add_row(
+                    *data_list
                 )
 
         self.console.print(resource_table)
@@ -207,7 +214,7 @@ class AnalyzedLogfileView(View):
 
         self.print_job_details(condor_log.job_details)
 
-        self.print_resources(
+        self.print_analyzed_resources(
             condor_log.job_details.resources,
             bad_usage=bad_usage,
             tolerated_usage=tolerated_usage,

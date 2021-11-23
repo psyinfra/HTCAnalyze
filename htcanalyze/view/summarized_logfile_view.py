@@ -109,8 +109,8 @@ class SummarizedLogfileView(View):
         for resource in resources.resources:
             if not resource.is_empty():
                 color = resource.get_color_by_threshold(
-                    bad_usage=bad_usage,
-                    tolerated_usage=tolerated_usage
+                    bad_usage,
+                    tolerated_usage
                 )
                 resource_table.add_row(
                     resource.description,
