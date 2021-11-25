@@ -28,6 +28,17 @@ class RamHistory(ReprObject):
     def __init__(self, image_size_events: List[ImageSizeEvent]):
         self.image_size_events = image_size_events
 
+    @staticmethod
+    def mean_y_value(y_values, min_, max_):
+        """Callback method for y-ticks."""
+        y_selected = [y for y in y_values if min_ <= y < max_]
+        if y_selected:
+            # if there are some Y values in that range
+            # show the average
+            return sum(y_selected) / len(y_selected)
+        # default is showing the lower end of the range
+        return min_
+
     def plot_ram(self, show_legend=False) -> str:
         """
         Creates a str with a histogram that can be printed to the command line.
@@ -52,6 +63,7 @@ class RamHistory(ReprObject):
 
         # else
         fig = Figure()
+        fig.y_ticks_fkt = lambda x, y: self.mean_y_value(ram, x, y)
         fig.width = 55
         fig.height = 15
         fig.set_x_limits(min_=min(dates))
