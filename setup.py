@@ -25,7 +25,7 @@ setup(
         "plotille>=3.7",
         "configargparse==1.2.3",
         "rich>=3.0.3",
-        "wheel==0.38.1"
+        "wheel==0.46.2"
     ],
     tests_require=[
         'pytest>=6.0.1'
